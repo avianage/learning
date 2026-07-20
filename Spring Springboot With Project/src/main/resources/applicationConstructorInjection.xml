@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <!-- bean definitions here -->
+    <bean id="carSpecificationConstructor" class="car.example.constructor.injection.Specification">
+        <property name="make" value="Toyota"/>
+        <property name="model" value="Corolla"/>
+    </bean>
+
+    <bean id="myCar" class="car.example.constructor.injection.Car">
+        <!--Constructor Injection-->
+        <constructor-arg ref="carSpecificationConstructor"/>
+
+    </bean>
+
+    <bean id="carSpecificationSetter" class="car.example.setter.injection.Specification">
+        <property name="make" value="Toyota"/>
+        <property name="model" value="Corolla"/>
+    </bean>
+    <bean id="myCar2" class="car.example.setter.injection.Car">
+        <!--Setter Injection-->
+        <property name="specification" ref="carSpecificationSetter"/>
+
+    </bean>
+
+</beans>
