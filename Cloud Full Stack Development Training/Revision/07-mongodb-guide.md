@@ -1,13 +1,13 @@
 # MongoDB — Complete Line-by-Line Guide
 
-This guide is grounded strictly in Aakash's actual MongoDB course materials:
+This guide is grounded strictly in Aakash's actual MongoDB course materials — no examples are invented; every query, schema field, and code line below is reproduced from these files:
 
 - `MongoDB_Courseware.md` — core concept lessons (installation, shell, CRUD, query operators, aggregation, indexes, utilities)
 - `MongoDB_Exercise.md` / `MongoDB_Exercise_Answered.md` / `MongoDB_Exercise_Answered_Complete.md` — the NYC Restaurants hands-on exercise, with real answered queries and aggregation-pipeline challenges
 - `MongoDB_EMS_Assignment.md` — a 60-question Employee Management System (EMS) assignment with its own schema and answer key
 - Real Mongoose-based Node.js code from two projects: a minimal `mongoose-demo.js` script and a full Express/Mongoose EMS backend (`db.js`, three Mongoose models, a seed script, and a query-helper utility)
 
-No examples are invented — every query, schema field, and code line below is reproduced from these files. Since you already know relational databases (and some pymongo/motor), comparisons are drawn to SQL and Python's Mongo drivers where they sharpen the point rather than restate the obvious.
+Since you already know relational databases (and some pymongo/motor), comparisons are drawn to SQL and Python's Mongo drivers where they sharpen the point rather than restate the obvious.
 
 ---
 
@@ -166,7 +166,7 @@ db.students.insertOne({
 })
 ```
 
-**ObjectId anatomy** (this is exam-relevant — expect a question distinguishing it from a UUID or auto-increment PK):
+**ObjectId anatomy** (distinguishing it from a UUID or auto-increment PK):
 
 ```
 ObjectId("64a7f2c3e4b0a1d2e3f4a5b6")
@@ -202,7 +202,7 @@ db.students.insertMany([
 
 `insertOne()` inserts a single document and returns `{ acknowledged: true, insertedId: ObjectId(...) }`. `insertMany()` inserts an array of documents. You may supply a custom `_id` (any unique BSON value, e.g. a string like `"STU001"`) instead of letting MongoDB generate an ObjectId.
 
-**Ordered vs unordered inserts** — this is a subtle exam point: `insertMany()` defaults to `{ ordered: true }`, meaning it stops at the first document that errors (e.g. duplicate key), leaving later documents un-inserted. `{ ordered: false }` continues past errors, inserting every valid document and reporting failures afterward — useful for bulk-loading noisy data.
+**Ordered vs unordered inserts:** `insertMany()` defaults to `{ ordered: true }`, meaning it stops at the first document that errors (e.g. duplicate key), leaving later documents un-inserted. `{ ordered: false }` continues past errors, inserting every valid document and reporting failures afterward — useful for bulk-loading noisy data.
 
 ```javascript
 db.students.insertMany(
@@ -363,9 +363,7 @@ db.students.deleteMany({})              // delete ALL docs — collection still 
 
 `findOneAndDelete(filter)` deletes **and returns** the deleted document in one atomic call — useful when the app needs to know exactly what was removed (e.g. to log it), rather than issuing a `find()` then a separate `deleteOne()` (which is not atomic and can race).
 
-**Deleting documents vs dropping a collection** is an important distinction: `deleteMany({})` empties the collection but preserves it and its indexes; `db.students.drop()` removes the collection, its documents, *and* its indexes/metadata entirely; `db.dropDatabase()` removes the whole database. There is **no recycle bin** — deletions are permanent without a backup (`mongodump`).
-
-Recommended safe-delete pattern: always run the equivalent `find()` first to preview what a `deleteMany` would remove, before actually running the delete.
+**Deleting documents vs dropping a collection** is an important distinction: `deleteMany({})` empties the collection but preserves it and its indexes; `db.students.drop()` removes the collection, its documents, *and* its indexes/metadata entirely; `db.dropDatabase()` removes the whole database. There is **no recycle bin** — deletions are permanent without a backup (`mongodump`). Recommended safe-delete pattern: always run the equivalent `find()` first to preview what a `deleteMany` would remove, before actually running the delete.
 
 ## 14. Aggregation Framework
 
@@ -474,7 +472,7 @@ db.students.dropIndex("city_1")
 db.students.dropIndexes()   // drops all except the mandatory _id index
 ```
 
-**Best practices (likely a short-answer question):**
+**Best practices:**
 1. Index fields used in `find()`, `sort()`, and `$match`.
 2. Avoid over-indexing — every index adds write overhead (each insert/update must also update every index).
 3. In a compound index, **field order matters** — put equality-filtered fields first, range-filtered fields last (this is the same "equality, sort, range" (ESR) rule from general index design theory).
@@ -535,150 +533,84 @@ The exercise poses 32 `find()`-level questions (Q1–Q32) grouped into: basic re
 ### Basic retrieval & projection (Q1–Q4)
 
 ```javascript
-27:  db.restaurants.find();
-34:  db.restaurants.find({}, { restaurant_id: 1, name: 1, borough: 1, cuisine: 1 });
+27:  db.restaurants.find();                                                          // {} matches every document
 40:  db.restaurants.find({}, { restaurant_id: 1, name: 1, borough: 1, cuisine: 1, _id: 0 });
 46:  db.restaurants.find({}, { restaurant_id: 1, name: 1, borough: 1, "address.zipcode": 1, _id: 0 });
 ```
 
-- **Line 27** — empty filter `{}` matches every document; this is Q1's "show all."
-- **Line 34** — an empty filter with an **inclusion projection**: only the four named fields (plus `_id`, included by default) come back per document.
-- **Line 40** — same projection as above, but `_id: 0` explicitly suppresses the otherwise-default `_id` field. This is the one case where inclusion (`1`) and exclusion (`0`) are allowed to coexist.
-- **Line 46** — projects a **nested field** using dot-notation `"address.zipcode": 1`; MongoDB returns it nested back inside an `address` sub-object in the result (it doesn't flatten it to a top-level `zipcode` key).
+`_id: 0` alongside an inclusion projection is the one case where inclusion (`1`) and exclusion (`0`) may coexist — it explicitly suppresses the otherwise-default `_id`. Projecting a nested field via dot-notation (`"address.zipcode": 1`, line 46) returns it nested back inside an `address` sub-object, not flattened to a top-level key.
 
 ### Location & borough filtering (Q5–Q7, Q10)
 
 ```javascript
-54:  db.restaurants.find({ borough: "Bronx" });
-60:  db.restaurants.find({ borough: "Bronx" }).limit(5);
-66:  db.restaurants.find({ borough: "Bronx" }).skip(5).limit(5);
+66:  db.restaurants.find({ borough: "Bronx" }).skip(5).limit(5);   // pagination: skip page 1, take next 5
 72:  db.restaurants.find({ "address.coord": { $lt: -95.754168 } });
 ```
 
-- **Line 54** — a plain equality filter on a top-level string field.
-- **Line 60** — chains `.limit(5)` onto the cursor to cap the result at 5 documents (Q6: "first 5").
-- **Line 66** — chains `.skip(5).limit(5)` for pagination — skip the first page, take the next 5 (Q7). Order matters conceptually (`skip` then `limit`), though MongoDB applies them logically regardless of call order in the chain.
-- **Line 72** — `$lt` against `"address.coord"`, an **array** field. When you compare an array field against a scalar operator like `$lt`, MongoDB matches if **any element** of the array satisfies the condition — here it matches if either the longitude or latitude value in the 2-element `coord` array is `< -95.754168`. This is why the question is *phrased* as "latitude" but the query targets the whole `coord` array rather than `coord.1` specifically — a looser (and technically imprecise, but exercise-accepted) approach.
+Line 66 chains `.skip(5).limit(5)` for pagination (Q6/Q7 build up to this from a plain `.limit(5)`). Line 72's `$lt` targets `"address.coord"`, an **array** field — comparing an array against a scalar operator matches if **any element** satisfies the condition, so this matches on either longitude or latitude in the 2-element `coord` array being `< -95.754168`. That's why the question is *phrased* as "latitude" but the query targets the whole array rather than `coord.1` — looser and technically imprecise, but exercise-accepted (compare the precise version in Q24 below).
 
 ### Score-based filtering (Q8, Q9, Q20, Q30)
 
 ```javascript
-80:  db.restaurants.find({ grades: { $elemMatch: { score: { $gt: 90 } } } });
 86:  db.restaurants.find({ grades: { $elemMatch: { score: { $gt: 80, $lt: 100 } } } });
-92-95: db.restaurants.find(
-         { "grades.score": { $lte: 10 } },
-         { restaurant_id: 1, name: 1, borough: 1, cuisine: 1, _id: 0 }
-       );
-101-104: db.restaurants.find(
-           { "grades.score": { $mod: [7, 0] } },
-           { restaurant_id: 1, name: 1, grades: 1, _id: 0 }
-         );
+92:  db.restaurants.find({ "grades.score": { $lte: 10 } }, { restaurant_id: 1, name: 1, borough: 1, cuisine: 1, _id: 0 });
+101: db.restaurants.find({ "grades.score": { $mod: [7, 0] } }, { restaurant_id: 1, name: 1, grades: 1, _id: 0 });
 ```
 
-- **Line 80** — `$elemMatch` requires that a **single element** of the `grades` array satisfy `score > 90`. Two approaches are noted in the exercise: `$elemMatch` (at least one grade over 90) vs `$all: [{ score: { $gt: 90 } } ]` (semantically different — `$all` with a document containing an operator actually behaves like an implicit `$elemMatch` per array element too, but the exercise treats it as the "all grades" reading for contrast; in practice `$elemMatch` is the correct/idiomatic tool here).
-- **Line 86** — `$elemMatch` with **two conditions in the same clause** (`$gt: 80, $lt: 100`) — critically, both bounds must be satisfied by the *same* grade element, not by two different grades in the array (that distinction is exactly why `$elemMatch` exists over dot-notation).
-- **Lines 92–95** — uses **dot notation without `$elemMatch`**: `"grades.score": { $lte: 10 }` matches if *any* element's `score` is `<= 10`. Since there's only one condition, dot notation and `$elemMatch` are equivalent here — `$elemMatch` is only strictly required when multiple conditions must hold on the same element.
-- **Lines 101–104** — `$mod: [7, 0]` is the "divisible by" operator: `[divisor, remainder]`. `{ "grades.score": { $mod: [7, 0] } }` matches restaurants where at least one grade's score, divided by 7, has remainder 0.
+Line 86's `$elemMatch` with **two conditions in the same clause** requires both bounds be satisfied by the *same* grade element, not by two different grades in the array — that's exactly why `$elemMatch` exists over plain dot notation. Line 92 shows the contrast: dot notation without `$elemMatch` (`"grades.score": { $lte: 10 }`) matches if *any* element's score qualifies — fine with a single condition, but `$elemMatch` becomes mandatory once multiple conditions must hold on the same element. Line 101's `$mod: [7, 0]` is the "divisible by" operator — `[divisor, remainder]` — matching restaurants where at least one grade's score divided by 7 has remainder 0.
 
 ### Geo + cuisine filtering (Q11, Q12, Q17)
 
 ```javascript
-115-121: db.restaurants.find({
-           $and: [
-             { cuisine: { $ne: "American " } },
-             { "grades.score": { $gt: 70 } },
-             { "address.coord": { $lt: -65.754168 } }
-           ]
-         });
-127-131: db.restaurants.find({
-           cuisine: { $ne: "American " },
-           "grades.score": { $gt: 70 },
-           "address.coord": { $lt: -65.754168 }
-         });
-137-140: db.restaurants.find({
-           borough: "Bronx",
-           $or: [{ cuisine: "American " }, { cuisine: "Chinese" }]
-         });
+127: db.restaurants.find({ cuisine: { $ne: "American " }, "grades.score": { $gt: 70 }, "address.coord": { $lt: -65.754168 } });
+137: db.restaurants.find({ borough: "Bronx", $or: [{ cuisine: "American " }, { cuisine: "Chinese" }] });
 ```
 
-- **Lines 115–121** — explicit `$and` wrapping three separate condition documents. Note `"American "` has a **trailing space** — a real quirk of the underlying NYC restaurants dataset (cuisine values are stored with trailing whitespace), which is why the literal string must match exactly.
-- **Lines 127–131** — the *same* result as Q11 without `$and`: multiple keys in one filter document are implicitly ANDed. This is the key lesson of Q12 — explicit `$and` is redundant when each condition applies to a **different field**, and is only required when the same field needs multiple, independently-evaluated condition clauses.
-- **Lines 137–140** — mixes an implicit top-level AND (`borough: "Bronx"`) with an explicit `$or` array for the cuisine alternative — demonstrating that `$or`/`$and` can be nested inside an otherwise-plain filter document.
+Note `"American "` carries a **trailing space** — a real quirk of the underlying dataset, so the literal string must match exactly. Q11 also shows this same filter wrapped in an explicit `$and: [...]`; Q12 (line 127) proves it's redundant here, since multiple keys in one filter document are implicitly ANDed — explicit `$and` is only required when the *same field* needs multiple, independently-evaluated condition clauses. Line 137 mixes an implicit top-level AND (`borough`) with an explicit nested `$or` for the cuisine alternative, showing `$or`/`$and` can nest inside an otherwise-plain filter document.
 
 ### Borough filtering (Q18, Q19)
 
 ```javascript
-148-151: db.restaurants.find(
-           { borough: { $in: ["Staten Island", "Queens", "Bronx", "Brooklyn"] } },
-           { restaurant_id: 1, name: 1, borough: 1, cuisine: 1, _id: 0 }
-         );
-157-160: db.restaurants.find(
-           { borough: { $nin: ["Staten Island", "Queens", "Bronx", "Brooklyn"] } },
-           { restaurant_id: 1, name: 1, borough: 1, cuisine: 1, _id: 0 }
-         );
+148: db.restaurants.find({ borough: { $in: ["Staten Island", "Queens", "Bronx", "Brooklyn"] } }, { restaurant_id: 1, name: 1, borough: 1, cuisine: 1, _id: 0 });
 ```
 
-- **Lines 148–151 / 157–160** — `$in`/`$nin` against a list are the idiomatic MongoDB equivalent of SQL's `IN (...)` / `NOT IN (...)`, avoiding a chain of `$or`/`$and`-`$ne` clauses.
+`$in`/`$nin` (Q19 is the same query with `$nin`) against a list are the idiomatic MongoDB equivalent of SQL's `IN (...)` / `NOT IN (...)`, avoiding a chain of `$or`/`$and`-`$ne` clauses.
 
 ### Regex name matching (Q14–Q16, Q31, Q32)
 
 ```javascript
-168-171: db.restaurants.find({ name: /^Wil/ }, { restaurant_id: 1, name: 1, borough: 1, cuisine: 1, _id: 0 });
-177-180: db.restaurants.find({ name: /ces$/ }, { restaurant_id: 1, name: 1, borough: 1, cuisine: 1, _id: 0 });
-186-189: db.restaurants.find({ name: /Reg/ },  { restaurant_id: 1, name: 1, borough: 1, cuisine: 1, _id: 0 });
-195-198: db.restaurants.find({ name: /mon/i }, { name: 1, borough: 1, cuisine: 1, "address.coord": 1, _id: 0 });
-204-207: db.restaurants.find({ name: /^Mad/ }, { name: 1, borough: 1, cuisine: 1, "address.coord": 1, _id: 0 });
+168: db.restaurants.find({ name: /^Wil/ }, { restaurant_id: 1, name: 1, borough: 1, cuisine: 1, _id: 0 });   // starts with
+177: db.restaurants.find({ name: /ces$/ }, ...);   // ends with
+195: db.restaurants.find({ name: /mon/i }, { name: 1, borough: 1, cuisine: 1, "address.coord": 1, _id: 0 }); // contains, case-insensitive
 ```
 
-- These use **native JavaScript regex literals** (`/pattern/flags`) directly as the filter value, rather than the `{ $regex: ... }` operator form — both are equivalent in `mongosh`, but the literal form is more concise. `^` anchors "starts with," `$` anchors "ends with," a bare substring anchors "contains," and the `i` flag makes it case-insensitive (line 195).
+These use **native JavaScript regex literals** (`/pattern/flags`) directly as the filter value, rather than the `{ $regex: ... }` operator form — both are equivalent in `mongosh`, but the literal form is more concise. `^` anchors "starts with," `$` anchors "ends with," a bare substring anchors "contains," and the `i` flag makes it case-insensitive.
 
 ### Complex combined conditions (Q13, Q21)
 
 ```javascript
-215-219: db.restaurants.find({
-           cuisine: { $ne: "American " },
-           "grades.grade": "A",
-           borough: { $ne: "Brooklyn" }
-         }).sort({ cuisine: -1 });
-225-233: db.restaurants.find(
-           { $or: [ { cuisine: { $nin: ["American ", "Chinese"] } }, { name: /^Wil/ } ] },
-           { restaurant_id: 1, name: 1, borough: 1, cuisine: 1, _id: 0 }
-         );
+215: db.restaurants.find({ cuisine: { $ne: "American " }, "grades.grade": "A", borough: { $ne: "Brooklyn" } }).sort({ cuisine: -1 });
+225: db.restaurants.find({ $or: [ { cuisine: { $nin: ["American ", "Chinese"] } }, { name: /^Wil/ } ] }, { restaurant_id: 1, name: 1, borough: 1, cuisine: 1, _id: 0 });
 ```
 
-- **Lines 215–219** — three implicitly-ANDed conditions, then `.sort({ cuisine: -1 })` chained onto the cursor.
-- **Lines 225–233** — top-level `$or` with two very different clause shapes: an `$nin` array condition and a regex condition, showing `$or` branches don't need matching operator types.
+Line 225's top-level `$or` mixes two very different clause shapes — an `$nin` array condition and a regex condition — showing `$or` branches don't need matching operator types.
 
 ### Array & date queries (Q22–Q24)
 
 ```javascript
-241-252: db.restaurants.find(
-           { grades: { $elemMatch: { grade: "A", score: 11, date: ISODate("2014-08-11T00:00:00Z") } } },
-           { restaurant_id: 1, name: 1, grades: 1, _id: 0 }
-         );
-258-265: db.restaurants.find(
-           { "grades.1.grade": "A", "grades.1.score": 9, "grades.1.date": ISODate("2014-08-11T00:00:00Z") },
-           { restaurant_id: 1, name: 1, grades: 1, _id: 0 }
-         );
-271-274: db.restaurants.find(
-           { "address.coord.1": { $gt: 42, $lte: 52 } },
-           { restaurant_id: 1, name: 1, address: 1, _id: 0 }
-         );
+258: db.restaurants.find({ "grades.1.grade": "A", "grades.1.score": 9, "grades.1.date": ISODate("2014-08-11T00:00:00Z") }, { restaurant_id: 1, name: 1, grades: 1, _id: 0 });
+271: db.restaurants.find({ "address.coord.1": { $gt: 42, $lte: 52 } }, { restaurant_id: 1, name: 1, address: 1, _id: 0 });
 ```
 
-- **Lines 241–252** — `$elemMatch` with three simultaneous conditions (`grade`, `score`, `date`), requiring one array element to satisfy **all three at once** — necessary here because there could be multiple grades sharing a score elsewhere in the array.
-- **Lines 258–265** — dot notation with a **numeric array index**: `"grades.1"` means "the element at index 1" (zero-based, so the 2nd element) — this is fundamentally different from `"grades.score"`, which matched *any* element. `date: ISODate(...)` compares a BSON Date value directly.
-- **Lines 271–274** — `"address.coord.1"` targets index 1 of the `coord` array (i.e., the latitude, since `coord = [longitude, latitude]`), with a range condition `$gt: 42, $lte: 52` in one clause — this is the *precise* geo query that Q10/Q11 approximated loosely by comparing the whole array.
+Q22 (not shown) uses `$elemMatch` with three simultaneous conditions (`grade`, `score`, `date`) to require one array element satisfy all three at once. Line 258 contrasts that with dot notation using a **numeric array index** — `"grades.1"` means "the element at index 1" (zero-based), fundamentally different from `"grades.score"` which matches *any* element; `date: ISODate(...)` compares a BSON Date value directly. Line 271's `"address.coord.1"` targets index 1 of the `coord` array (the latitude, since `coord = [longitude, latitude]`) with a range condition in one clause — the *precise* geo query that Q10/Q11 approximated loosely by comparing the whole array.
 
 ### Sorting (Q25–Q27)
 
 ```javascript
-282:  db.restaurants.find().sort({ name: 1 });
-288:  db.restaurants.find().sort({ name: -1 });
 294:  db.restaurants.find().sort({ cuisine: 1, borough: -1 });
 ```
 
-- **Line 294** — a **compound sort**: primary key `cuisine` ascending, and within ties, `borough` descending — same semantics as SQL's `ORDER BY cuisine ASC, borough DESC`.
+A **compound sort**: primary key `cuisine` ascending, and within ties, `borough` descending — same semantics as SQL's `ORDER BY cuisine ASC, borough DESC`. (Q25/Q26 are the single-field ascending/descending forms of the same `.sort()` call.)
 
 ### Miscellaneous (Q28, Q29)
 
@@ -687,8 +619,7 @@ The exercise poses 32 `find()`-level questions (Q1–Q32) grouped into: basic re
 308:  db.restaurants.find({ "address.coord": { $type: 1 } });
 ```
 
-- **Line 302** — Q28 asks to *verify* every address has a `street` field; the correct technique is to query for the **absence** case (`$exists: false`) and confirm the result set is empty, rather than trying to positively assert presence across the whole collection in one call.
-- **Line 308** — `$type: 1` is the BSON type code for **Double** (type-code checking, as introduced in §11/§9 of the courseware — `1` = double, `2` = string, `19` = decimal128, etc.).
+Q28 asks to *verify* every address has a `street` field; the correct technique is to query for the **absence** case (`$exists: false`) and confirm the result set is empty, rather than trying to positively assert presence across the whole collection. Line 308's `$type: 1` is the BSON type code for **Double** (type-code checking, as introduced in §9/§11 — `1` = double, `2` = string, `19` = decimal128, etc.).
 
 ## Aggregation Pipeline Challenges (A1–A15, from MongoDB_Exercise_Answered_Complete.md)
 
@@ -720,14 +651,7 @@ These only appear in the "Complete" answered file and require chained `aggregate
 ```
 **A3** — a **two-stage group**: the first `$group` uses a **compound `_id`** (`{ borough, cuisine }`) which naturally deduplicates borough+cuisine pairs (equivalent to SQL `SELECT DISTINCT borough, cuisine`); the second `$group` re-groups by `_id.borough` alone and counts how many distinct cuisine-buckets survived per borough — this "group twice" pattern is the standard MongoDB idiom for a `COUNT(DISTINCT ...)` per category.
 
-```javascript
-402-406: db.restaurants.aggregate([
-           { $group: { _id: "$cuisine", total: { $sum: 1 } } },
-           { $sort: { total: -1 } },
-           { $limit: 3 }
-         ]);
-```
-**A4** — canonical Top-N: group, sort descending by the metric, limit.
+**A4** — canonical Top-N: `$group` then `$sort` descending by the metric then `$limit: 3`. This match→group→sort→limit shape recurs throughout the rest of the pipeline exercises (A8, A10) with different metrics.
 
 ```javascript
 416-431: db.restaurants.aggregate([
@@ -739,19 +663,7 @@ These only appear in the "Complete" answered file and require chained `aggregate
 ```
 **A5** — `$unwind: "$grades"` first flattens each restaurant's `grades` array into one document per grade (so a restaurant with 5 grades becomes 5 separate pipeline documents, each still carrying `borough`), which is a prerequisite for averaging *individual* grade scores per borough rather than per restaurant. `$round: ["$avgScore", 2]` rounds the computed average to 2 decimal places inside `$project`.
 
-```javascript
-437-451: db.restaurants.aggregate([
-           { $group: { _id: "$cuisine", count: { $sum: 1 }, restaurants: { $push: "$grades" } } },
-           { $match: { count: { $gte: 5 } } },
-           { $unwind: "$restaurants" },
-           { $unwind: "$restaurants" },
-           { $group: { _id: "$_id", avgScore: { $avg: "$restaurants.score" } } },
-           { $project: { _id: 1, avgScore: { $round: ["$avgScore", 2] } } },
-           { $sort: { avgScore: -1 } },
-           { $limit: 1 }
-         ]);
-```
-**A6 (first approach)** — groups by cuisine first, `$push`-ing every restaurant's whole `grades` array into a `restaurants` array field (producing an **array of arrays**), filters to cuisines with `count >= 5` restaurants, then `$unwind`s **twice** — once to flatten the outer array-of-arrays, once to flatten the inner grades array — before averaging. The file itself calls out a cleaner alternative:
+**A6 (first approach, not shown)** — groups by cuisine first, `$push`-ing every restaurant's whole `grades` array into a `restaurants` field (producing an **array of arrays**), filters to cuisines with `count >= 5` restaurants, then `$unwind`s **twice** — once to flatten the outer array-of-arrays, once to flatten the inner grades array — before averaging. The file itself calls out a cleaner alternative:
 
 ```javascript
 457-476: db.restaurants.aggregate([
@@ -775,16 +687,7 @@ These only appear in the "Complete" answered file and require chained `aggregate
 ```
 **A7** — `$first: "$name"` (and `$first: "$borough"`) inside `$group` pulls a representative value from the first document in each group — valid here because `name`/`borough` are constant across all grade-rows of the same restaurant after `$unwind`, so "first" is just "the value," not an ordering-sensitive pick.
 
-```javascript
-499-510: db.restaurants.aggregate([
-           { $unwind: "$grades" },
-           { $group: { _id: "$borough", avgScore: { $avg: "$grades.score" } } },
-           { $project: { avgScore: { $round: ["$avgScore", 2] } } },
-           { $sort: { avgScore: -1 } },
-           { $limit: 5 }
-         ]);
-```
-**A8** — same shape as A5 but capped to top 5 with `$limit`.
+**A8 (not shown)** — same shape as A5 but capped to top 5 with `$limit`.
 
 ```javascript
 520-539: db.restaurants.aggregate([
@@ -797,16 +700,7 @@ These only appear in the "Complete" answered file and require chained `aggregate
 ```
 **A9** — a "top-1-per-group" pattern: first compute each restaurant's `maxScore` via `$max`, **sort by that metric descending**, then re-group by `borough` and use `$first` to grab the top-scoring restaurant's name — this **sort-then-`$first`-in-group** combination is the standard MongoDB idiom for "the best row per category," since `$group` has no built-in "top-1" accumulator.
 
-```javascript
-545-559: db.restaurants.aggregate([
-           { $unwind: "$grades" },
-           { $group: { _id: "$restaurant_id", name: { $first: "$name" }, borough: { $first: "$borough" }, cuisine: { $first: "$cuisine" }, avgScore: { $avg: "$grades.score" } } },
-           { $project: { name: 1, borough: 1, cuisine: 1, avgScore: { $round: ["$avgScore", 2] } } },
-           { $sort: { avgScore: -1 } },
-           { $limit: 10 }
-         ]);
-```
-**A10** — combines the A7 per-restaurant-average pattern with Top-N (`$sort` + `$limit: 10`).
+**A10 (not shown)** — combines the A7 per-restaurant-average pattern with Top-N (adds `cuisine` to the grouped fields, `$sort` + `$limit: 10`).
 
 ```javascript
 565-577: db.restaurants.aggregate([
@@ -872,7 +766,7 @@ These only appear in the "Complete" answered file and require chained `aggregate
 The assignment models an HR platform across four collections in the `ems` database, and — unlike the courseware's flatter `students` examples — it deliberately demonstrates several distinct relationship-modeling patterns side by side:
 
 - **`departments`** — flat documents: `code`, `name`, `location`, `established` (Date), `headCount` (Integer), `isActive` (Boolean), `tags` (Array).
-- **`employees`** — the richest document: `employeeId` (business key, distinct from `_id`), name fields, `salary` typed as **`NumberDecimal`** ("always use for money" — explicitly called out, since ordinary BSON doubles lose precision for currency), `hireDate` (Date), `status` as a **string enum** (`ACTIVE | INACTIVE | ON_LEAVE | TERMINATED`, enforced only by convention/app code — MongoDB itself doesn't validate this unless you add JSON Schema validation), an **embedded** `department` sub-document (denormalized copy of `code`+`name`, not a reference), an embedded `role` sub-document, a `skills` array, a nested `address` object, and a `metadata` audit sub-document (`createdAt`/`updatedAt`/`createdBy`).
+- **`employees`** — the richest document: `employeeId` (business key, distinct from `_id`), name fields, `salary` typed as **`NumberDecimal`** (money always uses Decimal128 — ordinary BSON doubles lose precision for currency), `hireDate` (Date), `status` as a **string enum** (`ACTIVE | INACTIVE | ON_LEAVE | TERMINATED`, enforced only by convention/app code — MongoDB itself doesn't validate this unless you add JSON Schema validation), an **embedded** `department` sub-document (denormalized copy of `code`+`name`, not a reference), an embedded `role` sub-document, a `skills` array, a nested `address` object, and a `metadata` audit sub-document (`createdAt`/`updatedAt`/`createdBy`).
 - **`roles`** — a separate lookup-style collection describing job titles, salary bands (`minSalary`/`maxSalary` as `NumberDecimal`), `level` (seniority integer), and `requiredSkills`/`responsibilities` arrays. Note `employees.role` **embeds a copy** of title+level rather than referencing `roles._id` — a deliberate denormalization choice (fast reads, no join needed to display an employee's role, at the cost of needing to sync copies if a role's title changes).
 - **`projects`** — has `status` and `priority` string enums, Decimal128 `budget`, and a `team` array of **embedded documents** (`employeeId`, `name`, `projectRole`, `assignedDate`) — this embeds a snapshot of team members directly in the project rather than storing an array of employee references, trading normalization for read-locality (you can render a project's team without a `$lookup`).
 
@@ -978,393 +872,203 @@ Mongoose is an **Object Document Mapper (ODM)** for MongoDB in Node.js — the r
 16: module.exports = connectDB;
 ```
 
-- **Line 8** — `mongoose.connect(uri)` opens (and internally pools) a connection to the MongoDB server described by the URI, read from the `MONGODB_URI` environment variable rather than hardcoded (standard 12-factor config practice). It returns a Promise that resolves to the `mongoose` instance itself, here captured as `conn`.
-- **Line 9** — `conn.connection.host` reads the resolved host from the underlying native connection object Mongoose wraps, confirming which server was actually reached (useful when the URI resolves via DNS SRV, e.g. an Atlas `mongodb+srv://` string).
-- **Lines 10–12** — if the connection fails (bad URI, auth failure, network unreachable), the error is logged and `process.exit(1)` **terminates the whole Node process** — a deliberate fail-fast choice, since an Express app with no DB connection generally shouldn't keep serving requests that will all fail anyway.
-- **Line 16** — exports `connectDB` as a plain async function, intended to be awaited once at app startup (typically in the app's entry file before `app.listen(...)`).
+`mongoose.connect(uri)` (line 8) opens and internally pools a connection to the server described by the `MONGODB_URI` env var (standard 12-factor config, rather than hardcoding), returning a Promise that resolves to the `mongoose` instance itself. If the connection fails, the error is logged and `process.exit(1)` **terminates the whole Node process** (lines 10–12) — a deliberate fail-fast choice, since an Express app with no DB connection shouldn't keep serving requests that will all fail anyway. `connectDB` is exported as a plain async function, intended to be awaited once at app startup before `app.listen(...)`.
 
 ## `src/models/Department.js` — Mongoose schema, validators, virtuals
 
 ```javascript
-1:  // src/models/Department.js
-2:  // Demonstrates: Mongoose Schema, Validators, Timestamps
-3:
-4:  const mongoose = require('mongoose');
-5:
-6:  const departmentSchema = new mongoose.Schema(
-7:    {
-8:      name: {
-9:        type: String,
-10:       required: [true, 'Department name is required'],
-11:       unique: true,
-12:       trim: true,
-13:       maxlength: [100, 'Name cannot exceed 100 characters'],
-14:     },
-15:     code: {
-16:       type: String,
-17:       required: [true, 'Department code is required'],
-18:       unique: true,
-19:       uppercase: true,
-20:       trim: true,
-21:       match: [/^[A-Z]{2,6}$/, 'Code must be 2-6 uppercase letters'],
-22:     },
-23:     description: {
-24:       type: String,
-25:       trim: true,
-26:       maxlength: [500, 'Description cannot exceed 500 characters'],
-27:     },
-28:     location: {
-29:       type: String,
-30:       trim: true,
-31:     },
-32:     budget: {
-33:       type: Number,
-34:       min: [0, 'Budget cannot be negative'],
-35:       default: 0,
-36:     },
-37:   },
-38:   { timestamps: true }
-39: );
-40:
-41: // Virtual: employee count (populated separately via aggregation)
-42: departmentSchema.virtual('employeeCount', {
-43:   ref: 'Employee',
-44:   localField: '_id',
-45:   foreignField: 'department',
-46:   count: true,
-47: });
-48:
-49: module.exports = mongoose.model('Department', departmentSchema);
+const departmentSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: [true, 'Department name is required'], unique: true, trim: true, maxlength: [100, 'Name cannot exceed 100 characters'] },
+    code: { type: String, required: true, unique: true, uppercase: true, trim: true, match: [/^[A-Z]{2,6}$/, 'Code must be 2-6 uppercase letters'] },
+    description: { type: String, trim: true, maxlength: 500 },
+    location: { type: String, trim: true },
+    budget: { type: Number, min: [0, 'Budget cannot be negative'], default: 0 },
+  },
+  { timestamps: true }
+);
+
+// Virtual: employee count (populated separately via aggregation)
+departmentSchema.virtual('employeeCount', { ref: 'Employee', localField: '_id', foreignField: 'department', count: true });
+
+module.exports = mongoose.model('Department', departmentSchema);
 ```
 
-- **Line 6** — `new mongoose.Schema({...}, options)` defines the document's shape and constraints. Unlike raw MongoDB (schemaless), Mongoose enforces this shape at the application layer — casting field values to the declared `type` and rejecting writes that fail validators, **before** anything is sent to the server.
-- **Lines 8–14** — `name` is a `String`, `required` with a **custom error message tuple** `[true, 'message']` (Mongoose's validator shorthand — the same pattern repeats for `maxlength`, `min`, `match`), `unique: true` (this actually builds a unique **index** in MongoDB, not an app-level check — equivalent to `db.departments.createIndex({ name: 1 }, { unique: true })` from courseware §15), `trim: true` (strips leading/trailing whitespace automatically on save/cast), `maxlength: [100, ...]` (string-length validator).
-- **Lines 15–21** — `code` similarly required+unique, plus `uppercase: true` (Mongoose auto-uppercases the value before saving — a **setter**, not just a validator) and `match: [/^[A-Z]{2,6}$/, ...]` (a **regex validator** — rejects the save if the value doesn't match 2–6 uppercase letters after the `uppercase` transform is applied).
-- **Lines 32–36** — `budget` is a `Number` with a `min` validator and a `default: 0` — if omitted on insert, Mongoose fills in `0` automatically, comparable to a SQL `DEFAULT` column constraint.
-- **Line 38** — `{ timestamps: true }` is a schema-level option that auto-adds and auto-maintains `createdAt`/`updatedAt` Date fields on every save — no manual `metadata.createdAt` bookkeeping needed (contrast with the EMS assignment's Mongo-shell exercises, where `metadata.createdAt`/`updatedAt` had to be set by hand in every insert/update).
-- **Lines 42–47** — `departmentSchema.virtual('employeeCount', {...})` defines a **virtual populate** field: it does not exist in the stored document at all, but when explicitly `.populate('employeeCount')`'d on a query, Mongoose runs a count query against the `Employee` model where `Employee.department` (`foreignField`) equals this department's `_id` (`localField`), because `count: true`. This is Mongoose's way of expressing a "reverse reference" / one-to-many relationship (a department *has many* employees) without physically storing an array of employee IDs on the department document — the inverse of how `projects.assignedEmployees` stores references directly (see below).
-- **Line 49** — `mongoose.model('Department', departmentSchema)` **compiles** the schema into a usable Model class bound to the `departments` collection (Mongoose automatically lowercases + pluralizes `'Department'` → `departments`), and this Model is what's exported and used elsewhere (`Department.insertMany(...)`, `Department.find(...)`, etc.) — analogous to declaring an ORM entity class in SQLAlchemy/Spring Data.
+`new mongoose.Schema({...}, options)` defines the document's shape and constraints. Unlike raw MongoDB (schemaless), Mongoose enforces this shape at the application layer — casting field values to the declared `type` and rejecting writes that fail validators **before** anything is sent to the server. Field-level options seen here: `required`/`maxlength`/`min`/`match` all accept a **`[value, 'custom message']` tuple** (Mongoose's validator shorthand); `unique: true` actually builds a unique **index** in MongoDB, not just an app-level check — equivalent to `db.departments.createIndex({ name: 1 }, { unique: true })` from courseware §15; `trim: true` strips whitespace automatically on save/cast; `uppercase: true` on `code` is a **setter** (transforms the value before validation/save, not just a check), so the `match` regex validator runs *after* the uppercase transform; `default: 0` on `budget` fills in a value when omitted, comparable to a SQL `DEFAULT` constraint.
+
+`{ timestamps: true }` auto-adds and maintains `createdAt`/`updatedAt` Date fields on every save — no manual bookkeeping needed (contrast with the EMS shell assignment, where `metadata.createdAt`/`updatedAt` had to be set by hand).
+
+`departmentSchema.virtual('employeeCount', {...})` defines a **virtual populate** field: it doesn't exist in the stored document, but when explicitly `.populate('employeeCount')`'d, Mongoose runs a count query against the `Employee` model where `Employee.department` (`foreignField`) equals this department's `_id` (`localField`), because `count: true`. This is Mongoose's way of expressing a "reverse reference" / one-to-many relationship without physically storing an array of employee IDs on the department — the inverse of how `projects.assignedEmployees` stores references directly (see below).
+
+`mongoose.model('Department', departmentSchema)` **compiles** the schema into a Model class bound to the `departments` collection (Mongoose auto-lowercases + pluralizes `'Department'` → `departments`) — analogous to declaring an ORM entity class in SQLAlchemy/Spring Data.
 
 ## `src/models/Employee.js` — auth, hashing, instance/static methods, virtuals
 
 ```javascript
-1:  // src/models/Employee.js
-2:  // Demonstrates: Mongoose, bcrypt hashing, instance methods, static methods,
-3:  //               toJSON transform (hide password), virtual fields
-4:
-5:  const mongoose = require('mongoose');
-6:  const bcrypt = require('bcryptjs');
-7:  const jwt = require('jsonwebtoken');
-8:  const validator = require('validator');
-9:
-10: const employeeSchema = new mongoose.Schema(
-11:   {
-12:     // ── Basic Info ────────────────────────────────────────────
-13:     firstName: {
-14:       type: String,
-15:       required: [true, 'First name is required'],
-16:       trim: true,
-17:     },
-18:     lastName: {
-19:       type: String,
-20:       required: [true, 'Last name is required'],
-21:       trim: true,
-22:     },
-23:     email: {
-24:       type: String,
-25:       required: [true, 'Email is required'],
-26:       unique: true,
-27:       lowercase: true,
-28:       trim: true,
-29:       validate: {
-30:         validator: validator.isEmail,
-31:         message: 'Please provide a valid email',
-32:       },
-33:     },
-34:     phone: {
-35:       type: String,
-36:       trim: true,
-37:     },
-38:     avatar: {
-39:       type: String, // stores filename after upload
-40:       default: null,
-41:     },
-42:
-43:     // ── Auth ──────────────────────────────────────────────────
-44:     password: {
-45:       type: String,
-46:       required: [true, 'Password is required'],
-47:       minlength: [6, 'Password must be at least 6 characters'],
-48:       select: false, // never returned by default
-49:     },
-50:     role: {
-51:       type: String,
-52:       enum: ['employee', 'manager', 'admin'],
-53:       default: 'employee',
-54:     },
-55:     tokens: [
-56:       {
-57:         token: {
-58:           type: String,
-59:           required: true,
-60:         },
-61:       },
-62:     ],
-63:
-64:     // ── Job Info ──────────────────────────────────────────────
-65:     designation: {
-66:       type: String,
-67:       trim: true,
-68:     },
-69:     salary: {
-70:       type: Number,
-71:       min: [0, 'Salary cannot be negative'],
-72:     },
-73:     joinDate: {
-74:       type: Date,
-75:       default: Date.now,
-76:     },
-77:     isActive: {
-78:       type: Boolean,
-79:       default: true,
-80:     },
-81:
-82:     // ── Relations ─────────────────────────────────────────────
-83:     department: {
-84:       type: mongoose.Schema.Types.ObjectId,
-85:       ref: 'Department',
-86:     },
-87:   },
-88:   { timestamps: true }
-89: );
-90:
-91: // ── Virtual: full name ────────────────────────────────────────
-92: employeeSchema.virtual('fullName').get(function () {
-93:   return `${this.firstName} ${this.lastName}`;
-94: });
-95:
-96: // ── Pre-save hook: hash password ──────────────────────────────
-97: employeeSchema.pre('save', async function (next) {
-98:   if (!this.isModified('password')) return next();
-99:   this.password = await bcrypt.hash(this.password, 10);
-100:   next();
-101: });
-102:
-103: // ── Instance method: generate JWT ─────────────────────────────
-104: employeeSchema.methods.generateAuthToken = async function () {
-105:   const token = jwt.sign(
-106:     { _id: this._id.toString(), role: this.role },
-107:     process.env.JWT_SECRET,
-108:     { expiresIn: process.env.JWT_EXPIRES_IN }
-109:   );
-110:   this.tokens = this.tokens.concat({ token });
-111:   await this.save();
-112:   return token;
-113: };
-114:
-115: // ── Instance method: compare password ─────────────────────────
-116: employeeSchema.methods.comparePassword = async function (candidatePassword) {
-117:   return bcrypt.compare(candidatePassword, this.password);
-118: };
-119:
-120: // ── Static method: find by credentials ────────────────────────
-121: employeeSchema.statics.findByCredentials = async function (email, password) {
-122:   const employee = await this.findOne({ email }).select('+password');
-123:   if (!employee) throw new Error('Invalid email or password');
-124:
-125:   const isMatch = await employee.comparePassword(password);
-126:   if (!isMatch) throw new Error('Invalid email or password');
-127:
-128:   return employee;
-129: };
-130:
-131: // ── toJSON: strip sensitive fields ───────────────────────────
-132: employeeSchema.methods.toJSON = function () {
-133:   const obj = this.toObject({ virtuals: true });
-134:   delete obj.password;
-135:   delete obj.tokens;
-136:   return obj;
-137: };
-138:
-139: module.exports = mongoose.model('Employee', employeeSchema);
+const employeeSchema = new mongoose.Schema(
+  {
+    firstName: { type: String, required: true, trim: true },
+    lastName:  { type: String, required: true, trim: true },
+    email: {
+      type: String, required: true, unique: true, lowercase: true, trim: true,
+      validate: { validator: validator.isEmail, message: 'Please provide a valid email' },
+    },
+    phone: { type: String, trim: true },
+    avatar: { type: String, default: null },   // stores filename after upload
+
+    password: { type: String, required: true, minlength: 6, select: false },  // never returned by default
+    role: { type: String, enum: ['employee', 'manager', 'admin'], default: 'employee' },
+    tokens: [ { token: { type: String, required: true } } ],
+
+    designation: { type: String, trim: true },
+    salary: { type: Number, min: 0 },
+    joinDate: { type: Date, default: Date.now },
+    isActive: { type: Boolean, default: true },
+
+    department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
+  },
+  { timestamps: true }
+);
+
+employeeSchema.virtual('fullName').get(function () {
+  return `${this.firstName} ${this.lastName}`;
+});
+
+// Pre-save hook: hash password
+employeeSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+// Instance methods
+employeeSchema.methods.generateAuthToken = async function () {
+  const token = jwt.sign({ _id: this._id.toString(), role: this.role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+  this.tokens = this.tokens.concat({ token });
+  await this.save();
+  return token;
+};
+employeeSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Static method
+employeeSchema.statics.findByCredentials = async function (email, password) {
+  const employee = await this.findOne({ email }).select('+password');
+  if (!employee || !(await employee.comparePassword(password))) throw new Error('Invalid email or password');
+  return employee;
+};
+
+// toJSON: strip sensitive fields
+employeeSchema.methods.toJSON = function () {
+  const obj = this.toObject({ virtuals: true });
+  delete obj.password;
+  delete obj.tokens;
+  return obj;
+};
+
+module.exports = mongoose.model('Employee', employeeSchema);
 ```
 
-- **Lines 23–33** — `email` combines several Mongoose mechanics at once: `unique: true` (unique index — the Mongoose equivalent of the courseware's `db.employees.createIndex({ email: 1 }, { unique: true })` from EMS Q50), `lowercase: true` (a **setter** normalizing case before storage, so `"Foo@X.com"` and `"foo@x.com"` are treated as the same value against the unique index), and a **custom validator**: `validate: { validator: validator.isEmail, message: '...' }` plugs in the third-party `validator` package's `isEmail` function as the validation predicate, with a custom failure message — this is Mongoose's extensible validator system beyond the built-in `required`/`match`/`min`/`max`.
-- **Lines 44–49** — `password` has `minlength` and, critically, `select: false` — this field is **excluded from every query result by default** (you'd get `undefined` for `employee.password` even right after fetching), a security default preventing accidental password-hash leakage in API responses. It must be explicitly re-requested with `.select('+password')` (see line 122).
-- **Lines 50–54** — `role` is a `String` **enum** — Mongoose validates the value is one of the listed strings at write time; this is stricter than the EMS assignment's shell-level `status`/`priority` "enums" (those were just conventions, not actually enforced by MongoDB itself) — Mongoose enum validation *is* enforced by the application layer before the write is even sent.
-- **Lines 55–62** — `tokens` is an **array of embedded sub-documents**, each with its own `token: { type: String, required: true }` — this pattern (multiple active JWTs per user, e.g. one per logged-in device) mirrors the EMS assignment's `projects.team` array-of-embedded-documents design.
-- **Lines 83–86** — `department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' }` declares a **reference** (foreign key) to a `Department` document by storing only its `_id` — this is the opposite embedding choice from the EMS shell assignment's `employees.department` (which embedded a `{code, name}` copy). Here, Mongoose can later `.populate('department')` to replace this ObjectId with the full fetched Department document — the ODM-level equivalent of a SQL `JOIN`, implemented under the hood as a separate query (or `$lookup`-style aggregation) rather than a native join.
-- **Lines 92–94** — `virtual('fullName').get(fn)` defines a **computed, non-persisted** property: `fullName` never exists in the MongoDB document, but any Mongoose document instance exposes `.fullName` as a getter computed from `firstName`+`lastName` on the fly. `function () {...}` (not an arrow function) is required here specifically so `this` binds to the document instance, not the enclosing lexical scope.
-- **Lines 97–101** — `schema.pre('save', async function(next) {...})` is **middleware (a hook)** that runs automatically before every `.save()` call. `this.isModified('password')` checks whether the `password` path changed since it was last loaded/created — this guards against **re-hashing an already-hashed password** every time an unrelated field (like `salary`) is updated and `.save()` is called again. If the password *did* change, `bcrypt.hash(this.password, 10)` replaces the plaintext with a salted hash (cost factor 10) before the document is persisted.
-- **Lines 104–113** — `schema.methods.generateAuthToken` adds an **instance method** available on every fetched/created Employee document (`employee.generateAuthToken()`). It signs a JWT embedding `_id` and `role` using `process.env.JWT_SECRET`, appends the new token to the `tokens` array (`.concat`, not `.push`, so it returns a new array rather than mutating in place — functionally equivalent here since it's reassigned), persists via `this.save()`, and returns the raw token string to the caller (typically to send back in a login response).
-- **Lines 116–118** — `comparePassword` is another instance method wrapping `bcrypt.compare(candidatePassword, this.password)`, which re-hashes the candidate with the same salt embedded in the stored hash and does a constant-time comparison — never compare passwords with `===`.
-- **Lines 121–129** — `schema.statics.findByCredentials` adds a **static method** on the Model itself (`Employee.findByCredentials(email, password)`, not on an instance). It explicitly `.select('+password')` to override the field's `select: false` default just for this lookup, then delegates to the instance method `comparePassword`, throwing a **generic** "Invalid email or password" error in both the not-found and wrong-password cases — a deliberate security choice to avoid leaking which part (email vs password) was wrong (prevents user-enumeration attacks).
-- **Lines 132–137** — overriding `schema.methods.toJSON` changes what `JSON.stringify(employeeDoc)` (and therefore Express's `res.json(employeeDoc)`) actually serializes: it calls `.toObject({ virtuals: true })` (which **would** include `fullName` and the `employeeCount`-style virtuals, and note `virtuals: true` is needed because virtuals are excluded from plain object conversion by default), then manually strips `password` and `tokens` even though `password` already has `select: false` — this is defense-in-depth, since `select: false` only affects *queries*, not documents already loaded into memory (e.g., right after `.save()`, the password field **is** present in memory even though it wouldn't be returned by a subsequent `find`).
-- **Line 139** — `mongoose.model('Employee', employeeSchema)` → collection `employees`.
+`email` combines several Mongoose mechanics at once: `unique: true` builds a unique **index** (equivalent to `db.employees.createIndex({ email: 1 }, { unique: true })` from EMS Q50); `lowercase: true` is a **setter** normalizing case before storage, so `"Foo@X.com"` and `"foo@x.com"` collide correctly against the unique index; and `validate: { validator: validator.isEmail, message }` plugs the third-party `validator` package's `isEmail` in as a **custom validator** — Mongoose's extensible validation system beyond the built-in `required`/`match`/`min`/`max`.
+
+`password` combines `minlength` with `select: false` — this field is **excluded from every query result by default** (`employee.password` is `undefined` even right after fetching), a security default preventing accidental password-hash leakage in API responses, and must be explicitly re-requested with `.select('+password')`.
+
+`role` is a `String` **enum** — Mongoose validates the value is one of the listed strings *before the write is even sent*, which is stricter than the EMS shell assignment's `status`/`priority` "enums" (those were just conventions, never enforced by MongoDB itself). `tokens` is an **array of embedded sub-documents** — the same array-of-embedded-documents shape as the EMS assignment's `projects.team`, here used to hold multiple active JWTs per user (e.g. one per logged-in device).
+
+`department: { type: ObjectId, ref: 'Department' }` declares a **reference** (foreign key) by storing only the `_id` — the opposite embedding choice from the EMS shell assignment's `employees.department`, which embedded a `{code, name}` copy. Mongoose can later `.populate('department')` to replace the ObjectId with the full fetched document — the ODM equivalent of a SQL `JOIN`, implemented as a separate query under the hood rather than a native join.
+
+`virtual('fullName').get(fn)` defines a **computed, non-persisted** property — never stored, but exposed as `.fullName` on any document instance. The getter must be a `function` (not an arrow function) so `this` binds to the document instance.
+
+`pre('save', async function(next) {...})` is **middleware (a hook)** that runs before every `.save()`. `this.isModified('password')` guards against **re-hashing an already-hashed password** whenever an unrelated field is updated and `.save()` runs again; only a genuine password change triggers `bcrypt.hash(..., 10)` (salted hash, cost factor 10).
+
+`generateAuthToken` (an **instance method**, `employee.generateAuthToken()`) signs a JWT embedding `_id`/`role`, appends it to `tokens`, persists, and returns the raw token. `comparePassword` wraps `bcrypt.compare`, which re-hashes the candidate with the stored hash's embedded salt and does a constant-time comparison — never compare password hashes with `===`.
+
+`findByCredentials` is a **static method** on the Model itself (`Employee.findByCredentials(email, password)`, not an instance). It overrides `select: false` with `.select('+password')` for this one lookup, then throws a **generic** "Invalid email or password" error whether the email wasn't found or the password was wrong — deliberately avoiding leaking which one failed (prevents user-enumeration attacks).
+
+Overriding `toJSON` controls what `JSON.stringify`/Express's `res.json()` actually serializes: `.toObject({ virtuals: true })` includes computed virtuals (excluded by default), then `password`/`tokens` are stripped manually — defense-in-depth, since `select: false` only affects *queries*, not documents already loaded into memory (e.g. right after `.save()`).
 
 ## `src/models/Project.js` — arrays of references, enums
 
 ```javascript
-1:  // src/models/Project.js
-2:  // Demonstrates: Mongoose Schema with Arrays of References, Enum fields
-3:
-4:  const mongoose = require('mongoose');
-5:
-6:  const projectSchema = new mongoose.Schema(
-7:    {
-8:      name: {
-9:        type: String,
-10:       required: [true, 'Project name is required'],
-11:       trim: true,
-12:       maxlength: [150, 'Name cannot exceed 150 characters'],
-13:     },
-14:     description: {
-15:       type: String,
-16:       trim: true,
-17:     },
-18:     status: {
-19:       type: String,
-20:       enum: ['planning', 'active', 'on-hold', 'completed'],
-21:       default: 'planning',
-22:     },
-23:     startDate: {
-24:       type: Date,
-25:     },
-26:     endDate: {
-27:       type: Date,
-28:     },
-29:     budget: {
-30:       type: Number,
-31:       min: [0, 'Budget cannot be negative'],
-32:       default: 0,
-33:     },
-34:     department: {
-35:       type: mongoose.Schema.Types.ObjectId,
-36:       ref: 'Department',
-37:       required: [true, 'Department is required'],
-38:     },
-39:     // Array of employee references – demonstrates arrays in Mongoose
-40:     assignedEmployees: [
-41:       {
-42:         type: mongoose.Schema.Types.ObjectId,
-43:         ref: 'Employee',
-44:       },
-45:     ],
-46:     tags: [{ type: String, trim: true }],
-47:   },
-48:   { timestamps: true }
-49: );
-50:
-51: module.exports = mongoose.model('Project', projectSchema);
+const projectSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true, maxlength: 150 },
+    description: { type: String, trim: true },
+    status: { type: String, enum: ['planning', 'active', 'on-hold', 'completed'], default: 'planning' },
+    startDate: { type: Date },
+    endDate: { type: Date },
+    budget: { type: Number, min: 0, default: 0 },
+    department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: true },
+    // Array of employee references – demonstrates arrays in Mongoose
+    assignedEmployees: [ { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' } ],
+    tags: [{ type: String, trim: true }],
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model('Project', projectSchema);
 ```
 
-- **Line 18–22** — `status` uses `enum` + `default: 'planning'` — note this project's enum values (`'planning' | 'active' | 'on-hold' | 'completed'`, lowercase-hyphenated) are a **different vocabulary** than the EMS shell assignment's `projects.status` (`PLANNED | ACTIVE | ON_HOLD | COMPLETED | CANCELLED`, uppercase) — the same conceptual field, modeled independently in the two source materials; worth remembering these aren't meant to be the same dataset.
-- **Lines 34–38** — `department` is a **required** single reference (`ObjectId` + `ref: 'Department'`) — every project must belong to exactly one department, enforced at the schema level (`required: [true, ...]`), unlike `Employee.department` in the previous file which was optional.
-- **Lines 40–45** — `assignedEmployees: [ { type: ObjectId, ref: 'Employee' } ]` is an **array of references** — the many-to-many analogue of a SQL join table (`project_employees(project_id, employee_id)`), except modeled as an embedded array of foreign keys directly on the `projects` document rather than a separate collection. This is a *different* relationship style again from the EMS shell assignment's `projects.team`, which embedded full employee **snapshots** (`{employeeId, name, projectRole, assignedDate}`) rather than just ID references — the trade-off being: references stay small and always reflect the current employee record (via `.populate()`), while snapshots avoid extra lookups but can go stale if the employee's real name changes.
-- **Line 46** — `tags: [{ type: String, trim: true }]` — an array of plain (non-document) values, each individually validated/trimmed as it's added — the simplest array form, contrasted with the sub-document arrays above.
+`status` reuses the `enum` + `default` pattern from `Employee.role`, but note this project's enum values (`'planning' | 'active' | 'on-hold' | 'completed'`, lowercase-hyphenated) are a **different vocabulary** than the EMS shell assignment's `projects.status` (`PLANNED | ACTIVE | ON_HOLD | COMPLETED | CANCELLED`, uppercase) — the same conceptual field, modeled independently in the two source materials. `department` is a **required** single reference — every project must belong to exactly one department (`required: true`), unlike `Employee.department` in the previous file which was optional.
+
+`assignedEmployees: [ { type: ObjectId, ref: 'Employee' } ]` is an **array of references** — the many-to-many analogue of a SQL join table (`project_employees(project_id, employee_id)`), modeled as an embedded array of foreign keys directly on the `projects` document rather than a separate collection. This is a *different* relationship style again from the EMS shell assignment's `projects.team`, which embedded full employee **snapshots** (`{employeeId, name, projectRole, assignedDate}`) rather than just ID references — the trade-off being: references stay small and always reflect the current employee record (via `.populate()`), while snapshots avoid extra lookups but can go stale if the employee's real name changes. `tags: [{ type: String, trim: true }]` is the simplest array form — plain (non-document) values, each individually trimmed as added.
 
 ## `scripts/seed.js` — bulk insert pattern
 
 ```javascript
-1:  // scripts/seed.js
-2:  // Run: node scripts/seed.js
-3:  // Demonstrates: Node.js scripting, async/await, Mongoose bulk operations,
-4:  //               JavaScript arrays & objects
-5:
-6:  require('dotenv').config();
-7:  const mongoose = require('mongoose');
-8:  const Department = require('../src/models/Department');
-9:  const Employee = require('../src/models/Employee');
-10: const Project = require('../src/models/Project');
-11:
-12: const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ems';
-13:
-14: // ── Seed data defined as JS objects & arrays ──────────────────
-15: const departments = [
-16:   { name: 'Engineering',  code: 'ENG',  location: 'Bengaluru', budget: 5000000 },
-17:   { name: 'HR',           code: 'HR',   location: 'Mumbai',    budget: 1000000 },
-18:   { name: 'Finance',      code: 'FIN',  location: 'Pune',      budget: 2000000 },
-19:   { name: 'Marketing',    code: 'MKT',  location: 'Delhi',     budget: 1500000 },
-20: ];
-21:
-22: const getEmployees = (deptMap) => [
-23:   {
-24:     firstName: 'Aditya', lastName: 'Kulkarni',
-25:     email: 'aditya.k@ems.local', password: 'pass1234',
-26:     role: 'admin', designation: 'CTO', salary: 200000,
-27:     department: deptMap['ENG'],
-28:   },
-29:   // ... (4 more employees, roles: manager/employee, departments ENG/HR/FIN)
-30: ];
-31:
-32: const getProjects = (deptMap, empIds) => [
-33:   {
-34:     name: 'EMS Cloud Migration',
-35:     description: 'Migrate on-prem EMS to AWS',
-36:     status: 'active',
-37:     startDate: new Date('2024-01-01'),
-38:     endDate: new Date('2024-12-31'),
-39:     budget: 2000000,
-40:     department: deptMap['ENG'],
-41:     assignedEmployees: empIds.slice(0, 3),
-42:     tags: ['cloud', 'aws', 'migration'],
-43:   },
-44:   // ... (1 more project — HR Digital Portal, status 'planning')
-45: ];
-46:
-47: // ── Main seed function ────────────────────────────────────────
-48: const seed = async () => {
-49:   try {
-50:     await mongoose.connect(MONGO_URI);
-51:     console.log('✅ Connected to MongoDB');
-52:
-53:     await Promise.all([
-54:       Department.deleteMany({}),
-55:       Employee.deleteMany({}),
-56:       Project.deleteMany({}),
-57:     ]);
-58:     console.log('🧹 Cleared existing data');
-59:
-60:     const createdDepts = await Department.insertMany(departments);
-61:     const deptMap = {};
-62:     createdDepts.forEach((d) => (deptMap[d.code] = d._id));
-63:     console.log(`✅ Created ${createdDepts.length} departments`);
-64:
-65:     const employeeSeedData = getEmployees(deptMap);
-66:     const createdEmployees = [];
-67:     for (const data of employeeSeedData) {
-68:       const emp = new Employee(data);
-69:       await emp.save();
-70:       createdEmployees.push(emp);
-71:     }
-72:     console.log(`✅ Created ${createdEmployees.length} employees`);
-73:
-74:     const empIds = createdEmployees.map((e) => e._id);
-75:     const projectSeedData = getProjects(deptMap, empIds);
-76:     const createdProjects = await Project.insertMany(projectSeedData);
-77:     console.log(`✅ Created ${createdProjects.length} projects`);
-78:
-79:     console.log('\n🎉 Seed complete!\n');
-80:     await mongoose.connection.close();
-81:     process.exit(0);
-82:   } catch (error) {
-83:     console.error('❌ Seed failed:', error);
-84:     process.exit(1);
-85:   }
-86: };
-87:
-88: seed();
+require('dotenv').config();
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ems';
+
+const departments = [
+  { name: 'Engineering', code: 'ENG', location: 'Bengaluru', budget: 5000000 },
+  // ... (3 more: HR, Finance, Marketing)
+];
+
+// Factory functions – need deptMap/empIds, which don't exist until earlier inserts assign ObjectIds
+const getEmployees = (deptMap) => [
+  { firstName: 'Aditya', lastName: 'Kulkarni', email: 'aditya.k@ems.local', password: 'pass1234',
+    role: 'admin', designation: 'CTO', salary: 200000, department: deptMap['ENG'] },
+  // ... (4 more employees)
+];
+const getProjects = (deptMap, empIds) => [
+  { name: 'EMS Cloud Migration', status: 'active', budget: 2000000,
+    department: deptMap['ENG'], assignedEmployees: empIds.slice(0, 3), tags: ['cloud', 'aws', 'migration'] },
+  // ... (1 more project)
+];
+
+const seed = async () => {
+  try {
+    await mongoose.connect(MONGO_URI);
+    await Promise.all([Department.deleteMany({}), Employee.deleteMany({}), Project.deleteMany({})]);
+
+    const createdDepts = await Department.insertMany(departments);
+    const deptMap = {};
+    createdDepts.forEach((d) => (deptMap[d.code] = d._id));
+
+    const createdEmployees = [];
+    for (const data of getEmployees(deptMap)) {
+      const emp = new Employee(data);
+      await emp.save();
+      createdEmployees.push(emp);
+    }
+
+    const empIds = createdEmployees.map((e) => e._id);
+    await Project.insertMany(getProjects(deptMap, empIds));
+
+    await mongoose.connection.close();
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Seed failed:', error);
+    process.exit(1);
+  }
+};
+seed();
 ```
 
-(Line numbers reproduced from the actual 128-line file; a few middle employee/project entries were condensed with `// ...` for brevity — every line shown is exact.)
+`getEmployees`/`getProjects` are **factory functions**, not static arrays, because they need `deptMap` (department codes → generated `_id`s) and, for projects, `empIds` — values that don't exist until *after* the earlier inserts run and MongoDB assigns ObjectIds. This is the standard "seed script" dependency-ordering problem: departments must be created before employees can reference them, and employees before projects can reference them.
 
-- **Line 6** — `require('dotenv').config()` loads `.env` variables into `process.env` before anything else reads them — must run before line 12 uses `process.env.MONGODB_URI`.
-- **Line 12** — falls back to a local default URI if the env var is unset, so the script is runnable out-of-the-box against a local `mongod`.
-- **Lines 22, 32** — `getEmployees`/`getProjects` are **factory functions**, not static arrays, because they need `deptMap` (department codes → generated `_id`s) and, for projects, `empIds` — values that don't exist until *after* the earlier inserts run and MongoDB assigns ObjectIds. This is the standard "seed script" dependency-ordering problem: departments must be created first, so their real `_id`s can be embedded as foreign keys into employees, which must in turn be created before their `_id`s can be assigned into projects.
-- **Lines 53–57** — `Promise.all([...deleteMany calls])` clears all three collections **concurrently** (not sequentially) before reseeding — safe here because the three `deleteMany({})` calls don't depend on each other or share state.
-- **Line 60** — `Department.insertMany(departments)` — a single bulk-insert call; `insertMany` skips Mongoose's per-document `pre('save')` middleware by default (it's a lower-level bulk op), which is fine for `Department` since it has no such hook, but is exactly why employees are **not** bulk-inserted the same way (see below).
-- **Lines 61–62** — builds a `deptMap` (`{ ENG: ObjectId(...), HR: ObjectId(...), ... }`) from the just-created departments, keyed by business `code`, so the employee records can reference the correct department `_id`.
-- **Lines 67–71** — employees are inserted **one at a time** with `new Employee(data)` + `await emp.save()` inside a `for...of` loop, explicitly **not** `insertMany` — because `.save()` is what triggers the `pre('save')` password-hashing hook from `Employee.js` line 97; `insertMany` bypasses document middleware, so bulk-inserting employees directly would store **plaintext passwords**. This is a deliberate and important correctness detail: whenever a schema has model-level hooks that must run, seed/import scripts must use `.save()` in a loop, not `insertMany`.
+`Promise.all([...deleteMany calls])` clears all three collections **concurrently** — safe since the calls don't depend on each other. `Department.insertMany(departments)` is a single bulk-insert; `insertMany` skips Mongoose's per-document `pre('save')` middleware by default (a lower-level bulk op), which is fine for `Department` (no such hook) but is exactly why employees are handled differently: they're inserted **one at a time** with `new Employee(data)` + `await emp.save()` inside a loop, explicitly **not** `insertMany`, because `.save()` is what triggers the password-hashing hook — `insertMany` bypassing it would store **plaintext passwords**. Whenever a schema has model-level hooks that must run, seed/import scripts must use `.save()` in a loop, not `insertMany`.
 - **Line 74** — collects the newly created employees' `_id`s into a plain array, to be sliced into each project's `assignedEmployees` reference array.
 - **Line 76** — `Project.insertMany(projectSeedData)` — safe to bulk-insert here since `Project` has no pre-save hooks.
 - **Lines 80–81** — cleanly closes the Mongoose connection and exits `0` (success) on completion, or `1` (line 84, in the `catch`) on failure — important for a one-shot CLI script so it doesn't hang the terminal waiting on an open socket.
@@ -1388,117 +1092,85 @@ Mongoose is an **Object Document Mapper (ODM)** for MongoDB in Node.js — the r
 14:  * Usage:
 15:  *   const { filter, sort, skip, limit, projection } = parseQuery(req.query, ['isActive', 'department']);
 16:  */
-17: const parseQuery = (query = {}, allowedFilters = []) => {
-18:   const page   = Math.max(parseInt(query.page)  || 1, 1);
-19:   const limit  = Math.min(parseInt(query.limit) || 10, 100); // cap at 100
-20:   const skip   = (page - 1) * limit;
-21:
-22:   // ── Sort ──────────────────────────────────────────────────
-23:   let sort = { createdAt: -1 }; // default: newest first
-24:   if (query.sortBy) {
-25:     const [field, order] = query.sortBy.split(':');
-26:     sort = { [field]: order === 'desc' ? -1 : 1 };
-27:   }
-28:
-29:   // ── Filter ────────────────────────────────────────────────
-30:   const filter = {};
-31:   allowedFilters.forEach((key) => {
-32:     if (query[key] !== undefined) {
-33:       if (query[key] === 'true')  filter[key] = true;
-34:       else if (query[key] === 'false') filter[key] = false;
-35:       else filter[key] = query[key];
-36:     }
-37:   });
-38:
-39:   // ── Search (text) ─────────────────────────────────────────
-40:   if (query.search) {
-41:     filter.$or = [
-42:       { firstName: { $regex: query.search, $options: 'i' } },
-43:       { lastName:  { $regex: query.search, $options: 'i' } },
-44:       { email:     { $regex: query.search, $options: 'i' } },
-45:     ];
-46:   }
-47:
-48:   // ── Field Projection ──────────────────────────────────────
-49:   let projection = null;
-50:   if (query.fields) {
-51:     projection = query.fields.split(',').join(' ');
-52:   }
-53:
-54:   return { filter, sort, skip, limit, page, projection };
-55: };
-56:
-57: /**
-58:  * Build a standard paginated response envelope.
-59:  */
-59: const paginatedResponse = (data, total, page, limit) => ({
-60:   data,
-61:   pagination: {
-62:     total,
-63:     page,
-64:     limit,
-65:     totalPages: Math.ceil(total / limit),
-66:     hasNextPage: page * limit < total,
-67:     hasPrevPage: page > 1,
-68:   },
-69: });
-70:
-71: module.exports = { parseQuery, paginatedResponse };
+const parseQuery = (query = {}, allowedFilters = []) => {
+  const page  = Math.max(parseInt(query.page)  || 1, 1);
+  const limit = Math.min(parseInt(query.limit) || 10, 100);   // cap at 100
+  const skip  = (page - 1) * limit;
+
+  let sort = { createdAt: -1 };   // default: newest first
+  if (query.sortBy) {
+    const [field, order] = query.sortBy.split(':');
+    sort = { [field]: order === 'desc' ? -1 : 1 };   // computed property key
+  }
+
+  const filter = {};
+  allowedFilters.forEach((key) => {
+    if (query[key] !== undefined) {
+      if (query[key] === 'true') filter[key] = true;
+      else if (query[key] === 'false') filter[key] = false;
+      else filter[key] = query[key];
+    }
+  });
+
+  if (query.search) {
+    filter.$or = [
+      { firstName: { $regex: query.search, $options: 'i' } },
+      { lastName:  { $regex: query.search, $options: 'i' } },
+      { email:     { $regex: query.search, $options: 'i' } },
+    ];
+  }
+
+  let projection = null;
+  if (query.fields) projection = query.fields.split(',').join(' ');
+
+  return { filter, sort, skip, limit, page, projection };
+};
+
+const paginatedResponse = (data, total, page, limit) => ({
+  data,
+  pagination: { total, page, limit, totalPages: Math.ceil(total / limit), hasNextPage: page * limit < total, hasPrevPage: page > 1 },
+});
+
+module.exports = { parseQuery, paginatedResponse };
 ```
 
-(Line numbers as in the 73-line source; the doc-comment/blank-line spacing between the two exported functions is preserved from the file.)
+`page`/`limit` are parsed from Express's `req.query` (always strings), defaulted and **clamped** — `Math.max(..., 1)` prevents a non-positive/invalid page, `Math.min(..., 100)` caps `limit` to stop unbounded result sets; `skip` is derived arithmetically, mapping directly onto the `.skip(n).limit(n)` cursor methods from courseware §10. `sort` defaults to `{ createdAt: -1 }` (relying on each schema's `{ timestamps: true }`); an optional `sortBy=field:order` param is split and converted into the Mongo sort shape `{ [field]: 1|-1 }` via a computed property key.
 
-- **Lines 18–20** — `page`/`limit` are parsed from Express's `req.query` (always strings), defaulted (`|| 1`, `|| 10`) and **clamped** — `Math.max(..., 1)` prevents a non-positive/invalid page, `Math.min(..., 100)` caps `limit` at 100 to stop clients from requesting unbounded result sets. `skip` is then derived arithmetically — this `skip`/`limit` pair maps directly onto the cursor methods from courseware §10 (`.skip(n).limit(n)`).
-- **Lines 23–27** — `sort` defaults to `{ createdAt: -1 }` (newest first, relying on the schema's `{ timestamps: true }` option from `Department.js`/`Employee.js`/`Project.js`). If a `sortBy=field:order` query param is supplied, it's split on `:` and converted into the Mongo sort-document shape `{ [field]: 1|-1 }` using a **computed property key** (`[field]:`) — direct JS syntax for building an object key from a variable.
-- **Lines 30–37** — builds a filter object restricted to an explicit **allow-list** (`allowedFilters`, passed in by the caller per-route) rather than trusting arbitrary query string keys — a security-conscious pattern preventing clients from injecting filters on fields the route didn't intend to expose (e.g., you wouldn't want a public `/employees` endpoint to accept `?password=...` as a filter). String `'true'`/`'false'` values are explicitly coerced to real booleans, since all query-string values arrive as strings and Mongoose/Mongo would otherwise compare a Boolean field against the *string* `"true"` and never match.
-- **Lines 40–46** — an optional `search` param builds a **`$or` regex filter** across three name/email fields with the `i` (case-insensitive) option — the same `$regex`/`$options` mechanics from courseware §11, generalized into a "search box" pattern, and merged directly into the same `filter` object as the allow-listed exact filters (so search and structured filters combine, both ANDed together implicitly since `filter.$or` sits alongside the other top-level keys).
-- **Lines 49–52** — `fields=firstName,email` (comma-separated) is transformed into `"firstName email"` (space-separated) — this is exactly the string-projection syntax Mongoose's `.select()` method expects (`Model.find(filter).select('firstName email')`), a shorthand alternative to the object-form `{ firstName: 1, email: 1 }` projection used in raw `find()` calls.
-- **Lines 59–69** — `paginatedResponse` wraps query results in a standard envelope, computing `totalPages` (`Math.ceil`), `hasNextPage` (whether `page * limit` has already exceeded `total`), and `hasPrevPage` (`page > 1`) — a conventional REST pagination metadata shape, independent of Mongo/Mongoose specifics but built directly from the `page`/`limit`/`total` values this same module computes.
+`filter` is restricted to an explicit **allow-list** (`allowedFilters`, passed per-route) rather than trusting arbitrary query keys — a security-conscious pattern preventing clients from injecting filters on fields the route didn't intend to expose (e.g. `?password=...`). String `'true'`/`'false'` are explicitly coerced to real booleans, since query-string values always arrive as strings and would otherwise never match a Boolean field. An optional `search` param builds a **`$or` regex filter** across three fields with the `i` option — the same `$regex`/`$options` mechanics from courseware §11, generalized into a "search box" pattern, merged into the same `filter` object as the allow-listed exact filters.
+
+`fields=firstName,email` (comma-separated) is transformed into `"firstName email"` (space-separated) — the string-projection syntax Mongoose's `.select()` expects, a shorthand alternative to the object-form `{ firstName: 1, email: 1 }` projection used in raw `find()` calls.
+
+`paginatedResponse` wraps results in a standard envelope, computing `totalPages`, `hasNextPage` (whether `page * limit` has exceeded `total`), and `hasPrevPage` — a conventional REST pagination metadata shape built from the same `page`/`limit`/`total` values.
 
 ## `mongoose-demo.js` — standalone script (raw MongoDB driver, not Mongoose)
 
-Despite the filename, this script does **not** use Mongoose — it uses the low-level official `mongodb` Node.js driver directly (`import { MongoClient } from 'mongodb'`), the same driver Mongoose itself is built on top of. This is worth knowing explicitly for the assessment: it's a useful contrast case showing what you'd write *without* an ODM's schema/model layer — closer in spirit to using `pymongo` directly in Python rather than an ODM like `mongoengine`.
+Despite the filename, this script does **not** use Mongoose — it uses the low-level official `mongodb` Node.js driver directly (`import { MongoClient } from 'mongodb'`), the same driver Mongoose itself is built on top of. It's a useful contrast case showing what you'd write *without* an ODM's schema/model layer — closer in spirit to using `pymongo` directly in Python rather than an ODM like `mongoengine`.
 
 ```javascript
-1:  import { MongoClient } from 'mongodb';
-2:
-3:  const uri = 'mongodb://localhost:27017';
-4:
-5:  const MongoDbCon = async () => {
-6:
-7:      const client = new MongoClient(uri);
-8:      try {
-9:          await client.connect(); // connect to the server 
-10:         console.log('Connected!');
-11:         const db = client.db('acme-ems'); // connect to the database 
-12:         // get list of collections 
-13:         const collectionList = await db.collections();
-14:         collectionList.forEach(c => console.log(c.collectionName));
-15:         const employees = db.collection('emps'); // connect to the collection (table)
-16:         const employeeList = await employees.find().toArray(); // perform CRUD ops 
-17:         employeeList.forEach(e => console.log(e.name));
-18:
-19:     } catch (error) {
-20:         console.error(error.message);
-21:     } finally {
-22:         await client.close();
-23:         console.log('Closed!');
-24:     }
-25: }
-26:
-27: MongoDbCon();
+import { MongoClient } from 'mongodb';   // official low-level driver, not mongoose
+
+const uri = 'mongodb://localhost:27017';   // no database segment — chosen separately below
+
+const MongoDbCon = async () => {
+  const client = new MongoClient(uri);   // does NOT connect yet — a separate explicit step
+  try {
+    await client.connect();
+    const db = client.db('acme-ems');                       // analogous to `use acme-ems` in mongosh
+    const collectionList = await db.collections();
+    collectionList.forEach(c => console.log(c.collectionName));
+    const employees = db.collection('emps');                // no existence check — collections are lazily created
+    const employeeList = await employees.find().toArray();  // cursor requires an explicit terminal call
+    employeeList.forEach(e => console.log(e.name));
+  } catch (error) {
+    console.error(error.message);
+  } finally {
+    await client.close();   // always releases the connection, success or failure
+  }
+}
+
+MongoDbCon();   // fire-and-forget top-level invocation; no await needed since it self-handles errors
 ```
 
-- **Line 1** — imports `MongoClient` from the **`mongodb`** package (not `mongoose`) — this is the official low-level driver; there is no schema layer, no models, no validators here — everything is a plain JS object in, plain JS object out.
-- **Line 3** — a bare connection string with no database name segment — the database is chosen separately at line 11 via `client.db('acme-ems')`, not baked into the URI.
-- **Line 7** — `new MongoClient(uri)` constructs the client but does **not** connect yet — connecting is a separate explicit step (unlike Mongoose's `mongoose.connect()`, which does both in one call).
-- **Line 9** — `await client.connect()` opens the actual connection/connection pool to the server.
-- **Line 11** — `client.db('acme-ems')` returns a `Db` handle scoped to the `acme-ems` database — analogous to `use acme-ems` in `mongosh`.
-- **Lines 13–14** — `db.collections()` returns the list of `Collection` objects that already exist in this database (not just names — full collection handles), then logs each one's `.collectionName` property.
-- **Line 15** — `db.collection('emps')` gets a handle to a specific collection **without** first checking it exists — MongoDB creates collections lazily on first write, so this call itself never fails even if `emps` doesn't exist yet; only a subsequent operation against a genuinely absent collection would just return no results.
-- **Line 16** — `employees.find().toArray()` — the raw driver's `find()` also returns a lazy cursor (same concept as `mongosh`'s `find()` in courseware §10), and `.toArray()` explicitly materializes it into an in-memory JS array by awaiting all documents — necessary because, unlike Mongoose queries (which are thenable/awaitable directly and auto-buffer), the raw driver's cursor requires an explicit terminal call (`.toArray()`, `.next()`, or `for await` iteration) to actually pull documents.
-- **Lines 19–20** — a single `catch` around the whole try-block logs any connection or query error.
-- **Lines 21–24** — the `finally` block **always** calls `client.close()` regardless of success or failure, releasing the connection/socket — critical in a one-shot script (as opposed to a long-lived Express server, which would keep the client open for the app's lifetime instead, exactly like `db.js`'s `connectDB` does).
-- **Line 27** — `MongoDbCon()` is called immediately at module scope with no `await` (a fire-and-forget top-level invocation, acceptable here since it's a standalone script with its own internal try/catch/finally handling completion).
+There is no schema layer, no models, no validators here — everything is a plain JS object in, plain JS object out, unlike the Mongoose files above. `new MongoClient(uri)` constructs the client without connecting (unlike Mongoose's `mongoose.connect()`, which does both in one call); `client.db(name)` returns a `Db` handle; `db.collections()` returns full `Collection` handles (not just names). `db.collection('emps')` never fails even if the collection doesn't exist yet, since MongoDB creates collections lazily on first write. `employees.find().toArray()` explicitly materializes the lazy cursor into an array — necessary because, unlike Mongoose queries (thenable/awaitable directly), the raw driver's cursor needs an explicit terminal call (`.toArray()`, `.next()`, or `for await`). The `finally` block's `client.close()` is critical in a one-shot script, contrasted with a long-lived Express server that keeps the client open for the app's lifetime (as `db.js`'s `connectDB` does).
 
 The file also contains a **commented-out alternative design** (lines 29–48 in the source) sketching a `connect()`/`getDb()` module pattern — a singleton-style connection holder (`let db;` at module scope, `getDb()` throws if `connect()` hasn't run yet) intended for use across multiple files in a larger app, contrasted with this file's single self-contained function. It's dead code (fully commented out) but shows the author considering the "connect once, reuse the handle" pattern that `db.js`'s `connectDB` implements properly via Mongoose's internal connection singleton.

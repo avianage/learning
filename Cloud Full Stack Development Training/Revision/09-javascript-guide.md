@@ -42,28 +42,15 @@ Rule: **`const` by default, `let` when you must reassign, never `var`.**
 const PI = 3.14159;      // block-scoped, binding cannot be reassigned
 let counter = 0;         // block-scoped, reassignable
 var x = 10;               // function-scoped, hoisted — avoid
-```
 
-`var` is dangerous because it leaks out of blocks and, in loops, all closures share the *same* variable:
+for (var i = 0; i < 3; i++) { setTimeout(() => console.log(i), 100); }
+// Prints: 3 3 3 — var leaks out of the block, every closure captured the same `i`
+for (let j = 0; j < 3; j++) { setTimeout(() => console.log(j), 100); }
+// Prints: 0 1 2 — let creates a fresh binding per iteration
 
-```javascript
-for (var i = 0; i < 3; i++) {
-  setTimeout(() => console.log(i), 100);
-}
-// Prints: 3 3 3 — every closure captured the same `i`
-
-for (let j = 0; j < 3; j++) {
-  setTimeout(() => console.log(j), 100);
-}
-// Prints: 0 1 2 — `let` creates a fresh binding per iteration
-```
-
-`const` freezes the **binding**, not the value:
-
-```javascript
 const user = { name: 'Alice', age: 30 };
-user.age = 31;           // ✅ mutating the object is fine
-user = { name: 'Bob' };  // ❌ TypeError — reassigning the binding is not
+user.age = 31;           // mutating the object is fine — const freezes the binding, not the value
+user = { name: 'Bob' };  // TypeError — reassigning the binding is not allowed
 ```
 
 ### The 8 Data Types
@@ -80,7 +67,7 @@ user = { name: 'Bob' };  // ❌ TypeError — reassigning the binding is not
 
 The `+` operator: if **either** operand is a string, `+` becomes concatenation (`"5" + 3` → `"53"`, not `8`). `-`, `*`, `/` always coerce to numbers (`"10" - 5` → `5`). `1 + 2 + "3"` → `"33"` (left to right: numbers add first, then the string appends).
 
-**`==` vs `===`** — the single most assessment-relevant rule in the language: `==` coerces types before comparing (`"5" == 5` → `true`, `0 == false` → `true`, `null == undefined` → `true` but `null == 0` → `false`, an inconsistency). `===` requires matching types with no coercion. **Always use `===`/`!==`**; the only accepted `==` usage is `value == null`.
+**`==` vs `===`** — the single most important comparison rule in the language: `==` coerces types before comparing (`"5" == 5` → `true`, `0 == false` → `true`, `null == undefined` → `true` but `null == 0` → `false`, an inconsistency). `===` requires matching types with no coercion. **Always use `===`/`!==`**; the only accepted `==` usage is `value == null`.
 
 ### Truthy/Falsy — memorize the 8 falsy values
 
@@ -202,7 +189,7 @@ const double = multiplier(2);
 double(5);  // 10
 ```
 
-`map`, `filter`, `reduce`, `find`, `findIndex`, `every`, `some` are the functional backbone (full detail in Module 7). **`forEach` vs `map`**: `forEach` is for side effects and returns `undefined`; `map` returns a new transformed array. `numbers.forEach(n => n*2)` result is `undefined` — a classic assessment trap.
+`map`, `filter`, `reduce`, `find`, `findIndex`, `every`, `some` are the functional backbone (full detail in Module 7). **`forEach` vs `map`**: `forEach` is for side effects and returns `undefined`; `map` returns a new transformed array. `numbers.forEach(n => n*2)` result is `undefined`.
 
 ### Closures
 
@@ -245,8 +232,6 @@ class Timer {
   }
 }
 ```
-
-This is *the* classic assessment trap: a regular `function` callback passed to `setTimeout`/`setInterval`/array methods loses `this`; an arrow function callback keeps the enclosing `this`.
 
 **Explicit binding:** `fn.call(thisArg, arg1, arg2)` (args listed), `fn.apply(thisArg, [arg1, arg2])` (args as array), `fn.bind(thisArg)` (returns a new function with `this` permanently fixed, does not call immediately). Modern guidance: arrow functions solve 90% of `this` problems in callbacks; use regular function/method syntax only where you *want* dynamic `this` (object methods, class methods).
 
@@ -539,7 +524,7 @@ In ES modules only, `await` works at the top level without wrapping in an `async
 
 ## 11. Supplementary — Gotchas from the MCQ Bank and Discussion Q&A
 
-These points surface in `11_MCQ_Assessment.md` and `javascript_discussion_qa.md` but aren't spelled out as their own subsection in Modules 01–10 — worth knowing explicitly for the assessment.
+These points surface in `11_MCQ_Assessment.md` and `javascript_discussion_qa.md` but aren't spelled out as their own subsection in Modules 01–10.
 
 - **Temporal Dead Zone (TDZ):** `let`/`const` *are* hoisted (unlike the common misconception that only `var` hoists), but they stay uninitialized until their declaration line executes. Accessing them before that point throws a `ReferenceError`, not `undefined` like `var` would give. This is *why* `let`/`const` are considered safer — they turn a silent bug into a loud error.
 - **Scope chain:** when a variable isn't found in the current scope, JS walks outward through each enclosing scope until global, throwing `ReferenceError` if never found. This is the mechanism that makes closures work.
@@ -555,306 +540,147 @@ These points surface in `11_MCQ_Assessment.md` and `javascript_discussion_qa.md`
 
 # Part II — Real Demo Code Walkthrough
 
-The files below are the actual working code from `Code/UI (HTML, CSS, JS, Ts, Node)/js/`. Several files contain large commented-out blocks left in place by design — they're kept as-is because they show the *progression* of a concept (e.g., "here's the broken version, here's the fixed version") that the instructor built up interactively. Where a block is commented out, the explanation still covers it, since it's part of the pedagogical sequence and the only actually-executing lines are called out explicitly.
+The files below are the actual working code from `Code/UI (HTML, CSS, JS, Ts, Node)/js/`. Several files contain large commented-out blocks left in place by design — they show the *progression* of a concept (e.g., "here's the broken version, here's the fixed version") that the instructor built up interactively. The explanation below covers those commented blocks too, calling out explicitly which lines actually execute.
 
 ## 12. `js-functions-syntaxes.js` — the Four Function Forms and `this` in Object Methods
 
 ```javascript
-1:  // js-functions-syntaxes.js
-2:  
-3:  // function syntaxes
-4:  
-5:  // function fun1() {
-6:  //     console.log('fun1 called.');
-7:  // };
-8:  // fun1();
-9:  // const fun2 = () => {
-10: //     console.log('fun2 called.');
-11: // };
-12: // fun2();
-13: 
-14: // // const gstCalc = (amount) => { return amount * 1.18; };
-15: // const gstCalc = amount => amount * 1.18;
-16: // console.log(gstCalc(100));
-17: 
-18: // const employee = {
-19: //     firstName: 'Sonu',
-20: //     lastName: 'Joshi',
-21: //     salary: 10.25,
-22: //     address: { pin: 500001, city: 'Pune' },
-23: //     isIndian: true,
-24: //     phones: [9876543210, 6789012345],
-25: //     printSalary: () => { console.log(this.salary); }, // undefined
-26: //     printSalary2: function () { console.log(this.salary); } // 10.25
-27: // };
-28: 
-29: // employee.printSalary();
-30: // employee.printSalary2();
-31: 
-32: // const myFuns = {
-33: //     fun1: () => { },
-34: //     fun2: () => { }
-35: // };
-36: 
-37: // myFuns.fun2();
+function fun1() { console.log('fun1 called.'); }; fun1();     // declaration — hoisted
+const fun2 = () => { console.log('fun2 called.'); }; fun2();   // arrow expression — not hoisted
+
+const gstCalc = amount => amount * 1.18;   // implicit return, no braces needed
+console.log(gstCalc(100));
+
+const employee = {
+    firstName: 'Sonu', lastName: 'Joshi', salary: 10.25,
+    address: { pin: 500001, city: 'Pune' }, isIndian: true,
+    phones: [9876543210, 6789012345],
+    printSalary: () => { console.log(this.salary); },        // undefined — arrow has no own `this`
+    printSalary2: function () { console.log(this.salary); }  // 10.25 — regular fn, `this` = employee
+};
+employee.printSalary();
+employee.printSalary2();
+
+const myFuns = { fun1: () => { }, fun2: () => { } };
+myFuns.fun2();
 ```
 
-- **Lines 5–8** — a **function declaration** (`function fun1() {}`), then an immediate call. Declarations are hoisted, so this would work even if the call appeared above the definition (not exercised here, but true of this form per Module 5).
-- **Lines 9–12** — the same behavior as a **function expression using an arrow function**, assigned to a `const`. Arrow expressions are *not* hoisted — `fun2()` must textually follow the assignment, unlike `fun1`.
-- **Lines 14–16** — `gstCalc` demonstrates the arrow function's **implicit return**: `amount => amount * 1.18` needs no `return` keyword or braces because it's a single expression. The commented line above it (`(amount) => { return amount * 1.18; }`) is the equivalent explicit-block form — the file documents both to show they're identical, just less concise with braces.
-- **Lines 18–27** — an object literal `employee` with two functionally-identical-looking methods that behave *differently* because of `this` binding: `printSalary` is defined as an **arrow function property** — arrow functions have no own `this`, so `this` here is inherited from the surrounding (module/top-level) scope, not `employee`. Result: `this.salary` is `undefined`. `printSalary2` uses the **regular `function` expression** form — when called as `employee.printSalary2()`, `this` is bound to `employee` at call time, so `this.salary` correctly resolves to `10.25`. This is the single most important `this` gotcha from Module 5.7, reproduced verbatim: **never use arrow functions for object methods that need `this` to refer to the object.**
-- **Lines 32–37** — `myFuns` shows two arrow-function properties stored in an object and one being invoked (`myFuns.fun2()`); since neither body does anything (`{ }`), this is purely demonstrating that arrow functions can live as object values and be called via property access, independent of the `this` issue above.
-
-**Assessment trap to flag:** if asked "why does `printSalary` print `undefined` but `printSalary2` prints `10.25`," the answer is arrow-function lexical `this` vs regular-function dynamic `this` — this exact file is built to illustrate that.
+- `fun1` (declaration, hoisted) vs `fun2` (arrow expression, not hoisted) — same behavior when called, different hoisting rules.
+- `employee` has two near-identical methods that behave *differently* because of `this` binding: `printSalary` (arrow property) has no own `this`, so it inherits the outer scope's `this` → `this.salary` is `undefined`. `printSalary2` (regular `function`) gets `this` bound to `employee` at call time → `this.salary` is `10.25`. This is the single most important `this` gotcha from Module 5.7: **never use arrow functions for object methods that need `this` to refer to the object.**
+- `myFuns` shows arrow functions can also live as plain object property values and be invoked via property access, independent of the `this` issue above.
 
 ---
 
 ## 13. `js-functions.js` — Function Declarations, Defaults, and Argument-Count Mismatches
 
 ```javascript
-1:  // // Functions in JS 
-2:  // // ===============
-3:  
-4:  
-5:  // // Old JS function
-6:  // function fun1() {
-7:  //     console.log('fun1 function called.');
-8:  // }
-9:  
-10: // fun1();
-11: 
-12: // // Modern JS function == preferred choice 
-13: // const fun2 = () => {
-14: //     console.log('fun2 function called.');
-15: // };
-16: 
-17: // fun2();
-18: 
-19: // const fun3 = () => {
-20: //     console.log('fun3 called.');
-21: //     // return 'some return value';
-22: // };
-23: 
-24: // const output = fun3();
-25: // console.log(output); // undefined 
-26: 
-27: // const addNums = (a, b) => {
-28: //     console.log(a + b);
-29: // };
-30: 
-31: // addNums(); // NaN 
-32: // addNums(10); // NaN 
-33: // addNums(10, 20); // 30 
-34: // addNums(10, 20, 30); // 30
-35: 
-36: 
-37: // const addNums = (a, b = 5) => {
-38: //     console.log(a + b);
-39: // };
-40: 
-41: // addNums(); // NaN 
-42: // addNums(10); // 15 
-43: // addNums(10, 20); // 30 
-44: // addNums(10, 20, 30); // 30
-45: 
-46: // const addNums = (a = 4, b = 5) => {
-47: //     console.log(a + b);
-48: // };
-49: 
-50: // addNums(); // 9
-51: // addNums(10); // 15 
-52: // addNums(10, 20); // 30 
-53: // addNums(10, 20, 30); // 30
+// Old JS function
+function fun1() { console.log('fun1 function called.'); }
+fun1();
+
+// Modern JS function == preferred choice
+const fun2 = () => { console.log('fun2 function called.'); };
+fun2();
+
+const fun3 = () => { console.log('fun3 called.'); /* no return */ };
+const output = fun3();
+console.log(output); // undefined
+
+const addNums = (a, b) => { console.log(a + b); };
+addNums();          // NaN — a, b both undefined
+addNums(10);        // NaN — b undefined
+addNums(10, 20);     // 30
+addNums(10, 20, 30); // 30 — extra arg silently ignored
+
+const addNumsDefaulted = (a = 4, b = 5) => { console.log(a + b); };
+addNumsDefaulted();       // 9  — both defaults apply
+addNumsDefaulted(10);     // 15 — a overridden, b still defaults
 ```
 
-- **Lines 6–10** — the "old" function declaration form (comment explicitly labels this as legacy compared to arrows) called immediately.
-- **Lines 13–17** — the "modern, preferred" arrow function equivalent, per the file's own comment — matches the courseware's guidance table in Module 5.1.
-- **Lines 19–25** — `fun3` has no `return` statement (the `return` is commented out), so `fun3()` evaluates to `undefined` when logged. This is the concrete demonstration of Module 5.3's "no explicit return → `undefined`" rule.
-- **Lines 27–34** — `addNums(a, b)` with **no defaults**: calling with too few arguments leaves the missing parameters `undefined`. `addNums()` → `undefined + undefined` → `NaN`. `addNums(10)` → `10 + undefined` → `NaN`. Extra arguments beyond the declared parameter list (`addNums(10, 20, 30)`) are silently ignored unless captured with rest params — JavaScript, unlike Java, does not throw on arity mismatch; it just leaves unfilled parameters as `undefined`.
-- **Lines 37–44** — adding **one default parameter** (`b = 5`): now `addNums(10)` gives `10 + 5 = 15`. But `addNums()` is still `NaN`, because `a` remains `undefined` (no default) and `undefined + 5` is `NaN`. This isolates that defaults apply *per parameter*, not to the call as a whole.
-- **Lines 46–53** — both parameters now default (`a = 4, b = 5`): `addNums()` → `4 + 5 = 9`. This progression across three versions of `addNums` is a deliberate teaching sequence showing exactly how default parameters resolve `NaN` bugs from missing arguments — a very likely assessment scenario ("what does this print, given these three variants").
+- "Old" function declaration (`fun1`) vs the file's own-labeled "modern, preferred" arrow equivalent (`fun2`) — same behavior, style preference only.
+- `fun3` has no `return` statement, so `fun3()` evaluates to `undefined` when logged — the concrete demo of "no explicit return → `undefined`."
+- `addNums(a, b)` with **no defaults**: missing arguments leave params `undefined`, so `addNums()`/`addNums(10)` both give `NaN`. Extra args beyond the declared list are silently ignored — JS, unlike Java, never throws on arity mismatch.
+- With both params defaulted (`a = 4, b = 5`), `addNumsDefaulted()` now gives `4 + 5 = 9` instead of `NaN` — defaults apply per-parameter, resolving the `NaN` bug from missing arguments.
 
 ---
 
 ## 14. `js-function-as-arg.js` — Passing Functions as Arguments (Named vs Anonymous) and `setTimeout`
 
 ```javascript
-1:  // // Function as args in JS 
-2:  // // ======================
-3:  
-4:  // const addNums = (a, b) => {
-5:  //     console.log(a + b);
-6:  // };
-7:  
-8:  // addNums(10, 20); // 30 
-9:  // const x = 5;
-10: // const y = 6;
-11: // addNums(x, y); // 11
-12: 
-13: // const fun = (arg) => {
-14: //     console.log('fun function called.');
-15: //     // console.log(arg - 1);
-16: //     // console.log(`Hi ${arg}!`);
-17: //     // console.log(arg.city);
-18: //     arg();
-19: // };
-20: 
-21: // // fun(10);
-22: // // fun('Sonu');
-23: // // fun({ pin: 500001 });
-24: // fun(() => { console.log('abc'); });
-25: 
-26: 
-27: // function [passed as arg ] to another function
-28: 
-29: // const fun = (arg) => {
-30: //     console.log('fun function called.');
-31: //     arg();
-32: // };
-33: 
-34: // fun(() => { console.log('anonymous function called.'); });
-35: 
-36: // const passedFun = () => { console.log('named function called.'); };
-37: // fun(passedFun);
-38: 
-39: // const fun = (arg) => {
-40: //     console.log('fun function called.');
-41: //     arg();
-42: // };
-43: 
-44: // fun(() => { console.log('anonymous function called.'); });
-45: 
-46: // setTimeout(arg1, arg2);
-47: // setTimeout(() => { }, timeout);
-48: 
-49: // console.log("One");
-50: 
-51: // setTimeout(() => {
-52: //     console.log("Two");
-53: // }, 2000);
-54: 
-55: // console.log("Three");
+// Function as args in JS
+const addNums = (a, b) => { console.log(a + b); };
+addNums(10, 20); // 30
+
+const fun = (arg) => { console.log('fun function called.'); arg(); };
+// fun(10); fun('Sonu'); fun({ pin: 500001 });  // each would throw: arg is not a function
+fun(() => { console.log('abc'); });               // works — arg is callable
+
+const passedFun = () => { console.log('named function called.'); };
+fun(passedFun);   // passes the function reference itself, not fun(passedFun()) which would call it immediately
+
+console.log("One");
+setTimeout(() => { console.log("Two"); }, 2000);
+console.log("Three");
 ```
 
-- **Lines 4–11** — a plain, non-callback function call (`addNums(x, y)`) establishing the baseline before demonstrating higher-order usage.
-- **Lines 13–24** — `fun(arg)` is generic — `arg` could be a number, string, or object (each of the commented alternative calls on lines 21–23 illustrates a *type mismatch*: calling `arg()` when `arg` is `10` or `'Sonu'` would throw `TypeError: arg is not a function`). Only line 24, passing an **anonymous arrow function**, actually works, because `arg()` inside `fun` requires `arg` to *be* callable. This directly illustrates that JavaScript does no compile-time parameter type checking (Module 1.6's "errors caught at compile time in Java are runtime errors in JS").
-- **Lines 29–37** — the same `fun` pattern, now contrasting an **anonymous function literal passed inline** (line 34) with a **named function reference passed by variable** (`passedFun`, lines 36–37). Both work identically — the key teaching point is `fun(passedFun)` passes the *function itself* (a reference), not the result of calling it; `fun(passedFun())` would be the trap (calls immediately, passes `undefined`'s return value instead of a function reference — the exact mistake documented in the Discussion Q&A's "callback function not receiving expected arguments" entry).
-- **Lines 46–47** — comments documenting `setTimeout`'s general signature `setTimeout(callback, delayMs)`, immediately followed by the concrete pattern `setTimeout(() => {}, timeout)`.
-- **Lines 49–55** — the canonical event-loop demo: `console.log("One")` and `console.log("Three")` are synchronous and run immediately in order; `setTimeout(..., 2000)` schedules `console.log("Two")` as a **macrotask** that only runs after the 2-second timer expires *and* the call stack is empty. Actual output order: `One`, `Three`, then `Two` two seconds later — even though `"Two"` is written *between* `"One"` and `"Three"` in the source. This is Module 9.2's event loop lesson made concrete and is a very common "what's the output order" assessment question.
+- `fun(arg)` calls `arg()` internally, so `arg` must be callable — passing a number/string/object would throw `TypeError: arg is not a function`; only a function value works. Shows JS does no compile-time parameter type checking.
+- `fun(passedFun)` passes the *function itself* (a reference); `fun(passedFun())` would be the classic trap — calling it immediately and passing its return value instead.
+- `setTimeout(callback, delayMs)`: `"One"`/`"Three"` are synchronous and run immediately; `setTimeout(..., 2000)` schedules `"Two"` as a **macrotask** that only fires after the timer expires and the call stack is empty. Actual order: `One`, `Three`, then `Two` two seconds later — even though `"Two"` is written between them in the source.
 
 ---
 
 ## 15. `js-callbacks.js` — Callback Hell → Promise → `async`/`await`, Three Solutions to the Same Problem
 
 ```javascript
-1:  
-2:  // const getData = (arg) => {
-3:  //     console.log('getData called');
-4:  //     arg({ city: 'Bengaluru' });
-5:  // };
-6:  
-7:  // getData((data) => {
-8:  //     console.log('anonymous function called.');
-9:  //     console.log(data.city);
-10: // });
-11: 
-12: // // =====================
-13: // // problem of async js 
-14: // // =====================
-15: 
-16: // const getData = () => {
-17: //     console.log('getData called');
-18: //     setTimeout(() => {
-19: //         return { city: 'Bengaluru' };
-20: //     }, 2000);
-21: // };
-22: 
-23: // const output = getData();
-24: // // const output = undefined;
-25: // console.log(output.city);
-26: 
-27: // // =====================
-28: // // solution 1 - callback 
-29: // // =====================
-30: 
-31: // console.log("Start");
-32: 
-33: // const getData = (arg) => {
-34: //     console.log('getData called');
-35: //     setTimeout(() => {
-36: //         arg({ city: 'Bengaluru' });
-37: //     }, 2000);
-38: // };
-39: 
-40: // getData((data) => {
-41: //     console.log('anonymous function called.');
-42: //     console.log(data.city);
-43: // });
-44: 
-45: // // ====================
-46: // // solution 2 - Promise  
-47: // // ====================
-48: 
-49: // console.log("Start");
-50: 
-51: // const getData = () => {
-52: //     console.log('getData called');
-53: //     const isDataAvailable = false; // true false 
-54: //     return new Promise((resolve, reject) => {
-55: //         setTimeout(() => {
-56: //             if (isDataAvailable)
-57: //                 resolve({ city: 'Bengaluru' });
-58: //             else
-59: //                 reject({ message: 'Data not available' });
-60: //         }, 2000);
-61: //     });
-62: // };
-63: 
-64: // getData()
-65: //     .then((response) => { console.log(response.city); })
-66: //     .catch((error) => { console.log(error.message); });
-67: 
-68: 
-69: // // ==========================
-70: // // solution 3 - Promise and async / await
-71: // // ==========================
-72: 
-73: console.log("Start");
-74: 
-75: const getData = () => {
-76:     console.log('getData called');
-77:     const isDataAvailable = false; // true false 
-78:     return new Promise((resolve, reject) => {
-79:         setTimeout(() => {
-80:             if (isDataAvailable)
-81:                 resolve({ city: 'Bengaluru' });
-82:             else
-83:                 reject({ message: 'Data not available' });
-84:         }, 2000);
-85:     });
-86: };
-87: 
-88: const consumeData = async () => {
-89:     try {
-90:         const data = await getData();
-91:         console.log(data.city);
-92:     }
-93:     catch (error) {
-94:         console.log(error.message);
-95:     }
-96: };
-97: 
-98: consumeData();
+// baseline — synchronous callback
+const getDataSync = (arg) => { console.log('getData called'); arg({ city: 'Bengaluru' }); };
+getDataSync((data) => { console.log(data.city); });
+
+// "the problem of async JS" — getData has no return of its own
+const getDataBroken = () => {
+    setTimeout(() => { return { city: 'Bengaluru' }; }, 2000);   // this return goes nowhere
+};
+const output = getDataBroken();
+console.log(output);         // undefined — console.log(output.city) would throw
+
+// Solution 1 — callback, invoked inside the setTimeout body once "ready"
+console.log("Start");
+const getDataCb = (arg) => {
+    console.log('getData called');
+    setTimeout(() => { arg({ city: 'Bengaluru' }); }, 2000);
+};
+getDataCb((data) => { console.log(data.city); });
+
+// Solution 2 — Promise (getData wraps the setTimeout in `new Promise(...)`, same body as Solution 3)
+// getData().then(response => console.log(response.city)).catch(error => console.log(error.message));
+
+// Solution 3 — Promise + async/await — the actually-executing code
+const getData = () => {
+    console.log('getData called');
+    const isDataAvailable = false; // true false
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            if (isDataAvailable) resolve({ city: 'Bengaluru' });
+            else reject({ message: 'Data not available' });
+        }, 2000);
+    });
+};
+const consumeData = async () => {
+    try {
+        const data = await getData();
+        console.log(data.city);
+    } catch (error) {
+        console.log(error.message);
+    }
+};
+consumeData();
 ```
 
-This entire file is a deliberate four-stage progression toward `async`/`await` — the pedagogical core of Module 9.
-
-- **Lines 2–10** — baseline: a **synchronous callback**. `getData` immediately invokes `arg({ city: 'Bengaluru' })`. Works fine because nothing is actually asynchronous yet.
-- **Lines 16–25** — **"the problem of async JS."** `getData` now wraps its logic in `setTimeout`, but the outer function itself has no `return` — the arrow function passed to `setTimeout` returns `{ city: 'Bengaluru' }`, but that return value goes nowhere (it's the *timer callback's* return, discarded by `setTimeout`), not `getData`'s return value. `getData()` therefore evaluates to `undefined` (line 23's comment literally spells this out: `// const output = undefined;`). `console.log(output.city)` on line 25 would throw `TypeError: Cannot read properties of undefined (reading 'city')`. This is the exact "async operations can't return values synchronously" problem Module 9.1 introduces.
-- **Lines 33–43 — Solution 1 (callback):** `getData(arg)` now takes a callback and invokes `arg({...})` **inside** the `setTimeout` body, once the delayed data is "ready." The caller passes a callback that receives the eventual data (`data => console.log(data.city)`). `console.log("Start")` on line 31 logs before `getData called` even appears to complete meaningfully — synchronous code and the top of `getData` run immediately, but the actual `arg(...)` call, and thus the callback's `console.log(data.city)`, only happens after the 2-second macrotask fires. This is Module 9.3's callback solution.
-- **Lines 51–66 — Solution 2 (Promise):** `getData()` now **returns `new Promise((resolve, reject) => {...})`**. Inside the executor, after the timeout, `isDataAvailable` (hardcoded `false`) determines whether `resolve` or `reject` fires. The caller chains `.then(response => ...)` for success and `.catch(error => ...)` for failure — flat, linear, no nested callback. Because `isDataAvailable` is `false`, `.catch` fires with `{ message: 'Data not available' }`.
-- **Lines 75–98 — Solution 3 (Promise + `async`/`await`) — the actually-executing code in the file:** `getData` is unchanged from Solution 2 (still Promise-returning). `consumeData` is declared `async`, allowing `await getData()` inside a `try` block — execution pauses at line 90 until the Promise settles. Since `isDataAvailable` is `false`, the Promise rejects, `await` throws, and control jumps to the `catch` block (line 93), logging `error.message` → `'Data not available'`. Real runtime output order: `"Start"` (line 73, sync) → `"getData called"` (line 76, sync — runs the instant `getData()` is invoked inside `await`) → *2-second pause* → `"Data not available"` (line 94, after the timer rejects and `await` re-throws into the `catch`).
-- **Key trap to flag:** flipping `isDataAvailable` to `true` changes nothing about *control flow structure* — only which branch (`try`'s success path vs `catch`) executes. Students should be able to trace both outcomes.
+- **Baseline** — a **synchronous callback**: `getData` immediately invokes `arg({...})`. Works because nothing is actually asynchronous yet.
+- **"The problem of async JS"** — `getData` wraps its logic in `setTimeout` but has no `return` of its own — the arrow passed to `setTimeout` returns a value only the timer callback receives, discarded by `setTimeout` itself. `getData()` therefore evaluates to `undefined`, and `output.city` would throw. This is why async operations can't return values synchronously.
+- **Solution 1 (callback)** — `getData(arg)` takes a callback and invokes it **inside** the `setTimeout` body once data is "ready." `console.log("Start")` logs before the callback ever fires — sync code runs immediately, the callback only fires after the 2-second macrotask.
+- **Solution 2 (Promise)** — `getData()` returns `new Promise((resolve, reject) => {...})`; the caller chains `.then`/`.catch` instead of nesting callbacks. Because `isDataAvailable` is hardcoded `false`, `.catch` fires with `'Data not available'`.
+- **Solution 3 (Promise + `async`/`await`) — the actually-executing code:** `getData` is unchanged from Solution 2. `consumeData` is `async`, so `await getData()` inside `try` pauses until the Promise settles; since it rejects, control jumps to `catch`. Real output order: `"Start"` (sync) → `"getData called"` (sync, runs the instant `getData()` is invoked) → *2s pause* → `"Data not available"` (after the timer rejects and `await` re-throws into `catch`). Flipping `isDataAvailable` to `true` only changes which branch executes, not the control-flow structure.
 
 ---
 
@@ -883,16 +709,13 @@ This entire file is a deliberate four-stage progression toward `async`/`await` �
 20: };
 21: 
 22: console.log(addNums(2, 3));
-23: console.log(addNums(2, 3, 4));
-24: console.log(addNums(2, 3, 4, 7));
-25: console.log(addNums(2, 3, 4, 7, 1));
+23: console.log(addNums(2, 3, 4, 7, 1));
 ```
 
-- **Line 1** — the file's own header comment says "OOP in JS," but nothing below is OOP — it's array destructuring and rest/spread. Worth flagging as a labeling artifact from the instructor's working notes, not a content error to be confused by.
-- **Lines 3–7** (commented, not executing) — standard positional **array destructuring**: `const [a, b, c, d, e] = arr;` pulls each element into its own named variable in one statement, matching Module 7.9.
-- **Lines 11–14** (commented) — **rest in destructuring**: `const [a, b, ...remaining] = arr;` captures the first two elements individually and collects everything else into a new array `remaining`. This is the "collects" side of the spread/rest pair (Module 3.8).
-- **Lines 18–25 — the actually-executing code:** `addNums = (...args) => args;` uses **rest parameters** to accept *any number* of arguments into a real array `args`, then simply returns that array. Each `console.log(addNums(...))` call demonstrates that regardless of how many arguments are passed (2, 3, 4, or 5), they all collect correctly: `addNums(2,3)` → `[2,3]`, `addNums(2,3,4,7,1)` → `[2,3,4,7,1]`. This is a clean, isolated demonstration of rest parameters decoupled from any specific use (like `sum`) — the return value itself *is* the array, letting you see the mechanism directly.
-- **Terminology check for the assessment:** the *parameter* `...args` here is **rest** (collecting, in a function definition). If this same `...` syntax appeared in a call site (`addNums(...someArray)`) it would be **spread** (expanding). Same characters, opposite direction — Module 3.8's rule.
+- **Line 1** — the file's own header comment says "OOP in JS," but nothing below is OOP — a labeling artifact from the instructor's working notes.
+- **Lines 3–7, 11–14** (commented, not executing) — positional **array destructuring** (`const [a,b,c,d,e] = arr`) and **rest-in-destructuring** (`const [a, b, ...remaining] = arr`, collecting everything after the first two into a new array).
+- **Lines 18–23 — the actually-executing code:** `addNums = (...args) => args;` uses **rest parameters** to collect any number of arguments into a real array and return it directly — `addNums(2,3)` → `[2,3]`, `addNums(2,3,4,7,1)` → `[2,3,4,7,1]`.
+- **Terminology check:** `...args` here is **rest** (collecting, in a function definition). The same `...` at a call site (`addNums(...someArray)`) would be **spread** (expanding) — same characters, opposite direction depending on position.
 
 ---
 
@@ -901,326 +724,195 @@ This entire file is a deliberate four-stage progression toward `async`/`await` �
 ```javascript
 1:  // OOP in JS 
 2:  
-3:  // // class in JS 
-4:  // class Animal {
-5:  //     name;
-6:  //     color;
-7:  // }
-8:  // const animal1 = new Animal();
-9:  // animal1.name = 'Tommy';
-10: // animal1.color = 'Gold';
-11: // console.log(animal1);
-12: 
-13: 
-14: // class in JS 
-15: class Animal {
-16:     name;
-17:     color;
-18:     food;
-19: 
-20:     // constructor() { }
-21:     // A class may only have one constructor
-22: 
-23:     constructor(name, color, food) {
-24:         this.name = name;
-25:         this.color = color;
-26:         this.food = food;
-27:     };
+3:  // class in JS 
+4:  class Animal {
+5:      name;
+6:      color;
+7:      food;
+8:  
+9:      // constructor() { }
+10:     // A class may only have one constructor
+11: 
+12:     constructor(name, color, food) {
+13:         this.name = name;
+14:         this.color = color;
+15:         this.food = food;
+16:     };
+17: 
+18:     toPrint() {
+19:         return `{name: '${this.name}', color: '${this.color}, food: '${this.food}'}`;
+20:     };
+21: }
+22: // const animal2 = new Animal('Bob', 'Black');   // food left undefined — missing arg
+23: 
+24: const animal3 = new Animal('Moti', 'White', 'Bread');
+25: console.log(animal3.toPrint());
+26: 
+27: class Alive { }
 28: 
-29:     toPrint() {
-30:         return `{name: '${this.name}', color: '${this.color}, food: '${this.food}'}`;
-31:     };
+29: // inheritance 
+30: // class Dog extends Animal , Alive  { // not working 
+31: class Dog extends Animal { }
 32: 
-33: }
-34: // const animal1 = new Animal();
-35: // animal1.name = 'Tommy';
-36: // animal1.color = 'Gold';
-37: // console.log(animal1.toPrint());
-38: 
-39: // const animal2 = new Animal('Bob', 'Black');
-40: // console.log(animal2.toPrint());
-41: 
-42: const animal3 = new Animal('Moti', 'White', 'Bread');
-43: console.log(animal3.toPrint());
-44: 
-45: class Alive {
-46: 
-47: }
-48: 
-49: // inheritance 
-50: // class Dog extends Animal , Alive  { // not working 
-51: class Dog extends Animal {
-52: 
-53: }
-54: 
-55: const animal4 = new Dog('Anny', 'Grey');
-56: console.log(animal4.toPrint());
-57: const animal5 = new Dog('Soni', 'Pink', 'Biscuits');
-58: console.log(animal5.toPrint());
+33: const animal4 = new Dog('Anny', 'Grey');
+34: console.log(animal4.toPrint());
+35: const animal5 = new Dog('Soni', 'Pink', 'Biscuits');
+36: console.log(animal5.toPrint());
 ```
 
-- **Lines 4–11 (commented, superseded)** — the *first* version of `Animal` declares bare class field names (`name; color;`) with **no constructor**. Objects are built with the implicit default constructor, then fields are set one at a time via dot-notation after construction (`animal1.name = 'Tommy'`) — functionally similar to Java's no-arg constructor + setter pattern, except these are public fields being assigned directly (no encapsulation here — same "anti-pattern" caution the Core Java guide raises about package-private direct field access).
-- **Lines 15–33 — the real, in-use `Animal` class:** `name; color; food;` (lines 16–18) are **class field declarations** (ES2022 syntax) — this is optional documentation of the shape; JavaScript classes don't strictly require field declarations before `this.field = ...` in the constructor works, unlike Java where every field must be declared. Line 20's commented `constructor() {}` plus the comment "A class may only have one constructor" (line 21) is the instructor explicitly noting a genuine JS/Java parallel: like Java, **a class can only have one constructor** — no constructor overloading in JS. Instead, JS relies on default parameters to simulate overloading (seen below).
-- **Lines 23–27** — the real constructor takes `(name, color, food)` and assigns each to `this`. Unlike Java, there's no type annotation on parameters and no matching field-type declaration required — `this.name = name` works regardless of whether `name` was pre-declared on line 16.
-- **Lines 29–31** — `toPrint()` is an **instance method** using a template literal to build a formatted string — functionally the class's `toString()`-equivalent, but note it's a differently-named method (`toPrint`, not the special `toString`), so it must be called explicitly (`animal3.toPrint()`); it does **not** get invoked automatically by `console.log(animal3)` the way overriding `toString()` would.
-- **Line 42–43 — the code that actually runs:** `new Animal('Moti', 'White', 'Bread')` constructs with all three positional args; `toPrint()` returns the formatted string, printed via `console.log`.
-- **Lines 39–40 (commented)** — a deliberately-left "what if I under-supply arguments" example: `new Animal('Bob', 'Black')` (only 2 of 3 params) would leave `food` as `undefined` inside the constructor — **JavaScript does not throw for missing constructor arguments**, unlike Java where a mismatched constructor signature is a compile error. This is a direct callback to Module 5.2's "missing args become `undefined`" behavior, now shown in a class/constructor context specifically.
-- **Line 45–47** — an empty `Alive` class, set up purely to demonstrate a **JavaScript limitation**: line 50 (commented) attempts `class Dog extends Animal, Alive` — **multiple inheritance via `extends`**, which the instructor's own comment flags as "not working." JavaScript classes support only **single inheritance** (`extends` takes exactly one parent), same restriction as Java's `extends` (Java compensates with `implements` for multiple interfaces — JS has no native interface concept at all, per Module 6.6's Java/JS OOP table).
-- **Lines 51–53 — the actual, working inheritance:** `class Dog extends Animal {}` — an empty subclass body. Because `Dog` defines no constructor of its own, it implicitly gets a default constructor that calls `super(...args)` with whatever arguments were passed, forwarding them straight to `Animal`'s constructor. This is why `new Dog('Anny', 'Grey')` (line 55, only 2 args — `food` ends up `undefined`) and `new Dog('Soni', 'Pink', 'Biscuits')` (line 57, all 3 args) both work and both can call `toPrint()` — `toPrint` isn't redefined on `Dog`, so the lookup walks the prototype chain (`animal4 → Dog.prototype → Animal.prototype`) and finds it on `Animal.prototype`, exactly as Module 6.7 describes.
+- An earlier, superseded version (not shown) declared bare fields with no constructor and set them one at a time via dot-notation after `new Animal()` — no encapsulation.
+- **Lines 4–21 — the real `Animal` class:** `name; color; food;` are **class field declarations** (ES2022) — optional documentation; `this.field = ...` in the constructor works with or without them. The commented `constructor() {}` plus "A class may only have one constructor" (line 10) confirms JS has no real overload resolution — only default parameters simulate it. `toPrint()` is an instance method, functionally a `toString()`-equivalent, but must be called explicitly — `console.log(animal3)` would **not** invoke it automatically.
+- **Line 22** — `new Animal('Bob', 'Black')` (only 2 of 3 args) would leave `food` as `undefined` — missing constructor args are silently `undefined`, no compile-time arity check, unlike Java.
+- **Lines 27–31** — an empty `Alive` class exists purely so line 30's commented `class Dog extends Animal, Alive` can demonstrate a real limitation: JavaScript classes support only **single inheritance**, not multiple `extends`.
+- **Lines 31–36 — actual working inheritance:** `class Dog extends Animal {}` has no constructor of its own, so it implicitly gets a default constructor calling `super(...args)`, forwarding whatever was passed straight to `Animal`'s constructor. `toPrint()` is found by walking the prototype chain (`animal4 → Dog.prototype → Animal.prototype`).
 
 ### JavaScript OOP vs Java OOP — explicit contrast (referencing the Core Java guide's Module 8 "Classes and Objects" and Module 10 "Inheritance")
 
 | Aspect | Java (Core Java guide) | JavaScript (`js-oop-concepts.js`) |
 |---|---|---|
 | Underlying model | True class-based — a class is a compiler-level blueprint; `new` allocates from a fixed layout | **Prototype-based** — `class` is syntax sugar; `new Dog(...)` really builds an object linked via `[[Prototype]]` to `Dog.prototype`, which links to `Animal.prototype` |
-| Constructors | Overloading allowed — multiple constructors, resolved by parameter *types and count* at compile time | **Only one constructor per class** (line 21's own comment confirms this) — "overloading" is simulated with default parameters, not real overload resolution |
-| Missing constructor args | Compile error — signature must match exactly | **Silently `undefined`** — no compile-time arity/type check at all (line 39's `new Animal('Bob', 'Black')`) |
-| Field declarations | Mandatory — every field needs an explicit type | **Optional** (lines 16–18 are documentation-only) — `this.x = x` in the constructor works with or without a prior field declaration |
-| Multiple inheritance | Not via `extends` (single class inheritance), but multiple `implements Interface` is standard and common | **Not supported at all** the way line 50 attempts it (`extends Animal, Alive` fails) — no interfaces either; only single-class `extends` |
+| Constructors | Overloading allowed — multiple constructors, resolved by parameter *types and count* at compile time | **Only one constructor per class** (file's own comment confirms this) — "overloading" is simulated with default parameters, not real overload resolution |
+| Missing constructor args | Compile error — signature must match exactly | **Silently `undefined`** — no compile-time arity/type check at all (`new Animal('Bob', 'Black')`) |
+| Field declarations | Mandatory — every field needs an explicit type | **Optional** (documentation-only) — `this.x = x` in the constructor works with or without a prior field declaration |
+| Multiple inheritance | Not via `extends` (single class inheritance), but multiple `implements Interface` is standard and common | **Not supported at all** (`extends Animal, Alive` fails) — no interfaces either; only single-class `extends` |
 | Method resolution | Vtable-based dynamic dispatch through the class hierarchy, resolved by the JVM | **Prototype chain walk** — `toPrint()` is looked up on `animal4` itself, then `Dog.prototype`, then `Animal.prototype`, stopping at the first match |
 | `toString()` equivalent | Override `Object`'s `toString()`; automatically invoked by `println`/string concatenation | No automatic hook unless you specifically override `toString()`; this file's `toPrint()` is a **custom-named** method and must be called explicitly — `console.log(animal3)` would NOT use it |
 | Access control | `private`/`protected`/`public`/package-private, enforced by the compiler | No enforcement here at all — `name`, `color`, `food` are fully public; true privacy needs the `#field` syntax (Module 6.6), not used in this file |
-
-**Assessment-relevant summary:** this file is a good minimal example of "classes as sugar" — every behavior observed (single constructor, silent `undefined` on missing args, single-parent `extends`, prototype-chain method lookup) is explainable only by remembering JS classes ultimately compile to prototype objects, not to a JVM-style fixed class table.
 
 ---
 
 ## 18. `js-dom-html.js` — DOM Selection, Event Listeners, and `confirm()`
 
 ```javascript
-1:  // // JS DOM Methods
+1:  // element.addEventListener('event-to-capture', () => { /* handler */ });
 2:  
-3:  // // const sayHi = () => {
-4:  // //     inputText = document.getElementById('username').value;
-5:  // //     document.getElementById('output').innerText = `Hi ${inputText}!`;
-6:  // // };
-7:  
-8:  // // document.getElementById("element-to-capture")
-9:  // // .addEventListener(arg1, arg2);
-10: // // .addEventListener('event-to-capture', () => {function-to-execute-on-that-event});
-11: 
-12: // document.getElementById("submit").addEventListener("click", function () {
-13: //     const name = document.getElementById("username").value;
-14: //     const output = document.getElementById("output");
-15: //     output.textContent = `Hi ${name}!`;
-16: // });
-17: 
-18: 
-19: document.getElementById("submit").addEventListener("click", function () {
-20:     const name = document.getElementById("username").value;
-21:     const output = document.getElementById("output");
-22:     // output.textContent = `Hi ${name}!`;
-23:     // alert(`Hi ${name}!`);
-24:     output.textContent = confirm("Are you sure?") ? 'Yes' : 'No';
-25: });
+3:  document.getElementById("submit").addEventListener("click", function () {
+4:      const name = document.getElementById("username").value;
+5:      const output = document.getElementById("output");
+6:      // output.textContent = `Hi ${name}!`;   // earlier greeting version, replaced
+7:      // alert(`Hi ${name}!`);                  // earlier alert() version, replaced
+8:      output.textContent = confirm("Are you sure?") ? 'Yes' : 'No';
+9:  });
 ```
 
-- **Lines 3–6 (commented, earliest draft)** — a first-pass idea using an arrow function `sayHi` and `innerText`, never wired to an event; abandoned in favor of the `addEventListener` pattern below.
-- **Lines 8–10 (comment)** — the generic template the instructor documents before using it: `element.addEventListener(eventName, handlerFunction)`. This is a **higher-order function usage** — `addEventListener` is itself a function that takes another function (the handler) as its second argument, the same "function as argument" pattern from Module 5.4/`js-function-as-arg.js`.
-- **Lines 12–16 (commented, first working version)** — `document.getElementById("submit")` selects the button by its `id` attribute; `.addEventListener("click", function() {...})` attaches a **regular (non-arrow) function expression** as the click handler. Inside, `document.getElementById("username").value` reads the current text-input value, and `output.textContent = ...` writes a greeting into another element. Note: a **regular function** is used here deliberately — inside a plain DOM event handler, `this` would refer to the element the listener is attached to (the button), which the code doesn't actually use, so the choice of regular vs arrow doesn't matter functionally in this specific snippet, but it's consistent with the courseware's guidance that event handlers are one of the contexts where a regular function's dynamic `this` can be useful (Module 5.7).
-- **Lines 19–25 — the actually-active listener:** identical setup (`getElementById("submit")`, `click` event) but the response logic is different. Line 22 (commented) shows the straightforward greeting version being intentionally replaced; line 23 (commented) shows an even simpler `alert(...)` version also abandoned; **line 24 is what actually executes**: `output.textContent = confirm("Are you sure?") ? 'Yes' : 'No';` — `confirm()` is a **blocking, synchronous browser dialog** that returns a boolean (`true` for OK, `false` for Cancel); the result feeds directly into a **ternary operator** (Module 3.6) to decide the text written to `output.textContent`.
-- **DOM-specific gotchas worth flagging:** `.value` (line 20) is specifically for form-input elements' current value; `.textContent` (lines 21, 24) sets plain text (safe from HTML injection) as opposed to `.innerHTML` (which parses HTML — not used here, and generally riskier). `confirm()`, like `alert()`, blocks the entire single JS thread until the user responds — a rare case where synchronous, blocking UI interaction is still idiomatic in plain browser JS.
+- `addEventListener(eventName, handlerFunction)` is a **higher-order function** — same "function as argument" pattern as Module 5.4. `getElementById("submit")` selects the button by id; a regular (non-arrow) function is attached as the handler, consistent with the courseware guidance that handlers are a context where a regular function's dynamic `this` can be useful, even though this handler doesn't use `this`.
+- Two earlier response versions (plain greeting via `textContent`, then `alert(...)`) were commented out and replaced by the line that actually runs: `confirm("Are you sure?") ? 'Yes' : 'No'`. `confirm()` is a **blocking, synchronous** browser dialog returning a boolean (`true`=OK, `false`=Cancel), fed straight into a ternary.
+- **DOM-specific gotchas:** `.value` reads a form-input's current value; `.textContent` sets plain text (safe from HTML injection) vs `.innerHTML` (parses HTML, riskier, not used here). `confirm()`/`alert()` block the entire single JS thread until the user responds — one of the few places synchronous blocking UI is still idiomatic in plain browser JS.
 
 ---
 
 ## 19. `js-api-calls.js` — Two Ways to Consume a REST API: `.then()/.catch()` vs `async`/`await`
 
 ```javascript
-1:  
+1:  const apiUrl = 'https://jsonplaceholder.typicode.com/users/2';
 2:  
-3:  
-4:  
-5:  
-6:  
-7:  
-8:  // Consume REST APIs using .then().catch() and async / await 
-9:  
-10: const apiUrl = 'https://jsonplaceholder.typicode.com/users/2';
-11: 
-12: // Consume REST APIs using .then().catch()
-13: // =======================================
-14: 
-15: fetch(apiUrl)
-16:     .then((response) => { return response.json() })
-17:     .then((data) => { console.log(data); })
-18:     .catch((error) => { console.error(error); });
-19: 
-20: // Consume REST APIs using async / await
-21: // =======================================
-22: 
-23: const consumeRestApi = async () => {
-24: 
-25:     try {
-26:         const response = await fetch(apiUrl);
-27:         const data = await response.json();
-28:         console.log(data);
-29:     }
-30:     catch (error) {
-31:         console.error(error);
-32:     }
-33: };
-34: consumeRestApi(); 
+3:  // Promise-chain style
+4:  fetch(apiUrl)
+5:      .then((response) => { return response.json() })
+6:      .then((data) => { console.log(data); })
+7:      .catch((error) => { console.error(error); });
+8:  
+9:  // async / await style
+10: const consumeRestApi = async () => {
+11:     try {
+12:         const response = await fetch(apiUrl);
+13:         const data = await response.json();
+14:         console.log(data);
+15:     }
+16:     catch (error) {
+17:         console.error(error);
+18:     }
+19: };
+20: consumeRestApi(); 
 ```
 
-- **Line 10** — `apiUrl` is a real public test API (JSONPlaceholder) fetching a single fake user by ID `2`.
-- **Lines 15–18 — Promise-chain style:** `fetch(apiUrl)` immediately returns a **Promise that resolves to a `Response` object**, not the JSON body yet — that's why the first `.then` (line 16) calls `response.json()`, which itself returns *another* Promise (parsing the body is itself asynchronous). Returning that Promise from inside `.then` causes the **chain to wait** for it before running the second `.then` (line 17), which finally receives the parsed `data`. `.catch` (line 18) catches any rejection anywhere upstream in the chain — network failure, or (note the gap the courseware flags in Module 9.6) it would **not** catch a non-2xx HTTP status on its own, since `fetch` doesn't reject on 4xx/5xx; this file doesn't check `response.ok`, so a 404 here would still flow through both `.then`s and attempt to parse whatever JSON body error page was returned, not hit `.catch`.
-- **Lines 23–33 — `async`/`await` style, functionally equivalent:** `consumeRestApi` is declared `async`. `await fetch(apiUrl)` (line 26) pauses until the `Response` arrives; `await response.json()` (line 27) pauses again until the body is parsed. `try/catch` (lines 25–32) replaces `.then/.catch` for error handling — same missing-`response.ok`-check caveat applies here too.
-- **Line 34 — `consumeRestApi();`** — the async function must still be explicitly **called**; declaring an `async function` does nothing by itself, same as any other function declaration.
-- **Both blocks run independently and concurrently in this file** — nothing prevents lines 15–18 and lines 23–34 from both firing near-simultaneously when the file loads, since neither blocks the other (no shared `await`/`.then` chaining between them). Expect two separate, interleaved sets of console output for the same user data, in a specific order following each block's own network round-trip time.
-- **Assessment-relevant comparison point:** this file is the cleanest side-by-side proof that `async`/`await` (Module 9.5) is literally syntactic sugar over the identical Promise-chain mechanics (Module 9.4) — same `fetch`, same two-step "get Response, then parse JSON" shape, same error-handling responsibility, just different surface syntax.
+- **Promise-chain style (lines 4–7):** `fetch(apiUrl)` returns a Promise that resolves to a `Response` object, not the JSON body — `response.json()` (line 5) returns *another* Promise, and returning it from `.then` makes the chain wait before the second `.then` (line 6) receives parsed `data`. Gotcha (Module 9.6): `.catch` catches network failures but **not** a non-2xx HTTP status, since `fetch` doesn't reject on 4xx/5xx and this file never checks `response.ok`.
+- **`async`/`await` style (lines 10–20), functionally equivalent:** `await fetch(apiUrl)` pauses for the `Response`, `await response.json()` pauses again for the parsed body; `try/catch` replaces `.then/.catch` — same missing-`response.ok` caveat applies. The async function must still be explicitly called (line 20) — declaring it does nothing by itself.
+- **Both blocks run independently and concurrently** when the file loads (no shared chaining), producing two separate, interleaved sets of console output. This file is the cleanest side-by-side proof that `async`/`await` (Module 9.5) is syntactic sugar over the identical Promise-chain mechanics (Module 9.4).
 
 ---
 
 ## 20. `script.js` — The Foundational Sandbox: Declarations, Coercion, `==`/`===`, Truthy/Falsy, Arrays, Objects
 
 ```javascript
-1:  
-2:  // console.log("Hello world!");
-3:  
-4:  // ECMAScript ES
-5:  
-6:  // variable declaration, data types, operators, control structure, functions, etc
-7:  
-8:  // java
-9:  // int num = 10;
-10: 
-11: // // JS
-12: // num = 10; // don't use this
-13: // var num2 = 20; // don't use this too
-14: // const num3 = 30; // use this as preferred choice
-15: // let num4 = 40; // use this when needed
-16: // console.log(num);
-17: // console.log(num2);
-18: // console.log(num3);
-19: // console.log(num4);
-20: 
-21: 
-22: // const num1 = 10;
-23: // console.log(num1);
-24: // num1 = 20;
-25: // console.log(num1);
-26: 
-27: 
-28: // let num;
-29: // console.log(typeof num);
-30: // console.log(num);
-31: // num = 10;
-32: // console.log(typeof num);
-33: // console.log(num);
-34: // num = 20;
-35: // console.log(typeof num);
-36: // console.log(num);
-37: // num = 20.35;
-38: // console.log(typeof num);
-39: // console.log(num);
-40: // num = 'abc';
-41: // console.log(typeof num);
-42: // console.log(num);
-43: // num = false;
-44: // console.log(typeof num);
-45: // console.log(num);
-46: 
-47: // let firstName = 'Sonu';
-48: // let lastName = "Rao";
-49: // let fullName = firstName + " " + lastName;
-50: // let fullName2 = `${firstName} ${lastName}`;
-51: // console.log(fullName);
-52: // console.log(fullName2);
-53: // console.log('Hello')
-54: 
-55: // let num;
-56: // let num2 = 20;
-57: // console.log(num + num2);
-58: // console.log(num - num2);
-59: 
-60: // nan
-61: // let num;
-62: // let num2 = 20;
-63: // console.log(num + num2);
-64: // console.log(num - num2);
-65: 
-66: // let num1 = 10;
-67: // let num2 = '20';
-68: // console.log(num1 + num2);
-69: // console.log(num1 - num2);
-70: 
-71: // let num3 = 30;
-72: // let num4 = 'abc';
-73: // console.log(num3 + num4);
-74: // console.log(num3 - num4);
-75: 
-76: // let num1 = 10;
-77: // let num2 = '10';
-78: // console.log(num1 == num2);
-79: // console.log(num1 === num2);
-80: // console.log(num1 != num2);
-81: // console.log(num1 !== num2);
-82: 
-83: // truthy, falsy values
-84: 
-85: // falsy -> false, 0, '', undefined, null, NaN
-86: // truthy -> everything else 
-87: 
-88: // let input = 'Sonu';
-89: 
-90: // if (input)
-91: //     console.log('Yes');
-92: 
-93: 
-94: 
-95: // // arrays in js 
-96: // const arr = [10, 20.5, 'abc', false, null, ['a', 3, true], 'sonu', 'monu', {}];
-97: // // console.log(arr);
-98: 
-99: 
-100: // // object in js 
-101: 
-102: // const employee = {
-103: //     firstName: 'Sonu',
-104: //     lastName: 'Joshi',
-105: //     salary: 10.25,
-106: //     address: { pin: 500001, city: 'Pune' },
-107: //     isIndian: true,
-108: //     phones: [9876543210, 6789012345],
-109: //     print: () => { }
-110: // };
-111: 
-112: // // console.log(employee);
-113: // console.log(employee.firstName);
-114: // console.log(employee.address.city);
-115: // console.log(employee.phones[1]);
+// java: int num = 10;
+// JS:
+num = 10;          // don't use this — implicit global
+var num2 = 20;      // don't use this too
+const num3 = 30;    // preferred choice
+let num4 = 40;      // use when needed
+
+const num1 = 10;
+num1 = 20;           // TypeError: Assignment to constant variable
+
+let num;             // typeof num -> 'undefined'
+num = 10;             // 'number'
+num = 20.35;          // 'number' — same type as 20 (single numeric type)
+num = 'abc';           // 'string' — let allows changing type, not just value
+num = false;            // 'boolean'
+
+let firstName = 'Sonu', lastName = 'Rao';
+let fullName = firstName + " " + lastName;      // concatenation
+let fullName2 = `${firstName} ${lastName}`;      // template literal, same result
+
+let n;  let n2 = 20;
+console.log(n + n2);  // NaN — undefined coerced in arithmetic
+console.log(n - n2);  // NaN
+
+let a1 = 10, a2 = '20';
+console.log(a1 + a2);  // "1020" — + concatenates when either side is a string
+console.log(a1 - a2);  // -10  — - always coerces to numbers
+
+let b1 = 30, b2 = 'abc';
+console.log(b1 + b2);  // "30abc"
+console.log(b1 - b2);  // NaN — 'abc' can't be coerced to a number
+
+let c1 = 10, c2 = '10';
+console.log(c1 == c2);   // true  — loose equality coerces '10' to 10
+console.log(c1 === c2);  // false — strict, types differ
+
+// falsy -> false, 0, '', undefined, null, NaN ; truthy -> everything else
+let input = 'Sonu';
+if (input) console.log('Yes');   // non-empty string is truthy
+
+const arr = [10, 20.5, 'abc', false, null, ['a', 3, true], 'sonu', 'monu', {}];
+
+const employee = {
+    firstName: 'Sonu', lastName: 'Joshi', salary: 10.25,
+    address: { pin: 500001, city: 'Pune' },
+    isIndian: true, phones: [9876543210, 6789012345],
+    print: () => { }
+};
+console.log(employee.firstName);      // dot access
+console.log(employee.address.city);   // chained dot access into nested object
+console.log(employee.phones[1]);      // array-index access on an object property
 ```
 
-This file is entirely commented out — it's the instructor's exploratory scratch pad, walked through live rather than executed as a whole. It sequences almost exactly through Modules 1–3 of the courseware, so it's read as a guided tour rather than a running program.
+This file is entirely commented out in the original source — it's the instructor's exploratory scratch pad, walked through live rather than executed as a whole. It sequences almost exactly through Modules 1–3 of the courseware; the snippet above condenses it into the executable shape (with only the outcome comments kept).
 
-- **Lines 8–19** — direct Java-to-JS contrast: Java's `int num = 10;` (statically typed, one declaration keyword) versus JS's four options — undeclared assignment (`num = 10`, creates an implicit global, flagged "don't use this"), `var` (flagged "don't use this too"), `const` (flagged "preferred choice"), and `let` ("use when needed") — this is the file's own hands-on version of Module 2.1's `var`/`let`/`const` rule.
-- **Lines 22–25** — demonstrates the `const` reassignment error directly: `const num1 = 10;` then `num1 = 20;` would throw `TypeError: Assignment to constant variable`, reinforcing that `const` locks the *binding*.
-- **Lines 28–45** — a **step-by-step `typeof` walkthrough on a single `let num` variable**, reassigned repeatedly: undeclared (`undefined`), then `10` (`'number'`), `20` (`'number'`), `20.35` (`'number'` — same type as `20`, illustrating JS's single numeric type per Module 2.2), `'abc'` (`'number'` → `'string'`, showing `let` allows changing not just value but *type*, since JS is dynamically typed), and `false` (`'boolean'`). This is a live demonstration that a `let` variable's type is not fixed — unlike Java where `int num` can never later hold a `String`.
-- **Lines 47–52** — string concatenation (`firstName + " " + lastName`) versus a **template literal** (`` `${firstName} ${lastName}` ``) producing the same result, side by side — the exact comparison Module 2.7/8.1 makes for "why prefer template literals."
-- **Lines 55–58** — `num` is declared but never assigned (`undefined`); `num + num2` → `NaN` (arithmetic with `undefined`), `num - num2` → `NaN` as well. Matches Module 2.5's `undefined + 1 // NaN` rule.
-- **Lines 66–69** — `num1 = 10` (number), `num2 = '20'` (string): `num1 + num2` → `"1020"` (string concatenation wins because one operand is a string — Module 2.5's `+` rule), `num1 - num2` → `-10` (subtraction always coerces to numbers, so `'20'` becomes `20`, then `10 - 20 = -10`).
-- **Lines 71–74** — `num3 = 30`, `num4 = 'abc'`: `num3 + num4` → `"30abc"` (string concat again). `num3 - num4` → `NaN`, because `'abc'` cannot be coerced to a number (Module 2.5's `"10" - "abc" // NaN`).
-- **Lines 76–81** — the `==` vs `===` demonstration with `num1 = 10` (number) and `num2 = '10'` (string): `num1 == num2` → `true` (loose equality coerces `'10'` to `10`), `num1 === num2` → `false` (strict equality, types differ), `num1 != num2` → `false`, `num1 !== num2` → `true`. This is the file's hands-on version of Module 2.5's central rule, and one of the most likely direct assessment questions.
-- **Lines 85–91** — falsy-value list matching Module 2.5 (though the file's shorthand list omits `-0`, `0n`, and `NaN`'s exact wording — the courseware's authoritative list of 8 is the one to cite on an assessment: `false, 0, -0, 0n, "", null, undefined, NaN`), followed by a truthy check: `if (input)` with `input = 'Sonu'` (a non-empty string, truthy) logs `'Yes'`.
-- **Lines 96–97** — an array literal `[10, 20.5, 'abc', false, null, ['a', 3, true], 'sonu', 'monu', {}]` mixing every primitive type plus a nested array and an empty object — concretely proving Module 7.1's "any types" claim (JS arrays are not type-homogeneous like Java arrays/generics).
-- **Lines 102–115** — an `employee` object literal (same shape reused in `js-functions-syntaxes.js`, showing it's a running example across the course) with nested object (`address`), array (`phones`), and an arrow-function method (`print`). The three `console.log` calls at the end (lines 113–115) demonstrate the three main property-access forms: simple dot access (`employee.firstName`), **chained** dot access into a nested object (`employee.address.city`), and array-index access on an object property (`employee.phones[1]`) — all core to Module 6.1's object-access patterns.
+- **Declarations** — direct Java-to-JS contrast: Java's single `int num = 10;` versus JS's four options (undeclared/implicit global, `var`, `const`, `let`), and the concrete `const` reassignment error proving `const` locks the *binding*, not the value.
+- **`typeof` walkthrough** — reassigning one `let num` repeatedly shows a `let` variable's type is never fixed (`number` → `string` → `boolean`), unlike Java where `int num` can never later hold a `String`.
+- **Coercion trio** — `undefined` arithmetic → `NaN`; `+` concatenates when either operand is a string but `-` always coerces to numbers (`'20'` → `20`); a non-numeric string like `'abc'` makes `-` produce `NaN` even though `+` still concatenates.
+- **Falsy list** here is a shorthand (`false, 0, '', undefined, null, NaN`) — the authoritative 8-item list also includes `-0` and `0n`.
+- **Array literal** mixes every primitive type plus a nested array and empty object — proof JS arrays are not type-homogeneous like Java arrays/generics.
+- **`employee` object** is the same shape reused in `js-functions-syntaxes.js`, showing it's a running example across the course.
 
 ---
 
 ## Quick Reference — Highest-Yield Assessment Traps (cross-referenced to source)
 
-1. `==` vs `===` — always `===` (Module 2.5, Module 3.2, `script.js` lines 76–81).
+1. `==` vs `===` — always `===` (Module 2.5, Module 3.2, `script.js`).
 2. `0.1 + 0.2 !== 0.3` — IEEE 754 floating point (Module 3.1).
 3. `var` loop-closure bug vs `let` fixing it (Module 2.1).
-4. Arrow function has no own `this` — object methods need regular `function` syntax when they use `this` (Module 5.7, `js-functions-syntaxes.js` lines 25–26).
+4. Arrow function has no own `this` — object methods need regular `function` syntax when they use `this` (Module 5.7, `js-functions-syntaxes.js`).
 5. `forEach` returns `undefined`; `map` returns a new array (Module 5.5, 7.5).
 6. `sort()` is lexicographic by default — always pass `(a,b) => a-b` for numbers (Module 7.3).
 7. `||` replaces *all* falsy values (including valid `0`); `??` only replaces `null`/`undefined` (Module 3.3–3.4).
 8. `fetch` never throws on 4xx/5xx — must check `response.ok` manually (Module 9.6, `js-api-calls.js`).
 9. Forgetting `await` returns a Promise, not the resolved value (Module 9.5).
-10. Microtasks (Promises) run before macrotasks (`setTimeout`) — `console.log` ordering questions (Module 9.2, `js-function-as-arg.js` lines 49–55).
+10. Microtasks (Promises) run before macrotasks (`setTimeout`) — `console.log` ordering questions (Module 9.2, `js-function-as-arg.js`).
 11. `const` freezes the binding, not the value — objects/arrays are still mutable (Module 2.1, 6.5).
 12. Spread/rest share `...` syntax but do opposite things depending on call vs. definition position (Module 3.7–3.8, `js-array-ops.js`).
-13. JS classes support only single inheritance and exactly one constructor — no method/constructor overloading, unlike Java (Module 6.6, `js-oop-concepts.js` lines 21, 50).
-14. Missing function/constructor arguments become `undefined` silently — no compile-time arity check (Module 5.2, `js-functions.js`, `js-oop-concepts.js` line 39).
-15. Passing `fn()` instead of `fn` as a callback calls it immediately instead of registering it (Discussion Q&A #62, `js-function-as-arg.js` lines 36–37).
+13. JS classes support only single inheritance and exactly one constructor — no method/constructor overloading, unlike Java (Module 6.6, `js-oop-concepts.js`).
+14. Missing function/constructor arguments become `undefined` silently — no compile-time arity check (Module 5.2, `js-functions.js`, `js-oop-concepts.js`).
+15. Passing `fn()` instead of `fn` as a callback calls it immediately instead of registering it (Discussion Q&A #62, `js-function-as-arg.js`).

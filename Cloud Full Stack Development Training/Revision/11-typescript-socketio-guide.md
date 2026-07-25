@@ -38,16 +38,13 @@ npx tsc --init      # creates tsconfig.json
   (`process`, `Buffer`, `fs`, etc.) — without this package, TypeScript has no
   idea what `fs.promises.readFile` returns.
 
-**Why TypeScript over plain JavaScript** — this is the whole point of the
-course's `script.ts` demo (see Part B), and it boils down to what happens
-when you write `let salary;` with no annotation vs. `let salary: number;`:
-in the first case TS infers `any` (or complains "implicitly has an 'any'
-type" under `strict` mode) and lets you reassign `salary = 'abc'` with zero
-warning — the bug only surfaces at runtime, same as plain JS. With an
-explicit `number` annotation, `salary = 'abc'` is a **compile-time** error
-(`ts(2322)`) — the same class of bug Java's compiler already catches you.
-TypeScript brings that guarantee to JS/Node without giving up JS's dynamic
-runtime or npm ecosystem.
+**Why TypeScript over plain JavaScript** — the course's `script.ts` demo
+(walked through line-by-line in Part B.1) makes the case concretely: an
+untyped `salary` lets you reassign it to a string with zero warning until
+the bug surfaces at runtime, while an explicit `number` annotation turns
+that same mistake into a compile-time error. TypeScript brings that
+guarantee to JS/Node without giving up JS's dynamic runtime or npm
+ecosystem.
 
 The reference's recommended Node.js `tsconfig.json` (compare against the
 actual `ems-ts/tsconfig.json` walked through in Part C — they differ in
@@ -521,304 +518,112 @@ to progressively reveal syntax. They map directly onto reference sections
 ## B.1 — `script.ts`
 
 Every line in this file is a comment (`//`) — nothing executes as-is; it's a
-scripted walkthrough. Line numbers below refer to the actual file.
+scripted walkthrough meant to be uncommented live in class, one section at a
+time. It reveals the same story reference section 2 tells conceptually:
 
 ```typescript
-1:  // // // // // console.log('TS Hello world!');
-...
-6:  // // // // let salary = 90000.25;
-7:  // // // // console.log(salary);
-9:  // // // // // salary = 'abc';
-15: // // // // Type notation in TS
-18: // // // // let salary; //   Variable 'salary' implicitly has an 'any' type
-20: // // // // salary = 'abc'; // Type 'string' is not assignable to type 'number'.ts(2322)
-30: // // // // let salary : number = 10.25;
+let salary = 90000.25;        // no annotation — TS still infers `number`
+let salary;                   // no initializer, no annotation → strict mode error:
+                               // "implicitly has an 'any' type"
+salary = 'abc';                // once salary is `number`: ts(2322) compile error
+let salary: number = 10.25;   // explicit annotation — same effect, documents intent
+
+const addNums = (a: number, b: number): number => { return a + b; };
+const addNumsPrint = (a: number, b: number): void => { console.log(a + b); };
+
+let myData: string | number;
+myData = 'abc';
+myData = 10.25;
+// myData = false;            // Error — boolean isn't part of the union
+
+let myData2: any;             // accepts anything, no complaints — avoid
+let myData3: unknown;         // accepts anything too, but requires narrowing before use
 ```
 
-- **Line 6–7** — plain JS-style: `let salary = 90000.25;` with no type
-  annotation — TS still infers `number` from the initializer (**type
-  inference**), so this isn't actually loosely typed, it just doesn't
-  *look* typed.
-- **Line 18** — `let salary;` with **no initializer and no annotation** — TS
-  cannot infer anything, so under `strict` mode it errors: *"Variable
-  'salary' implicitly has an 'any' type."* This is the exact moment the
-  course uses to motivate explicit annotations.
-- **Line 20** — once `salary` has settled on `number` (whether by inference
-  from an initializer, or explicit annotation), `salary = 'abc'` is
-  rejected with `ts(2322)` — a compile-time type error, the core selling
-  point of TS vs. JS.
-- **Line 30** — `let salary : number = 10.25;` — the explicit-annotation
-  form; functionally identical to line 6–7's inferred form, but the
-  annotation documents intent and works even without an initializer.
+- Even without an annotation, `let salary = 90000.25` is still checked as
+  `number` via **type inference** — untyped-*looking* isn't the same as
+  untyped.
+- `myData2: any` vs `myData3: unknown` is the file's concrete illustration
+  of why `unknown` is the safe escape hatch: both accept any assignment,
+  but only `any` lets you call arbitrary methods on the result with zero
+  compiler pushback.
 
-```typescript
-39: // // // const addNums = (a: number, b: number): number => {
-40: // // //     return a + b;
-41: // // // };
-46: // // // const addNumsPrint = (a: number, b: number): void => {
-47: // // //     console.log(a + b);
-48: // // // };
-```
-
-- **Line 39–41** — arrow function with typed parameters (`a: number, b:
-  number`) and a typed return value (`: number` after the parameter list).
-  Java-familiar: this is the same triple of (param types, return type,
-  body) Java requires, just with the annotation position after the colon
-  instead of before the name.
-- **Line 46–48** — `addNumsPrint`'s return type is annotated `void` — it
-  calls `console.log` and returns nothing meaningful; distinct from
-  `undefined` in that TS specifically flags trying to *use* the return
-  value of a `void` function as likely a mistake.
-
-```typescript
-55: // // let myData: string | number;
-57: // // myData = 'abc';
-60: // // myData = 10.25;
-63: // // // myData = false; // Error
-66: // // let myData2: any;
-77: // // let myData3: unknown;
-```
-
-- **Line 55–63** — `myData: string | number` is a **union type**: only
-  `string` or `number` values are legal; `myData = false` (boolean) is
-  rejected at compile time (line 63, commented out because it *would*
-  error).
-- **Line 66–75** — `myData2: any` accepts string, number, and boolean with
-  zero complaints — demonstrating why `any` should be avoided: it silently
-  reintroduces every bug class TS exists to prevent.
-- **Line 77–86** — `myData3: unknown` also accepts any assignment, but
-  (per reference section 2) using `unknown` values requires narrowing
-  first — the safe version of `any`.
-
-```typescript
-89:  // // Primitive types
-95:  // // Arrays
-99:  // // Tuple: fixed-length, fixed-type array
-104: // // Enums
-110: // // const enum (inlined at compile time — no JS enum object)
-113: // // any: opt-out of type checking (avoid!)
-116: // // unknown: safe version of any — must narrow before use
-120: // // never: function that never returns (throws or infinite loop)
-125: // // void: function that returns nothing meaningful
-130: // // Type assertions
-```
-
-- **Lines 89–132** are a verbatim copy of reference section 2 ("TypeScript
-  Basics & Types") kept in the demo file for live uncommenting during class
-  — same primitives, arrays vs. `Array<T>` generic syntax, tuples with
-  destructuring, numeric vs. string `enum`, `const enum`, `any`/`unknown`/
-  `never`/`void`, and `as` type assertions already explained in Part A.2.
+The rest of the file (primitives, arrays, tuples, enums, `const enum`,
+`any`/`unknown`/`never`/`void`, type assertions) is a verbatim copy of
+reference section 2 kept for live uncommenting — already covered in Part
+A.2.
 
 ## B.2 — `ts-classes-etc.ts`
 
-```typescript
-1:  class Animal {
-2:      readonly id: number;
-3:      public name: string;
-4:      protected species: string;
-5:      // #sound: string;     // true private (ES2022 field)
-6:      // private sound: string;     // true private (ES2022 field)
-7:      #hashField: string;
-8:  
-9:      constructor(name: string, species: string, hf: string) {
-10:         this.id = Math.random();
-11:         this.name = name;
-12:         this.species = species;
-13:         this.#hashField = hf;
-14:         // this.sound = 'generic';
-15:     }
-16: }
-17: const anml1 = new Animal('dog', 'dog specie', 'hashvalue');
-18: // anml1.sound = 'another value';
-19: // anml1.#hashField = 'abc';
-20: console.log(anml1);
-```
-
-- **Line 2** — `readonly id: number` — set once inside the constructor
-  (line 10), any later reassignment from outside is a compile error.
-- **Line 3** — `public name: string` — explicit `public` (the default
-  visibility if omitted, but written here to contrast with the next two
-  lines).
-- **Line 4** — `protected species: string` — visible to `Animal` and any
-  subclass, not to outside callers.
-- **Line 7** — `#hashField: string` — a real ES2022 private class field
-  (runtime-enforced, not just compiler-enforced). Note the comment on line
-  6 shows the class originally used TS's `private` keyword (`private
-  sound`) before being swapped for the `#`-syntax to demonstrate the
-  stronger guarantee.
-- **Line 9–15** — constructor takes `name`, `species`, and `hf`, and
-  assigns `hf` into the true-private `#hashField` (line 13). Line 14 is
-  dead/commented code left from an earlier iteration of the class that used
-  a `sound` field.
-- **Line 17** — instantiates with `new Animal('dog', 'dog specie',
-  'hashvalue')` — note the constructor signature takes 3 `string` params in
-  this version, positional and required (no optional params here).
-- **Line 18–19** — both commented out because both *would* fail:
-  `anml1.sound` doesn't exist on this version of the class at all (dead
-  reference to the removed `sound` property), and `anml1.#hashField` fails
-  because `#hashField` can only be accessed from **inside** the `Animal`
-  class body — this is JS's own private-field enforcement, catching the
-  violation even before TypeScript's compiler would flag it as a type error.
-- **Line 20** — logs the constructed object; the private `#hashField` won't
-  show up on casual property enumeration (e.g. `Object.keys`), reinforcing
-  that this privacy is real, not cosmetic.
+A reveal script (mostly commented out) that builds up the same `Animal`
+class from reference section 4, one capability at a time:
 
 ```typescript
-23: // class Animal {
-...
-27:     #sound: string;     // true private (ES2022 field)
-...
-36:     speak(): string {
-37:         return `${this.name} says ${this.#sound}`;
-38:     }
-40:     get info(): string { return `${this.name} (${this.species})`; }
-41:     set sound(value: string) { this.#sound = value; }
-43:     static create(name: string, species: string): Animal {
-44:         return new Animal(name, species);
-45:     }
-46: }
+class Animal {
+    readonly id: number;
+    public name: string;
+    protected species: string;
+    #hashField: string;            // true private (ES2022 field)
+
+    constructor(name: string, species: string, hf: string) {
+        this.id = Math.random();
+        this.name = name;
+        this.species = species;
+        this.#hashField = hf;
+    }
+}
+const anml1 = new Animal('dog', 'dog specie', 'hashvalue');
+// anml1.#hashField = 'abc';     // error: only accessible inside the class body
 ```
 
-- **Lines 23–46** (commented alternate version) — this is the fuller
-  reference-section-4 shape of `Animal`: adds a `speak()` instance method
-  interpolating the private `#sound` field (line 37), a `get info()`
-  accessor (line 40) combining `name` and the `protected species` field, a
-  `set sound(value)` setter that writes into the private field (line 41,
-  the *only* way to mutate `#sound` from outside the class), and a
-  `static create(...)` factory method (line 43–45) that constructs and
-  returns a new `Animal` without exposing `new` to callers.
+- The class first appears with just `readonly`/`public`/`protected`/`#private`
+  fields and a constructor, to isolate access-modifier syntax before adding
+  behavior. `anml1.#hashField = 'abc'` is commented out because JS's own
+  private-field enforcement rejects it — this fails before TS's compiler
+  even gets involved, and the field is invisible to casual enumeration
+  (`Object.keys`), proving the privacy is real, not cosmetic.
 
-```typescript
-49: // // class Dog extends Animal {
-52:         public breed: string,       // declares + assigns in one step
-53:         private readonly age: number
-55:         super(name, 'dog');
-58:     speak(): string {
-59:         return `${this.name} barks!`;
-```
+A commented-out fuller version then adds a `speak()` method interpolating
+`#sound`, a `get info()` accessor, a `set sound(value)` setter (the *only*
+way to mutate `#sound` from outside), and a `static create(...)` factory —
+matching reference section 4's complete `Animal` shape.
 
-- **Lines 49–61** (commented) — `Dog extends Animal` using **parameter
-  properties**: `public breed: string` and `private readonly age: number`
-  directly in the constructor parameter list declare and assign those
-  fields in one step (line 52–53), instead of writing `breed: string` as a
-  separate field declaration plus `this.breed = breed;` in the body. `super(name,
-  'dog')` (line 55) calls the parent `Animal` constructor. `speak()` (line
-  58–59) **overrides** the parent's method — no `@Override` annotation
-  needed like Java; TS checks override-compatibility structurally against
-  the base class signature.
+Later blocks build on it progressively, each still commented out for live
+reveal:
 
-```typescript
-64: // //     toJSON(): object;
-65: // //     toString(): string;
-69: // // class User implements Serializable {
-70: // //     constructor(public name: string, public email: string) { }
-```
-
-- **Lines 63–73** (commented) — `interface Serializable` with `toJSON()`
-  and `toString()`, and `class User implements Serializable` satisfying it
-  via parameter properties in the constructor (line 70) — the same
-  parameter-property shorthand as `Dog`, this time for a plain non-inherited
-  class.
-
-```typescript
-76: // //     abstract area(): number;      // must be implemented by subclasses
-77: // //     abstract perimeter(): number;
-80: // //     describe(): string {
-81: // //         return `Area: ${this.area()}, Perimeter: ${this.perimeter()}`;
-86: // //     constructor(private radius: number) { super(); }
-```
-
-- **Lines 75–89** (commented) — `abstract class Shape` with two `abstract`
-  methods (no body — must be implemented by subclasses, lines 76–77) and
-  one concrete method `describe()` (lines 80–82) that calls the not-yet-
-  implemented abstract methods polymorphically. `Circle extends Shape`
-  (lines 85–89) supplies concrete `area()`/`perimeter()` and uses a
-  parameter property (`private radius: number`, line 86) again.
-
-```typescript
-105: // class Animal {
-106: //     id;
-107: //     name;
-108: //     species;
-109: //     #sound;
-111: //     constructor(id, name, species, sound) {
-118: //     printData() { console.log(this.#sound); };
-```
-
-- **Lines 105–124** (commented) — this block is the **compiled-JS-shaped**
-  equivalent of the class: no type annotations at all (`id;`, `name;` with
-  no `: type`), constructor parameters untyped, `#sound` private field
-  syntax preserved (because `#field` is native JS, it survives compilation
-  unchanged — it's the one privacy mechanism TS doesn't need to erase).
-  This is the file's way of showing exactly what compiling the earlier
-  TS-annotated class strips away: every `: type`, every `public`/
-  `protected`/`private` keyword, every `readonly` — all gone in the emitted
-  `.js`, while `#sound` and the class/method structure itself survive
-  untouched.
+- `Dog extends Animal` uses **parameter properties** (`public breed: string,
+  private readonly age: number` right in the constructor parameter list) to
+  declare-and-assign in one step instead of a separate field declaration
+  plus `this.breed = breed;`. Its `speak()` override needs no `@Override`
+  keyword — TS checks override-compatibility structurally.
+- `interface Serializable` (`toJSON()`, `toString()`) and `class User
+  implements Serializable` reuse the same parameter-property shorthand on a
+  plain, non-inherited class.
+- `abstract class Shape` has two bodyless `abstract` methods plus one
+  concrete `describe()` that calls them polymorphically; `Circle extends
+  Shape` supplies the concrete implementations.
+- A final block shows the **compiled-JS-shaped** equivalent of the class:
+  every `: type`, `readonly`, and `public`/`protected`/`private` keyword is
+  gone, while `#sound` survives untouched — because `#field` is native JS
+  syntax, it's the one privacy mechanism TS doesn't need to erase.
 
 ## B.3 — `ts-interfaces.ts`
 
 The entire file is commented out (a reveal script), directly implementing
-reference section 3.
+reference section 3: `interface User` with a `readonly id`, an optional
+`age?`, and an optional inline-nested `address?` object; a `user1: User`
+literal that legally omits both optional fields; then `interface AdminUser
+extends User` adding `role: 'admin'` (a literal type) and `permissions:
+string[]`, with `adminUser: AdminUser` supplying every required field from
+both interfaces.
 
-```typescript
-1:  // interface User {
-2:  //     readonly id: number;         // readonly: can't reassign
-3:  //     name: string;
-4:  //     email: string;
-5:  //     age?: number;                // optional
-6:  //     address?: {
-7:  //         city: string;
-8:  //         country: string;
-9:  //     };
-10: // }
-12: // const user1: User = {
-13: //     id: 1,
-14: //     name: 'Sonu',
-15: //     email: 'a@b.c'
-16: // };
-18: // console.log(user1);
-19: // // user1.id = 2;// error
-20: // user1.name = 'Monu';
-21: // console.log(user1);
-25: // interface AdminUser extends User {
-26: //     role: 'admin';
-27: //     permissions: string[];
-28: // }
-30: // const adminUser: AdminUser = {
-31: //     role: 'admin',
-32: //     name: 'Tonu',
-33: //     email: 'a',
-34: //     id: 3,
-35: //     permissions: []
-36: // }
-```
-
-- **Line 2** — `readonly id: number` on the interface.
-- **Line 5** — `age?: number` — optional member; omitted entirely from
-  `user1` (lines 12–16) and that's legal because it's optional.
-- **Line 6–9** — `address?` is an **inline nested object type literal**
-  (not a separately named interface) — also omitted from `user1` since it's
-  optional too.
-- **Line 12–16** — `user1: User` satisfies the interface with just `id`,
-  `name`, `email` — proof that optional fields really are optional at the
-  literal-construction site.
-- **Line 19** — `user1.id = 2;` is commented out specifically *because* it
-  errors: `id` is `readonly`, so reassignment after construction is a
-  compile-time error (`ts(2540)`-class error), demonstrating `readonly` is
-  enforced at every write site, not just the initial one.
-- **Line 20** — `user1.name = 'Monu';` **is** allowed and left uncommented
-  in the reveal — `name` has no `readonly` modifier, so it's freely
-  mutable.
-- **Lines 25–28** — `interface AdminUser extends User` — adds `role: 'admin'`
-  (a single-value literal type, not the broader `string`) and
-  `permissions: string[]`. Extending an interface is additive: `AdminUser`
-  must satisfy every member of `User` plus its own.
-- **Lines 30–36** — `adminUser: AdminUser` supplies every required field
-  from both `User` (`name`, `email`, `id` — `age`/`address` still optional
-  and omitted) and `AdminUser` itself (`role`, `permissions`). Note `id: 3`
-  can still only be set once — the `readonly` constraint from the parent
-  interface still applies through the `extends` chain.
+- `user1.id = 2` is left commented out specifically because it *would*
+  error — `readonly` is enforced at every write site after construction,
+  not just the first one — while `user1.name = 'Monu'` is left uncommented
+  since `name` has no `readonly` modifier.
+- The `readonly` constraint on `id` still applies through the `extends`
+  chain: `adminUser.id` can also only be set once, even though `id` is
+  declared on the parent interface, not `AdminUser` itself.
 
 ---
 
@@ -892,44 +697,20 @@ since they're executed top-level on import).
 14: }
 ```
 
-- **Line 3** — `"target": "ES2020"` — the JS language level emitted output
-  targets; ES2020 supports optional chaining (`?.`), nullish coalescing
-  (`??`) — both used in the assignments (e.g. `assignment4.ts`'s `??`
-  default for the listener array).
-- **Line 4** — `"module": "commonjs"` — emits `require`/`module.exports`
-  rather than ESM `import`/`export`, matching how `ts-node` and plain Node
-  scripts in this project are actually run (`npx ts-node
-  src/assignment1.ts`), unlike the reference's suggested `NodeNext` for a
-  pure-ESM setup.
-- **Line 5** — `"lib": ["ES2020", "dom"]` — the ambient type declarations
-  available: `ES2020` standard-library types (`Map`, `Promise`, etc. — both
-  used heavily, e.g. `Repository`'s internal `Map<number, T>`) plus `dom`
-  types (included defensively even though this is a CLI app with no browser
-  APIs used — harmless but notably broader than strictly required).
-- **Line 6–7** — `outDir`/`rootDir` — compiled output goes to `dist/`,
-  source lives in `src/` (matches the `assignment1.ts`…`assignment5.ts`
-  layout).
-- **Line 8** — `"strict": true` — enables the full strict family
-  (`strictNullChecks`, `noImplicitAny`, etc. as one flag) — this is what
-  makes `let salary;` error in `script.ts` line 18, and what forces every
-  `Employee`/`Department`/`Project` field to be fully typed with no silent
-  gaps.
-- **Line 9** — `"esModuleInterop": true` — required for `assignment5.ts`'s
-  `import * as fs from "fs"` / `import * as path from "path"` to work
-  cleanly against CommonJS modules without namespace-import friction.
-- **Line 10–11** — `"experimentalDecorators": true` +
-  `"emitDecoratorMetadata": true` — required specifically for
-  `assignment3.ts`'s `@LogCall` method decorator (`emitDecoratorMetadata`
-  isn't strictly needed by `@LogCall` itself since it doesn't use
-  reflection, but it's the standard pairing enabled whenever decorators are
-  turned on, and the courseware's own setup instructions list both flags
-  together).
-- **Line 12** — `"types": ["node"]` — restricts which `@types/*` packages
-  are auto-included as ambient globals to just `@types/node`; without this,
-  TS would auto-include *every* `@types/*` package found in
-  `node_modules`, which could pull in unwanted global type pollution (e.g.
-  DOM globals from an unrelated package) even though `lib` already includes
-  `dom` type *definitions* for explicit use.
+- `"target": "ES2020"` supports the optional chaining/nullish coalescing
+  used throughout the assignments; `"module": "commonjs"` matches how
+  `ts-node` actually runs these files (`npx ts-node src/assignment1.ts`),
+  unlike the reference's suggested `NodeNext` for a pure-ESM setup.
+- `"lib": ["ES2020", "dom"]` includes `dom` defensively even though this is
+  a CLI app with no browser APIs — harmless but broader than strictly
+  required.
+- `"strict": true` is what makes `let salary;` error in `script.ts`, and
+  forces every model field to be fully typed with no silent gaps.
+- `"experimentalDecorators"` + `"emitDecoratorMetadata"` are required
+  specifically for `assignment3.ts`'s `@LogCall` decorator.
+- `"types": ["node"]` restricts auto-included ambient `@types/*` packages to
+  just `@types/node`, instead of pulling in every `@types/*` package found in
+  `node_modules`.
 
 ## C.3 — `assignment1.ts` — Types, interfaces & data modelling
 
@@ -970,55 +751,29 @@ since they're executed top-level on import).
 50: }
 ```
 
-- **Line 7–8** — `Role` and `Status` are **literal-union types**, not
-  `enum`s — a deliberate choice throughout the EMS project: string literal
-  unions serialize to plain JSON strings with no runtime object needed
-  (matters a lot for Assignment 5's JSON persistence — an `enum`'s numeric
-  values or extra reverse-mapping object would complicate the
-  save/load round trip).
-- **Line 12–16, 18–26, 28–34** — three `export interface` declarations,
-  every field in `Employee`/`Department`/`Project` typed explicitly. Note
-  `role: Role` and `status: Status` (line 21, 23) reuse the literal-union
-  types from line 7–8 rather than repeating `string` — this is what lets
-  `promote(id, newRole: Role)` in Assignment 3 reject a typo like
-  `"managr"` at compile time.
-- **Line 25** — `email?: string` — the *only* optional field in the whole
-  model; every mock employee either has or omits it (see lines 61–67 below).
-- **Line 33** — `deadline: Date` — a real `Date` object, not a string; this
+- `Role`/`Status` are **literal-union types**, not `enum`s — a deliberate
+  choice throughout the EMS project: string literal unions serialize to
+  plain JSON strings with no runtime object needed, which matters for
+  Assignment 5's JSON persistence (an `enum`'s numeric values/reverse-mapping
+  object would complicate the round trip). `Employee.role: Role` reusing this
+  type (rather than `string`) is what lets `promote(id, newRole: Role)` in
+  Assignment 3 reject a typo like `"managr"` at compile time.
+- `Employee.email?: string` is the only optional field in the whole model.
+- `Project.deadline: Date` is a real `Date` object, not a string — this
   choice is what forces Assignment 5 to manually reconstruct `Date` objects
-  after loading from JSON (JSON has no native date type — see C.7).
-- **Line 38–40** — `getFullLabel(e: Employee): string` — simple typed
-  utility, template-literal string interpolation (`${e.name} — ${e.role}`).
-- **Line 42–44** — `isActive(e: Employee): boolean` — a one-line predicate
-  comparing against the `Status` literal `"active"`.
-- **Line 46–50** — `daysUntilDeadline(p: Project): number` — computes the
-  millisecond difference between `p.deadline` and `new Date()` (line 48),
-  converts to days with `Math.ceil(diff / (1000 * 60 * 60 * 24))` (line
-  49) — `Math.ceil` rounds up so a deadline "tomorrow at 1am" doesn't read
-  as "0 days left." This function is reused unmodified all the way through
-  Assignment 5's `projectStatus()` report.
+  after loading from JSON, since JSON has no native date type (see C.7).
+- `daysUntilDeadline` converts the millisecond gap to days with
+  `Math.ceil(...)` — rounding up so "tomorrow at 1am" doesn't read as "0
+  days left." Reused unmodified through Assignment 5's `projectStatus()`.
 
-```typescript
-54: export const departments: Department[] = [
-60: export const employees: Employee[] = [
-61:   { id: 1, name: "Alice",   role: "manager",  salary: 90000, status: "active",    departmentId: 1, email: "alice@ems.com" },
-69: export const projects: Project[] = [
-82:     deadline: new Date("2024-06-30"),        // intentionally in the past (overdue)
-```
-
-- **Line 54–58, 60–67, 69–84** — mock data arrays, each explicitly typed
-  (`: Department[]`, `: Employee[]`, `: Project[]`) so any malformed literal
-  is caught immediately rather than at first use.
-- **Line 82** — a deadline deliberately set in the past — a planted test
-  fixture so `getOverdue()` (Assignment 3) and `daysUntilDeadline`
-  (Assignment 1) always have at least one real overdue project to report
-  on without needing the demo to be run on a specific date.
-- **Line 88–101** — a `console.log` demo section prints departments,
-  employees (via `getFullLabel`/`isActive`), and projects (via
-  `daysUntilDeadline`) — this demo block re-runs every time a later
-  assignment imports `assignment1.ts`, which is why running `assignment5.ts`
-  reprints Assignment 1's, 2's, 3's, and 4's demo output too (per the
-  README's explicit note).
+Mock data (`departments`, `employees`, `projects`) is explicitly typed as
+arrays of the interfaces above, so a malformed literal is caught
+immediately. One project's `deadline` is deliberately set in the past — a
+planted fixture so `getOverdue()` (Assignment 3) always has a real overdue
+project to report without depending on the current date. A closing
+`console.log` demo block re-runs every time a later assignment imports this
+file, which is why running `assignment5.ts` reprints every earlier
+assignment's demo output too.
 
 ## C.4 — `assignment2.ts` — Generic repository class
 
@@ -1060,78 +815,28 @@ since they're executed top-level on import).
 52: }
 ```
 
-- **Line 6–10** — imports the three interfaces and the mock arrays plus
-  `getFullLabel` straight from `assignment1.ts`, confirming the courseware's
-  claim that Assignment 2 builds directly on Assignment 1's types.
-- **Line 14–16** — `Identifiable` — the minimal structural constraint: any
-  type with at least an `id: number` field satisfies it. `Employee`,
-  `Department`, and `Project` all qualify automatically (structural typing
-  again — none of them ever writes `implements Identifiable`).
-- **Line 20** — `class Repository<T extends Identifiable>` — the generic
-  constraint (`extends Identifiable`) is what allows `item.id` to be
-  referenced safely inside the class body (line 24, 27) — without the
-  constraint, TS would have no reason to believe `T` has an `id` at all.
-- **Line 21** — `private store: Map<number, T> = new Map();` — a `private`
-  field (TS-compile-time private, not `#`-private) holding the actual
-  storage, keyed by numeric id.
-- **Line 23–28** — `add(item: T): void` — throws if an item with that id
-  already exists (line 24–26, using the same `item.id` structural guarantee),
-  otherwise inserts.
-- **Line 30–32** — `findById(id): T | undefined` — the `| undefined` return
-  type is TS forcing every caller to handle the "not found" case (seen used
-  with optional chaining, `bob?.salary`, in the demo below).
-- **Line 34–36** — `getAll(): T[]` — converts the `Map`'s values iterator to
-  a plain array via `Array.from`.
-- **Line 38–43** — `update(id, changes: Partial<T>): boolean` — this is the
-  reference's `Partial<T>` utility type (Part A.5) in real use: `changes`
-  can supply *any subset* of `T`'s fields. Line 41 spreads the existing
-  object and overlays `changes` (`{ ...existing, ...changes }`), so an
-  update to just `{ salary: 75000 }` leaves every other field untouched.
-- **Line 45–47** — `remove(id): boolean` — delegates directly to
-  `Map.prototype.delete`, which already returns a boolean for
-  found/not-found.
-- **Line 49–51** — `query(predicate: (item: T) => boolean): T[]` — a typed
-  higher-order function parameter; `predicate` must accept a `T` and return
-  `boolean` — this is what lets `empRepo.query(e => e.status === "active" &&
-  e.role === "engineer")` type-check `e` as `Employee` automatically with no
-  extra annotation needed at the call site.
+- `Identifiable { id: number }` is the minimal structural constraint:
+  `Employee`, `Department`, and `Project` all qualify automatically since
+  none of them needs to write `implements Identifiable` (structural typing).
+- `class Repository<T extends Identifiable>` — the `extends Identifiable`
+  constraint is what allows `item.id` to be referenced safely inside the
+  class body; without it TS has no reason to believe `T` has an `id` at all.
+- `update(id, changes: Partial<T>): boolean` is `Partial<T>` (Part A.5) in
+  real use: `changes` supplies any subset of `T`'s fields, spread over the
+  existing object (`{ ...existing, ...changes }`) so an update to just
+  `{ salary: 75000 }` leaves every other field untouched.
+- `findById` returns `T | undefined`, forcing every caller to handle "not
+  found" — this is why the demo below reads `bob?.salary` with optional
+  chaining rather than `bob.salary`.
+- `query(predicate: (item: T) => boolean): T[]` is a typed higher-order
+  parameter — it's what lets `empRepo.query(e => e.status === "active")`
+  type-check `e` as `Employee` automatically with no extra annotation.
 
-```typescript
-56: export function seedRepositories() {
-57:   const empRepo = new Repository<Employee>();
-58:   const deptRepo = new Repository<Department>();
-59:   const projectRepo = new Repository<Project>();
-61:   departments.forEach(d => deptRepo.add(d));
-62:   employees.forEach(e => empRepo.add(e));
-63:   projects.forEach(p => projectRepo.add(p));
-65:   return { empRepo, deptRepo, projectRepo };
-66: }
-```
-
-- **Line 56–66** — `seedRepositories()` instantiates three separately typed
-  `Repository<T>`s (line 57–59, each supplying a different `T`) and fills
-  them from Assignment 1's mock arrays (line 61–63). Returns an object with
-  all three — this exact function is re-called by Assignment 3's
-  `buildServices()` (see C.5) and by Assignment 4's `main()`.
-
-```typescript
-75: const activeEngineers = empRepo.query(
-76:   e => e.status === "active" && e.role === "engineer"
-77: );
-82: empRepo.update(2, { salary: 75000 });
-83: const bob = empRepo.findById(2);
-84: console.log(`\nBob's updated salary: ${bob?.salary}`);
-87: projectRepo.remove(2);
-91: const engTeam = empRepo.query(e => e.departmentId === 1);
-```
-
-- **Line 75–79** — demonstrates `query()` filtering active engineers.
-- **Line 82–84** — demonstrates `update()`, then `findById()`, then reads
-  `bob?.salary` — the `?.` optional chaining is required precisely because
-  `findById` returns `T | undefined` (line 30), so TS won't let you access
-  `.salary` without either a null check or `?.`.
-- **Line 87** — demonstrates `remove()`.
-- **Line 91** — demonstrates `query()` again for a department filter.
+`seedRepositories()` instantiates three separately typed `Repository<T>`s
+and fills each from Assignment 1's mock arrays — this exact function is
+re-called by Assignment 3's `buildServices()` (C.5) and Assignment 4's
+`main()`. The file's demo section exercises `query`, `update` +
+`findById`, and `remove` in turn.
 
 ## C.5 — `assignment3.ts` — Service layer with abstract classes & decorators
 
@@ -1153,19 +858,14 @@ since they're executed top-level on import).
 23: }
 ```
 
-- **Line 6–7** — imports `Repository`/`Identifiable` from Assignment 2 and
-  `Role`/`daysUntilDeadline` from Assignment 1 — Assignment 3 sits directly
-  on top of both prior layers.
-- **Line 11–23** — `LogCall` is a **method decorator** matching the exact
-  shape from Part A.7 (`(target, key, descriptor)`). `_target` is prefixed
-  with `_` by convention to signal "intentionally unused parameter" (paired
-  with the reference tsconfig's `noUnusedParameters`, though this project's
-  own tsconfig doesn't set that flag). Line 16 grabs the original method,
-  line 17–21 replaces `descriptor.value` with a wrapper that calls the
-  original (`original.apply(this, args)`, preserving `this` binding) and
-  logs `key`, `args`, and `result` as JSON — this is what produces the
-  `[LogCall] promote(...) => ...` console lines when `@LogCall` is applied
-  below.
+- `LogCall` is a **method decorator** matching the exact `(target, key,
+  descriptor)` shape from Part A.7. It grabs the original method and
+  replaces `descriptor.value` with a wrapper that calls it via
+  `original.apply(this, args)` (preserving `this` binding) and logs `key`,
+  `args`, and `result` as JSON — producing the `[LogCall] promote(...) =>
+  ...` console lines seen when `@LogCall` is applied below. `_target` is
+  prefixed with `_` by convention to signal "intentionally unused
+  parameter."
 
 ```typescript
 27: export abstract class BaseService<T extends Identifiable> {
@@ -1178,18 +878,12 @@ since they're executed top-level on import).
 35: }
 ```
 
-- **Line 27** — `abstract class BaseService<T extends Identifiable>` —
-  cannot be instantiated directly; generic over the same `Identifiable`
-  constraint as `Repository<T>`.
-- **Line 28** — `constructor(protected repo: Repository<T>) {}` — a
-  parameter property again, this time `protected` rather than `public` or
-  `private`: subclasses (`EmployeeService`, `ProjectService`) need direct
-  access to `this.repo` (used in `getByDepartment`, `assignEmployee`, etc.
-  below), but outside callers should not reach into it directly.
-- **Line 30–34** — five one-line methods, each simply delegating to the
-  matching `Repository<T>` method — this is the **facade/delegation**
-  pattern: `BaseService` doesn't reimplement CRUD, it just forwards to the
-  repository it was constructed with.
+- `abstract class BaseService<T extends Identifiable>` cannot be
+  instantiated directly. Its constructor uses `protected repo:
+  Repository<T>` — a parameter property this time `protected` rather than
+  `public`/`private`, so subclasses can reach `this.repo` directly but
+  outside callers cannot. Its five CRUD methods simply delegate to the
+  matching `Repository<T>` method (a facade/delegation pattern).
 
 ```typescript
 39: export class EmployeeService extends BaseService<Employee> {
@@ -1211,22 +905,14 @@ since they're executed top-level on import).
 57: }
 ```
 
-- **Line 39** — `EmployeeService extends BaseService<Employee>` — locks the
-  generic `T` to `Employee` for this subclass; all the delegated CRUD
-  methods from `BaseService` are now concretely typed for `Employee`.
-- **Line 40–42** — `getByDepartment` — a thin wrapper around
-  `this.repo.query(...)`, made possible because `repo` is `protected` (line
-  28) and therefore visible here.
-- **Line 44–47** — `@LogCall` applied directly above `promote`; `promote`
-  itself just calls `this.repo.update(id, { role: newRole })` — note
-  `{ role: newRole }` satisfies `Partial<Employee>` (only one field
-  supplied).
-- **Line 49–56** — `getSalaryReport()` returns an **inline object type**
-  (`{ total: number; average: number; highest: Employee }`) rather than a
-  named interface — legal and common for one-off return shapes. Line 52
-  totals every salary with `reduce`; line 53 averages and rounds; line 54
-  finds the highest earner via `reduce` comparing `e.salary > top.salary`,
-  seeded with `all[0]`. Decorated with `@LogCall` too (line 49).
+- `EmployeeService extends BaseService<Employee>` locks the generic `T` to
+  `Employee`. `getByDepartment` is a thin wrapper around `this.repo.query`,
+  reachable only because `repo` is `protected`. `promote` (decorated with
+  `@LogCall`) calls `this.repo.update(id, { role: newRole })` — note `{
+  role: newRole }` satisfies `Partial<Employee>` with just one field.
+  `getSalaryReport()` (also `@LogCall`-decorated) returns an **inline
+  object type** (`{ total; average; highest }`) rather than a named
+  interface — legal and common for one-off return shapes.
 
 ```typescript
 61: export class ProjectService extends BaseService<Project> {
@@ -1245,30 +931,15 @@ since they're executed top-level on import).
 75: }
 ```
 
-- **Line 61** — `ProjectService extends BaseService<Project>`.
-- **Line 62–70** — `assignEmployee` — guards against a missing project
-  (line 65) and against a duplicate assignment (line 66,
-  `.includes(empId)`), then updates `employeeIds` immutably by spreading the
-  existing array and appending (`[...project.employeeIds, empId]`, line
-  68) — never mutates the original array in place.
-- **Line 72–74** — `getOverdue()` reuses Assignment 1's `daysUntilDeadline`
-  (imported line 7) inside a `query()` predicate — direct proof of the
-  cross-assignment reuse chain: Assignment 1's function → Assignment 3's
-  service method.
+`ProjectService extends BaseService<Project>`. `assignEmployee` guards
+against a missing project and a duplicate assignment, then updates
+`employeeIds` immutably (`[...project.employeeIds, empId]`, never mutating
+in place). `getOverdue()` reuses Assignment 1's `daysUntilDeadline` inside a
+`query()` predicate — direct proof of the cross-assignment reuse chain.
 
-```typescript
-79: export function buildServices() {
-80:   const { empRepo, deptRepo, projectRepo } = seedRepositories();
-81:   const employeeService = new EmployeeService(empRepo);
-82:   const projectService  = new ProjectService(projectRepo);
-83:   return { employeeService, projectService, deptRepo };
-84: }
-```
-
-- **Line 79–84** — `buildServices()` calls Assignment 2's
-  `seedRepositories()` (line 80) then wraps the resulting repos in the two
-  concrete services (line 81–82) — this is the function Assignment 4 and 5
-  both call to bootstrap the whole stack in one call.
+`buildServices()` calls Assignment 2's `seedRepositories()` then wraps the
+resulting repos in the two concrete services — this is the function
+Assignment 4 and 5 both call to bootstrap the whole stack in one call.
 
 ## C.6 — `assignment4.ts` — Async operations & event callbacks
 
@@ -1343,33 +1014,20 @@ since they're executed top-level on import).
 65: }
 ```
 
-- **Line 36** — `AsyncEmployeeService extends EmployeeService` — wraps
-  Assignment 3's synchronous service with async, event-emitting versions of
-  its methods rather than modifying it, preserving the sync API too.
-- **Line 37–39** — constructor takes both a `Repository<Employee>` (passed
-  straight to `super(repo)`, satisfying `EmployeeService`'s inherited
-  constructor) and a `private bus: EventBus` — the parameter property
-  pattern again, this time on a subclass constructor with an extra
-  non-repo parameter.
-- **Line 41–45** — `addAsync` — awaits the simulated delay (line 42), calls
-  the inherited synchronous `add` (line 43), then emits `"employee:added"`
-  with a minimal payload (line 44).
-- **Line 47** — `newRole: Parameters<EmployeeService["promote"]>[1]` — a
-  notable utility-type usage not explicitly in the reference's list but
-  built from the same mapped/conditional-type machinery: `Parameters<F>`
+- `AsyncEmployeeService extends EmployeeService`, wrapping the synchronous
+  service with async, event-emitting versions of its methods rather than
+  modifying it — the sync API stays available too. Its constructor takes
+  both a `Repository<Employee>` (passed to `super(repo)`) and a `private
+  bus: EventBus`. Each async method (`addAsync`, `promoteAsync`,
+  `removeAsync`, `getSalaryReportAsync`) awaits a simulated `delay(300)`,
+  calls the inherited sync method, and conditionally emits an event only if
+  the operation actually succeeded.
+- `newRole: Parameters<EmployeeService["promote"]>[1]` — `Parameters<F>`
   extracts a function type's parameter list as a tuple, `["promote"]`
-  indexes into `EmployeeService`'s method by name, and `[1]` picks the
-  second parameter's type — i.e., this expression evaluates to exactly
-  `Role`, but *derived* from the original method's signature instead of
-  hand-typed again, so if `promote`'s signature ever changes, this stays in
-  sync automatically. This is a strictly TS capability with no Java
-  parallel — Java has no way to reference "the type of another method's
-  n-th parameter" at the type level.
-- **Line 49–51** — calls the inherited sync `promote`, and only emits
-  `"employee:promoted"` if it actually succeeded (`if (result)`, line 50).
-- **Line 54–59**, **61–64** — same async-wrap-then-emit pattern for
-  `removeAsync` and `getSalaryReportAsync` (the latter has no explicit
-  emit — it's a pure async passthrough).
+  indexes into the method by name, `[1]` picks the second parameter. This
+  evaluates to `Role`, but *derived* from `promote`'s actual signature
+  rather than hand-typed again, so it stays in sync automatically if that
+  signature ever changes — a TS capability with no Java parallel.
 
 ```typescript
 69: export class AsyncProjectService extends ProjectService {
@@ -1391,16 +1049,13 @@ since they're executed top-level on import).
 87: }
 ```
 
-- **Line 70** — `Repository<import("./assignment1").Project>` — an
-  **inline import type** used purely for its type, avoiding a top-level
-  named import just for this one parameter annotation; equivalent in effect
-  to importing `Project` at the top of the file, just written inline.
-- **Line 74–79** — mirrors `AsyncEmployeeService`'s pattern: delay, call
-  sync method, conditionally emit `"project:assigned"`.
-- **Line 81–86** — `getOverdueAsync` — unconditionally emits
-  `"project:overdue-check"` with just a `count` (line 84), regardless of
-  whether any projects are actually overdue, since "the check ran" is
-  itself the event, not "overdue projects exist."
+`AsyncProjectService` mirrors `AsyncEmployeeService`'s pattern. Its
+constructor uses `Repository<import("./assignment1").Project>` — an
+**inline import type**, purely for its type, avoiding a top-level named
+import just for one parameter annotation. `getOverdueAsync` unconditionally
+emits `"project:overdue-check"` with just a `count`, regardless of whether
+any projects are actually overdue, since "the check ran" is itself the
+event.
 
 ```typescript
 91: async function main() {
@@ -1412,19 +1067,14 @@ since they're executed top-level on import).
 103:   })();
 ```
 
-- **Line 97–103** — an immediately-invoked arrow function extracting the
-  private `repo` field out of `employeeService`/`projectService` purely for
-  demo purposes. Line 100–101 uses a **double assertion**
-  (`as unknown as { repo: ... }`) — TS normally refuses a direct cast
-  between two unrelated types (`EmployeeService as { repo: ... }` would
-  error, since neither is assignable to the other structurally in the
-  compiler's eyes given `repo` is `protected`), so going through `unknown`
-  first bypasses that check. This is explicitly a demo-only escape hatch,
-  not something you'd do in production code, and the comment on line 99
-  ("extract repos via casting for demo purposes") says so directly.
-- **Line 105** — `const bus = new EventBus();`, then lines 106–107
-  construct `AsyncEmployeeService`/`AsyncProjectService` wired to the same
-  bus.
+An immediately-invoked arrow function extracts the private `repo` field out
+of `employeeService`/`projectService` purely for demo purposes, using a
+**double assertion** (`as unknown as { repo: ... }`): TS normally refuses a
+direct cast between two unrelated types (`repo` is `protected`, so neither
+side is structurally assignable to the other), and routing through
+`unknown` first bypasses that check. The file's own comment flags this as a
+demo-only escape hatch, not production practice. `EventBus` and both async
+services are then constructed, wired to the same bus.
 
 ```typescript
 114: events.forEach(ev =>
@@ -1448,22 +1098,15 @@ since they're executed top-level on import).
 156: }
 ```
 
-- **Line 114–118** — subscribes the same logging handler to all five event
-  names in a loop, matching the courseware's required `[EVENT] name →
-  payload` log format.
-- **Line 120–156** — the required `try { sequence } catch (err: unknown)`
-  block: adds Grace (line 123–126), assigns her to a project, promotes her,
-  runs the salary report, checks overdue projects, and removes Eva — each
-  step `await`-ed in order. The `catch (err: unknown)` (line 150) then
-  narrows with `err instanceof Error` (line 151) before accessing
-  `.message` — exactly the type-guard pattern from Part A.5, applied to
-  error handling specifically because a `catch` clause's error is typed
-  `unknown` under `strict` mode (not `any`), so it cannot be used without
-  narrowing first.
-- **Line 159** — `main();` — the whole async function is invoked at the
-  bottom (fire-and-forget top-level call, standard for a CommonJS CLI
-  script since top-level `await` isn't available under this `module`
-  setting).
+A loop subscribes the same logging handler to all five event names, then a
+`try { sequence } catch (err: unknown)` block runs the required operation
+sequence (add, assign, promote, report, check overdue, remove), each step
+`await`-ed. `catch (err: unknown)` narrows with `err instanceof Error`
+before accessing `.message` — the type-guard pattern from Part A.5, needed
+here because a `catch` clause's error is typed `unknown` under `strict`
+mode (not `any`), so it can't be used without narrowing first. `main()` is
+invoked fire-and-forget at the bottom, since top-level `await` isn't
+available under `module: "commonjs"`.
 
 ## C.7 — `assignment5.ts` — Persistence, reporting & CLI runner
 
@@ -1488,20 +1131,15 @@ since they're executed top-level on import).
 24: const DATA_DIR = path.join(__dirname, "../data");
 ```
 
-- **Line 6–7** — `import * as fs`/`import * as path` — namespace imports,
-  needed because `esModuleInterop`/`commonjs` interop is enabled (Part C.2)
-  and Node's built-in modules don't have a single default export.
-- **Line 8–22** — imports span **all four** prior assignments: types +
-  mock data + `daysUntilDeadline` from Assignment 1, `Repository`/
-  `Identifiable` from Assignment 2, `buildServices` from Assignment 3, and
-  the async services + `EventBus` + `delay` from Assignment 4 — the single
-  most direct evidence in the codebase of the "Assignment 5 builds on
-  everything" claim in the courseware.
-- **Line 10–12** — renames the mock arrays on import (`as mockDepts`,
-  `as mockEmps`, `as mockProjects`) to avoid name collisions with the
-  locally loaded data (`depts`, `emps`, `projs` below).
-- **Line 24** — `DATA_DIR` resolved relative to `__dirname` (available
-  because `module: "commonjs"`, not ESM) — points at `ems-ts/data/`.
+- `import * as fs`/`import * as path` are namespace imports, needed because
+  Node's built-in modules don't have a single default export under
+  `esModuleInterop`/`commonjs`.
+- Imports span **all four** prior assignments — the single most direct
+  evidence in the codebase of "Assignment 5 builds on everything." The mock
+  arrays are renamed on import (`as mockDepts` etc.) to avoid colliding with
+  the locally loaded data.
+- `DATA_DIR` is resolved relative to `__dirname` (available under
+  `commonjs`, not ESM).
 
 ```typescript
 28: type EMSSnapshot = {
@@ -1512,10 +1150,9 @@ since they're executed top-level on import).
 33: };
 ```
 
-- **Line 28–33** — the bonus `EMSSnapshot` type from the courseware, using
-  `type` (not `interface`) for a plain data shape — either would work here,
-  but `type` is used consistently for "just data" shapes throughout this
-  file.
+The bonus `EMSSnapshot` type uses `type` (not `interface`) for a plain data
+shape — either would work, but `type` is used consistently for "just data"
+shapes throughout this file.
 
 ```typescript
 37: async function saveAll<T>(filePath: string, items: T[]): Promise<void> {
@@ -1537,22 +1174,18 @@ since they're executed top-level on import).
 55: }
 ```
 
-- **Line 37–40** — `saveAll<T>` — a standalone generic function (the
-  courseware describes this as a `BaseService` method; this file implements
-  it as a free function instead, applied per-entity-array in `main()`).
-  Line 38 ensures the target directory exists (`mkdir` with `recursive:
-  true`, safe to call even if it already exists) before line 39 writes
-  pretty-printed JSON (`JSON.stringify(items, null, 2)`).
-- **Line 42–49** — `loadAll<T>` — reads and `JSON.parse`s the file (line
-  44–45, asserting the parsed result `as T[]` since `JSON.parse`'s return
-  type is always `any`), and the bare `catch { return []; }` (line 46–47)
-  is exactly the courseware's requirement: a missing file returns an empty
-  array, not a thrown error — callers don't need their own try/catch around
-  every load call.
-- **Line 51–55** — `seedRepo<T extends Identifiable>` — a small helper
-  consolidating the "new Repository + forEach add" pattern seen inline in
-  `seedRepositories()` (Assignment 2) into a one-liner reusable per entity
-  type.
+- `saveAll<T>` is a standalone generic function (the courseware describes
+  this as a `BaseService` method; this file implements it as a free
+  function instead). It ensures the target directory exists (`mkdir` with
+  `recursive: true`) before writing pretty-printed JSON.
+- `loadAll<T>` reads and `JSON.parse`s the file, asserting the result `as
+  T[]` since `JSON.parse`'s return type is always `any`. Its bare `catch {
+  return []; }` is the courseware's explicit requirement: a missing file
+  returns an empty array rather than throwing, so callers don't need their
+  own try/catch around every load call.
+- `seedRepo<T extends Identifiable>` consolidates the "new Repository +
+  forEach add" pattern from `seedRepositories()` (Assignment 2) into a
+  reusable one-liner per entity type.
 
 ```typescript
 59: class ReportService {
@@ -1585,21 +1218,15 @@ since they're executed top-level on import).
 88: }
 ```
 
-- **Line 59–64** — `ReportService` — a plain (non-`BaseService`) class,
-  taking all three repositories via three separate `private` parameter
-  properties, since reports need to cross-reference employees against
-  departments and projects rather than operate on a single entity type.
-- **Line 66–75** — `departmentSummary()` — for each department (line 67),
-  queries employees belonging to it (line 68), computes an average salary
-  guarding against divide-by-zero for empty departments (the ternary on
-  lines 70–72), and returns an inline-typed object per department — the
-  exact shape declared in the method's return-type annotation (line 66).
-- **Line 77–87** — `projectStatus()` — reuses `daysUntilDeadline` (line
-  79, imported from Assignment 1) to compute `daysLeft` and derives
-  `overdue: daysLeft < 0` (line 84) inline, rather than reusing
-  `ProjectService.getOverdue()` from Assignment 3 — a slightly different
-  code path than Assignment 3's, but same underlying logic
-  (`daysUntilDeadline(p) < 0`).
+`ReportService` is a plain (non-`BaseService`) class taking all three
+repositories via separate `private` parameter properties, since reports
+cross-reference employees against departments and projects rather than
+operate on one entity type. `departmentSummary()` computes an average
+salary per department, guarding against divide-by-zero for empty
+departments with a ternary. `projectStatus()` reuses `daysUntilDeadline` to
+compute `daysLeft` and derives `overdue: daysLeft < 0` inline — a separate
+code path from `ProjectService.getOverdue()` (Assignment 3) but the same
+underlying logic.
 
 ```typescript
 100: let loadedEmps   = await loadAll<Employee>(empFile);
@@ -1612,24 +1239,19 @@ since they're executed top-level on import).
 111: const source = loadedEmps.length ? "saved files" : "mock data (first run)";
 ```
 
-- **Line 100–102** — loads each entity type via `loadAll<T>`, generic type
-  argument supplying the exact type per call.
-- **Line 105** — **this is the JSON round-trip gotcha the courseware
-  implicitly tests for**: `Project.deadline` is typed `Date` (Assignment
-  1, line 33), but `JSON.stringify`/`JSON.parse` serialize `Date` objects
-  as plain ISO strings with no way to auto-restore them — so after
-  `loadAll<Project>`, every `deadline` is actually a `string` at runtime
-  even though TS still believes it's `Date` (the type assertion `as T[]`
-  inside `loadAll`, line 45, is a lie at this point). Line 105 manually
-  reconstructs real `Date` objects (`new Date(p.deadline)`) before the data
-  is used anywhere that calls `.getTime()` (i.e., `daysUntilDeadline`) —
-  without this line, `daysUntilDeadline` would throw or silently misbehave
-  on loaded data.
-- **Line 107–109** — falls back to the Assignment 1 mock data if nothing
-  was loaded (`.length` check on each loaded array).
-- **Line 111** — determines the log message based on whether real data was
-  loaded — a nice small UX touch to make the first-run vs. subsequent-run
-  behavior visible in the console.
+Each entity type is loaded via `loadAll<T>`, then falls back to Assignment
+1's mock data if nothing was loaded (`.length` check on each array).
+
+**The JSON round-trip gotcha the courseware implicitly tests for**:
+`Project.deadline` is typed `Date`, but `JSON.stringify`/`JSON.parse`
+serialize `Date` objects as plain ISO strings with no way to auto-restore
+them — so after `loadAll<Project>`, every `deadline` is actually a `string`
+at runtime even though TS still believes it's `Date` (the `as T[]`
+assertion inside `loadAll` is a lie at this point). The loaded projects are
+manually mapped through `new Date(p.deadline)` to reconstruct real `Date`
+objects before anything calls `.getTime()` on them (i.e.
+`daysUntilDeadline`) — without this step, that function would throw or
+silently misbehave on loaded data.
 
 ```typescript
 119: const bus         = new EventBus();
@@ -1645,14 +1267,11 @@ since they're executed top-level on import).
 139: await empService.removeAsync(6);   // remove inactive Frank
 ```
 
-- **Line 119–122** — wires up the same `AsyncEmployeeService`/
-  `AsyncProjectService` classes from Assignment 4, plus the new
-  `ReportService`, all sharing the repositories seeded from loaded-or-mock
-  data.
-- **Line 132–139** — the required operation sequence: add Helen, assign her
-  to project 1, promote her to manager, and remove Frank (id 6, the
-  `"inactive"` manager planted in Assignment 1's mock data specifically to
-  give this step something realistic to remove).
+This wires up `AsyncEmployeeService`/`AsyncProjectService` plus the new
+`ReportService`, sharing repositories seeded from loaded-or-mock data, then
+runs the required operation sequence: add Helen, assign her to project 1,
+promote her to manager, remove Frank (the `"inactive"` manager planted in
+Assignment 1's mock data for this purpose).
 
 ```typescript
 147: console.log("--- Department Summary ---");
@@ -1672,20 +1291,14 @@ since they're executed top-level on import).
 168: await fs.promises.writeFile(snapshotFile, JSON.stringify(snapshot, null, 2), "utf-8");
 ```
 
-- **Line 147–151** — `console.table()` is used exactly as the courseware
-  specifies, printing both reports as formatted tables straight from the
-  array-of-objects shapes `departmentSummary()`/`projectStatus()` return.
-- **Line 154–156** — saves each repository's current state back to its own
-  JSON file via `saveAll`, completing the persistence round-trip (loaded at
-  the top of `main()`, saved again at the bottom, so the next run picks up
-  where this one left off).
-- **Line 160–168** — builds the bonus `EMSSnapshot` (typed against the
-  interface at line 28–33), stamping `savedAt` with `new
-  Date().toISOString()`, and writes it directly with `fs.promises.writeFile`
-  rather than going through `saveAll` (since `saveAll` takes an array, and
-  the snapshot is a single object, not an array).
-- **Line 171** — `main();` — same fire-and-forget top-level invocation
-  pattern as Assignment 4.
+`console.table()` prints both reports straight from the array-of-objects
+shapes the report methods return. Each repository's state is saved back to
+its own JSON file via `saveAll`, completing the persistence round-trip
+(loaded at the top of `main()`, saved at the bottom, so the next run picks
+up where this one left off). The bonus `EMSSnapshot` is written directly
+with `fs.promises.writeFile` rather than through `saveAll`, since `saveAll`
+takes an array and the snapshot is a single object. `main()` is invoked
+fire-and-forget, same as Assignment 4.
 
 ---
 
@@ -1980,154 +1593,92 @@ This is the course's real, fully implemented Socket.io module — it wires a
 chat/notification layer into the Express-based EMS backend.
 
 ```javascript
-1:  // src/sockets/notifications.js
-2:  // Demonstrates: Real-Time Web Applications with Socket.io (Chat App topic)
-4:  const setupSocketIO = (io) => {
-5:    // Track connected users: socketId → employeeId
-6:    const connectedUsers = new Map();
-8:    io.on('connection', (socket) => {
-9:      console.log(`🔌 Socket connected: ${socket.id}`);
+const setupSocketIO = (io) => {
+  const connectedUsers = new Map(); // socketId → { employeeId, name }
+
+  io.on('connection', (socket) => {
+    console.log(`Socket connected: ${socket.id}`);
+
+    socket.on('identify', ({ employeeId, name }) => {
+      connectedUsers.set(socket.id, { employeeId, name });
+      socket.join(`employee:${employeeId}`); // personal room
+
+      socket.broadcast.emit('user:online', { employeeId, name });
+
+      const onlineList = [...connectedUsers.values()];
+      socket.emit('users:online', onlineList);
+    });
+
+    socket.on('notify:all', ({ message, type = 'info' }) => {
+      io.emit('notification', { message, type, timestamp: new Date() });
+    });
+
+    socket.on('notify:employee', ({ employeeId, message, type = 'info' }) => {
+      io.to(`employee:${employeeId}`).emit('notification', { message, type, timestamp: new Date() });
+    });
+
+    socket.on('project:update', ({ projectId, projectName, status }) => {
+      io.emit('project:updated', {
+        projectId, projectName, status,
+        updatedBy: connectedUsers.get(socket.id),
+        timestamp: new Date(),
+      });
+    });
+
+    socket.on('disconnect', () => {
+      const user = connectedUsers.get(socket.id);
+      if (user) {
+        socket.broadcast.emit('user:offline', user);
+        connectedUsers.delete(socket.id);
+      }
+      console.log(`Socket disconnected: ${socket.id}`);
+    });
+  });
+};
+
+module.exports = setupSocketIO;
 ```
 
-- **Line 4** — `setupSocketIO = (io) => { ... }` — the whole module is a
-  single factory function taking the server's `io` instance (constructed
-  elsewhere, e.g. `new Server(httpServer)`, and passed in) — this is the
-  standard pattern for keeping Socket.io wiring in its own file separate
-  from Express route files.
-- **Line 6** — `connectedUsers = new Map()` — a **module-level** (really,
-  closure-level — scoped to one call of `setupSocketIO`) map from
-  `socket.id` to `{ employeeId, name }`. This is the "attach custom data"
-  pattern from Part D.10, implemented as an external map instead of
-  properties bolted onto `socket` directly.
-- **Line 8** — `io.on('connection', (socket) => { ... })` — the standard
-  entry point (Part D.6): fires once per new client connection, and every
-  handler below is registered *inside* this callback, scoped to that one
-  `socket`.
-- **Line 9** — logs the new connection's `socket.id` immediately.
+The whole module is a single factory function taking the server's `io`
+instance (constructed elsewhere, e.g. `new Server(httpServer)`) — the
+standard pattern for keeping Socket.io wiring in its own file, separate
+from Express routes. `connectedUsers` is a closure-level map from
+`socket.id` to `{ employeeId, name }` — the "attach custom data" pattern
+from Part D.10, implemented as an external map instead of properties
+bolted onto `socket` directly.
 
-```javascript
-12: socket.on('identify', ({ employeeId, name }) => {
-13:   connectedUsers.set(socket.id, { employeeId, name });
-14:   socket.join(`employee:${employeeId}`); // personal room
-16:   // Notify others
-17:   socket.broadcast.emit('user:online', { employeeId, name });
-19:   // Send current online list back to the new joiner
-20:   const onlineList = [...connectedUsers.values()];
-21:   socket.emit('users:online', onlineList);
-23:   console.log(`👤 Employee identified: ${name} (${employeeId})`);
-24: });
-```
-
-- **Line 12** — `socket.on('identify', ({ employeeId, name }) => {...})` —
-  a custom application event (not a Socket.io built-in): fires when the
-  client sends `socket.emit('identify', { employeeId, name })` after
-  connecting, since the initial `connection` event has no knowledge of
-  *who* the user is yet.
-- **Line 13** — records this socket's identity in `connectedUsers`.
-- **Line 14** — `socket.join(\`employee:${employeeId}\`)` — joins a
-  **personal room** named after the employee's id. This is exactly what
-  makes private, per-employee notifications possible later
-  (`io.to('employee:5').emit(...)`, line 33) — a room with (usually) exactly
-  one member, used as an addressable private channel rather than a
-  broadcast group.
-- **Line 17** — `socket.broadcast.emit('user:online', ...)` — Part D.2's
-  "everyone except this socket" form: every *other* connected client is
-  told this employee just came online; the newly-identified socket itself
-  doesn't need to be told it's online.
-- **Line 20–21** — builds the current online-user list
-  (`[...connectedUsers.values()]`) and sends it back with `socket.emit`
-  (Part D.2's "this socket only" form) — this is how a freshly-connected
-  client discovers who else is already online, since it missed all the
-  earlier `user:online` broadcasts.
-- **Line 23** — logs the identification server-side.
-
-```javascript
-27: socket.on('notify:all', ({ message, type = 'info' }) => {
-28:   io.emit('notification', { message, type, timestamp: new Date() });
-29: });
-32: socket.on('notify:employee', ({ employeeId, message, type = 'info' }) => {
-33:   io.to(`employee:${employeeId}`).emit('notification', {
-34:     message,
-35:     type,
-36:     timestamp: new Date(),
-37:   });
-38: });
-```
-
-- **Line 27–29** — `notify:all` — a global-broadcast custom event. Uses
-  `io.emit` (Part D.2's "every connected socket," including the sender
-  itself) rather than `socket.broadcast.emit`, since a system-wide
-  notification should reach the socket that triggered it too. `type =
-  'info'` is a default parameter applied via destructuring if the caller
-  omits it.
-- **Line 32–38** — `notify:employee` — targets a single employee's personal
-  room (joined at line 14) with `io.to(room).emit(...)` — Part D.2's
-  room-targeted, sender-inclusive form; since only that one employee's
-  socket(s) are members of `employee:${employeeId}`, this is effectively a
+- `identify` is a custom application event (not a Socket.io built-in),
+  fired by the client once it knows who the user is (the initial
+  `connection` event doesn't). It joins a **personal room** named after the
+  employee's id — a room with (usually) exactly one member, used as an
+  addressable private channel — which is what later makes
+  `io.to('employee:5').emit(...)` work as a private message. It then
+  `socket.broadcast.emit`s `user:online` to everyone else, and separately
+  `socket.emit`s the current online list back to just the new joiner (who
+  missed all earlier broadcasts).
+- `notify:all` uses `io.emit` (including the sender) rather than
+  `socket.broadcast.emit`, since a system-wide notification should reach
+  the socket that triggered it too. `notify:employee` targets a single
+  employee's personal room with `io.to(room).emit(...)` — effectively a
   private message even though it's technically a room broadcast.
-
-```javascript
-41: socket.on('project:update', ({ projectId, projectName, status }) => {
-42:   io.emit('project:updated', {
-43:     projectId,
-44:     projectName,
-45:     status,
-46:     updatedBy: connectedUsers.get(socket.id),
-47:     timestamp: new Date(),
-48:   });
-49: });
-```
-
-- **Line 41–49** — `project:update` — broadcasts a project status change to
-  everyone (`io.emit`, line 42) and enriches the payload with
-  `updatedBy: connectedUsers.get(socket.id)` (line 46), looking up the
-  sender's identity from the map populated back in the `identify` handler
-  — demonstrating exactly why that map exists: to attribute later events to
-  a human-readable employee identity instead of just a raw socket id.
-
-```javascript
-51: socket.on('disconnect', () => {
-52:   const user = connectedUsers.get(socket.id);
-53:   if (user) {
-54:     socket.broadcast.emit('user:offline', user);
-55:     connectedUsers.delete(socket.id);
-56:   }
-57:   console.log(`🔌 Socket disconnected: ${socket.id}`);
-58: });
-59:  });
-60: };
-62: module.exports = setupSocketIO;
-```
-
-- **Line 51** — `socket.on('disconnect', () => {...})` — the built-in event
-  (Part D.6), fires when the connection drops for any reason.
-- **Line 52–56** — looks up whether this socket had ever identified itself
-  (guards against a socket disconnecting before ever sending `identify`,
-  line 53's `if (user)`), broadcasts `user:offline` to everyone else (line
-  54, mirroring the `user:online` broadcast from the `identify` handler),
-  then cleans up the map entry (line 55) — without this deletion,
-  `connectedUsers` would leak an entry per disconnected socket forever.
-- **Line 57** — logs the disconnection.
-- **Line 59** — closes the `io.on('connection', ...)` callback.
-- **Line 60–62** — closes `setupSocketIO` and exports it via CommonJS
-  (`module.exports`), matching this file's plain-JS (not TS) nature — it's
-  called elsewhere in the Express app's bootstrap with the constructed `io`
-  instance, e.g. `setupSocketIO(io)`.
+- `project:update` enriches its broadcast payload with `updatedBy:
+  connectedUsers.get(socket.id)` — this is exactly why the map exists: to
+  attribute events to a human-readable identity instead of a raw socket id.
+- `disconnect` guards against a socket that disconnects before ever
+  identifying (`if (user)`), broadcasts `user:offline` to mirror the
+  `identify` handler's `user:online`, then deletes the map entry — without
+  that deletion, `connectedUsers` would leak an entry per disconnect
+  forever.
 
 ## E.2 — `socket-demo.js` (standalone demo)
 
-```javascript
-1:  // socket-demo.js
-```
-
 This file is a **stub** — its entire content is a single header comment,
-with no actual implementation. There is no server setup, no
-`io.on('connection', ...)`, and no client code in it to walk through. For
-assessment purposes, treat every Socket.io *pattern* (connection handling,
-custom events, rooms, broadcasting, cleanup on disconnect) as covered
-exclusively by `notifications.js` above and by the reference examples in
-Part D — this file exists as a placeholder in the project layout but was
-never filled in with a second worked example.
+with no actual implementation: no server setup, no
+`io.on('connection', ...)`, and no client code. Every Socket.io pattern
+(connection handling, custom events, rooms, broadcasting, cleanup on
+disconnect) is covered exclusively by `notifications.js` above and the
+reference examples in Part D — this file is a placeholder that was never
+filled in with a second worked example.
 
 ---
 

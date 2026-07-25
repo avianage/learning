@@ -14,39 +14,24 @@ Every program's entry point is `public static void main(String[] args)` — the 
 
 ```java
 1:  package com.acme.demo;
-2:  
 3:  // Java - versions 
-4:  
 5:  public class Hello {
-6:  
 7:  	public static void main(String[] args) {
-8:  
 9:  //		byte b1 = 100;
 10: //		byte b2 = 30;
 11: //		int b3 = b1 + b2;
 12: //		byte b3 = (byte) (b1 + b2);
-13: 		
 14: 		byte b1 = 100;
 15: 		byte b2 = 30;
 16: 		byte b3 = (byte) (b1 + b2);
-17: 
 18: 		System.out.println(b3);
-19: 
 20: 		System.out.println("Hello world! 2");
-21: 
 22: 	}
-23: 
 24: }
 ```
 
-- **Line 1** — `package com.acme.demo;` must be the first non-comment line in the file. It places `Hello` in the `com.acme.demo` namespace, which also dictates the required directory structure (`com/acme/demo/Hello.java`) on disk.
-- **Line 5** — `public class Hello` — the file must be named `Hello.java` because the public top-level class name and filename must match exactly.
-- **Line 7** — the mandatory JVM entry-point signature, explained above.
-- **Lines 9–12** — commented-out code showing what the instructor first tried: `int b3 = b1 + b2;` would compile fine (byte + byte promotes to int), but `byte b3 = b1 + b2;` would **not** compile without a cast, because the result of any `byte`/`short` arithmetic is always widened to `int` — assigning an `int` back into a `byte` variable needs an explicit narrowing cast.
-- **Line 14–15** — `byte b1 = 100; byte b2 = 30;` declare two 1-byte integers (range -128 to 127).
-- **Line 16** — `byte b3 = (byte) (b1 + b2);` — `b1 + b2` is computed as `int` (130), then explicitly narrowed back to `byte` with `(byte)`. Since 130 exceeds `byte`'s max of 127, this **overflows and wraps around** (130 − 256 = −126) — a classic narrowing-cast gotcha the instructor is deliberately demonstrating.
-- **Line 18** — prints the wrapped value; running this prints `-126`, not `130`, illustrating why blind narrowing casts are dangerous.
-- **Line 20** — a plain `println` — the "real" hello-world output.
+- **Lines 9–12** (commented) — without the cast, `byte b3 = b1 + b2;` would **not** compile, because any `byte`/`short` arithmetic result is always widened to `int` first.
+- **Line 16** — `byte b3 = (byte) (b1 + b2);` — `b1 + b2` computes as `int` (130), then is narrowed to `byte`. Since 130 exceeds `byte`'s max of 127, this **overflows and wraps around** to `-126` — a classic narrowing-cast gotcha, confirmed by the `println` on line 18.
 
 ---
 
@@ -56,7 +41,7 @@ This module explains what happens after you type `java Employee`. The JVM works 
 
 The key memory areas: the **Method Area** (shared, holds class metadata, static variables, the string constant pool — one copy per class), the **Heap** (shared, holds every object created with `new`, subdivided into Young Generation — Eden + two Survivor spaces — and Old Generation for long-lived, promoted objects), the **Stack** (one per thread, holds method call frames — local variables and parameters — pushed on call and popped on return; exhausting it throws `StackOverflowError`, classically from unterminated recursion), the **PC Register** (per-thread, tracks the current bytecode instruction), and the **Native Method Stack** (for JNI/native calls). A critical distinction to internalize: static fields live once in the Method Area regardless of how many objects exist, while instance fields live per-object on the heap. `System.gc()` only *requests* garbage collection — the JVM is free to ignore it, and calling it in production code is discouraged since it can trigger a GC pause at an inopportune moment. Common runtime errors map directly to these regions: `StackOverflowError` (stack exhausted), `OutOfMemoryError: Java heap space` (heap exhausted), `OutOfMemoryError: Metaspace` (method area exhausted, e.g. from dynamic class generation), `ClassNotFoundException`/`NoClassDefFoundError` (classpath/dependency problems at load time vs. runtime).
 
-No dedicated runnable file exists for this topic in the course code folder — it is a conceptual module. The closest illustration in the codebase is `Hello.java` (Topic 1 above): its `byte b3 = (byte)(b1 + b2);` line is itself bytecode-level behavior — the JVM's execution engine performs the addition as an `int` operation (per JVM arithmetic instruction rules) and the explicit narrowing cast is a separate bytecode instruction (`i2b`) that truncates the result, which is why the overflow/wraparound happens at runtime rather than being caught at compile time.
+No dedicated runnable file exists for this conceptual module; the closest illustration is `Hello.java`'s `byte b3 = (byte)(b1 + b2);` (Topic 1) — the addition runs as an `int` operation and the narrowing cast is a separate bytecode instruction (`i2b`) that truncates the result, which is why the overflow/wraparound happens at runtime.
 
 ---
 
@@ -74,9 +59,7 @@ Literals come in several forms: integer literals can be decimal, binary (`0b...`
 
 ```java
 1:  package com.acme.demo.day1;
-2:  
 3:  public class CommonDemo {
-4:  
 5:  	public static void main(String[] args) {
 6:  		// Employee data -
 7:  		int id = 1;
@@ -86,23 +69,16 @@ Literals come in several forms: integer literals can be decimal, binary (`0b...`
 11: 		int i = 97;
 12: 		char c = (char) i;
 13: 		System.out.println(c);
-14: 
 15: 	}
-16: 
 17: }
 ```
 
-- **Line 7** — `int id = 1;` — a standard 4-byte whole number, the default choice for integers in Java.
-- **Line 8** — `String name = "Sonu";` — a reference type holding a string literal (interned in the string pool, see Module 7).
-- **Line 9** — `double salary = 10.75;` — the default floating-point type for decimal values (no `f`/`d` suffix needed since `double` is the default for decimal literals).
-- **Line 10** — commented-out `long[] phones = {...}` — shows a `long[]` array of phone numbers; the `L` suffix would be needed on the literals since they exceed `int` range (9,876,543,210 > `Integer.MAX_VALUE`).
-- **Line 11** — `int i = 97;` — an `int` holding the ASCII/Unicode code point for the character `'a'`.
-- **Line 12** — `char c = (char) i;` — explicit narrowing cast from `int` to `char`. `char` is a 16-bit unsigned type holding Unicode code points; casting `int` to `char` reinterprets the numeric value as a code point. Since `97` fits within `char`'s range, no data is lost here (unlike the `byte` overflow example in Module 1).
-- **Line 13** — prints `a` — proof that `c` now holds the character corresponding to code point 97.
+- **Line 10** (commented) — a `long[]` array would need the `L` suffix on its literals since they exceed `int` range (9,876,543,210 > `Integer.MAX_VALUE`).
+- **Line 12** — `char c = (char) i;` — explicit narrowing cast from `int` to `char` (a 16-bit unsigned Unicode-code-point type). Since `97` fits within `char`'s range, no data is lost here (unlike the `byte` overflow example in Module 1) — printing `c` shows `a`.
 
 ### Code — `Hello.java` (see Module 1)
 
-Already covered above; it is the second demonstration file relevant to this module because of its narrowing-cast/overflow behavior on `byte` arithmetic.
+Already covered above — relevant here too for its narrowing-cast/overflow behavior on `byte` arithmetic.
 
 ---
 
@@ -116,77 +92,55 @@ Primitives are fast but are **not objects** — they can't go into collections (
 
 ```java
 1:  package com.acme.demo.day2.commons.wrapper;
-2:  
 3:  import java.util.Scanner;
-4:  
 5:  import com.acme.demo.day1.constructor.Employee;
-6:  
 7:  public class WrapperDemo {
-8:  
 9:  	public static void main(String[] args) {
-10: 
 11: //		Employee emp = new Employee();
 12: //		Scanner sc = new Scanner(System.in);
 13: //		int num = 10;
 14: //		emp. // insance methods field 
 15: //		num. // primittive field 
-16: 
 17: //		int num = 10; // primitive 
 18: //		Integer num2 = 20; // object 
-19: 
 20: //		int num = 10; 
 21: //		Integer num2 = num; // boxing - autoboxing 
 22: //		Integer num3 = Integer.valueOf(num); // boxing - manual boxing 
 23: //		int num4 = num3; // unboxing - auto unboxing 
 24: //		int num5 = num3.intValue(); // unboxing - manual unboxing 
-25: 		
 26: //		int num6 = Integer.parseInt("8888");
 27: 		int num6 = Integer.parseInt("aaa"); //exception 
 28: 		System.out.println(num6);
 29: //		Integer num2 = 10; 
 30: //		Integer. // static methods and fields 
 31: //		num2. // instance methods and fields 
-32: 
 33: 	}
 34: }
 ```
 
-- **Line 3–5** — imports: `Scanner` (unused in the live code, left from an earlier exploration) and `Employee` from a sibling package — shown only in commented lines to illustrate that a primitive (`num.`) has no callable methods/fields (it's not an object), while an object reference (`emp.`) does.
-- **Lines 17–18** — commented notes: `int num = 10;` is a raw primitive value; `Integer num2 = 20;` autoboxes the literal `20` into an `Integer` object — the instructor is annotating the conceptual difference.
-- **Lines 20–24** — a commented walkthrough of all four boxing/unboxing forms: `Integer num2 = num;` (autoboxing), `Integer.valueOf(num)` (manual/explicit boxing), `int num4 = num3;` (auto-unboxing), `num3.intValue()` (manual unboxing via the wrapper's own instance method).
-- **Line 26** — commented alternative showing the "happy path": `Integer.parseInt("8888")` would succeed and return `8888`.
-- **Line 27** — `int num6 = Integer.parseInt("aaa");` — the line actually left active. `"aaa"` is not a valid integer, so this throws `NumberFormatException` **at runtime** (the code compiles fine — this is a runtime, not compile-time, failure). This is a deliberate live demonstration of the exception `parseInt` throws on malformed input.
-- **Line 28** — never reached when the program is run as-is, because line 27 throws before execution gets here.
+- **Lines 20–24** (commented) — a walkthrough of all four boxing/unboxing forms: `Integer num2 = num;` (autoboxing), `Integer.valueOf(num)` (manual boxing), `int num4 = num3;` (auto-unboxing), `num3.intValue()` (manual unboxing).
+- **Line 27** — `int num6 = Integer.parseInt("aaa");` — `"aaa"` is not a valid integer, so this throws `NumberFormatException` **at runtime** (the code compiles fine — this is a runtime, not compile-time, failure). Line 28's print is never reached as a result.
 
 ### Code — `day2/Test.java` (Integer cache, `==` vs `.equals()`)
 
 ```java
 1:  package com.acme.demo.day2;
-2:  
 3:  public class Test {
-4:  
 5:  	public static void main(String[] args) {
-6:  
 7:  		Integer i = 200;
 8:  		Integer j = 200;
 9:  		System.out.println(i == j);
 10: 		System.out.println(i.equals(j));
-11: 
 12: 		Integer k = 10;
 13: 		Integer l = 10;
 14: 		System.out.println(k == l);
 15: 		System.out.println(k.equals(l));
-16: 
 17: 	}
 18: }
 ```
 
-- **Line 7–8** — `Integer i = 200; Integer j = 200;` — both autobox the literal `200`. Since `200` is outside the cached range (−128 to 127), the compiler emits `Integer.valueOf(200)` **twice**, producing two distinct `Integer` objects on the heap.
-- **Line 9** — `i == j` compares **references**, not values — since `i` and `j` are different objects, this prints `false`.
-- **Line 10** — `i.equals(j)` compares the wrapped `int` values — prints `true`, regardless of caching.
-- **Line 12–13** — `Integer k = 10; Integer l = 10;` — `10` is inside the cached range, so both autoboxing calls return the **same** cached `Integer` object from the internal `IntegerCache`.
-- **Line 14** — `k == l` prints `true` here — but only because both point at the same cached object, not because `==` correctly compares wrapper values. This is precisely the "gotcha" the courseware warns about: `==` appears to work for small numbers by accident.
-- **Line 15** — `k.equals(l)` also prints `true`, correctly and reliably regardless of value range — reinforcing that `.equals()` is the only comparison method that should be trusted for wrappers.
+- **Lines 7–10** — `200` is outside the cached range (−128 to 127), so `Integer i = 200; Integer j = 200;` produces two distinct heap objects — `i == j` prints `false`, but `i.equals(j)` correctly prints `true`.
+- **Lines 12–15** — `10` is inside the cached range, so `k` and `l` reference the **same** cached `Integer` from the internal `IntegerCache` — `k == l` prints `true` here, but only by accident of caching, not because `==` correctly compares wrapper values. This is exactly the gotcha the courseware warns about; `k.equals(l)` is the only comparison that's reliable regardless of value range.
 
 ---
 
@@ -200,11 +154,8 @@ Java executes top-to-bottom by default; flow control adds decisions, repetition,
 
 ```java
 1:  package com.acme.demo.day1;
-2:  
 3:  public class ControlDemo {
-4:  
 5:  	public static void main(String[] args) {
-6:  
 7:  //		int i = 10, j = 10;
 8:  //
 9:  //		if (i > j) {
@@ -213,7 +164,6 @@ Java executes top-to-bottom by default; flow control adds decisions, repetition,
 12: //			System.out.println("Low");
 13: //		else
 14: //			System.out.println("Same");
-15: 		
 16: //		switch (key) {
 17: //		case value: {
 18: //			
@@ -222,49 +172,34 @@ Java executes top-to-bottom by default; flow control adds decisions, repetition,
 21: //		default:
 22: //			throw new IllegalArgumentException("Unexpected value: " + key);
 23: //		}
-24: 
 25: 	}
-26: 
 27: }
 ```
 
-- **Line 7** — `int i = 10, j = 10;` (commented) — declares two `int`s of equal value on a single line (comma-separated multi-declaration).
-- **Lines 9–14** (commented) — an `if / else if / else` skeleton: `if (i > j)` prints "High"; the `else if (i < j)` branch prints "Low" (note it has no braces — only the single following statement belongs to it, which is legal but discouraged per the courseware's "always use braces" advice); the final `else` (also brace-less) prints "Same" when neither comparison holds — with `i == j == 10` here, "Same" is the branch that would actually execute if uncommented.
-- **Lines 16–23** (commented) — a generic `switch` skeleton using a traditional block-style `case value: { ... yield type; }` and a `default` that throws `IllegalArgumentException` — this is actually **new-style switch expression syntax** (using `yield` inside a traditional `case:` block), a hybrid form legal from Java 13+. It demonstrates the idiomatic pattern of using `default: throw ...` to fail loudly on unexpected values rather than silently doing nothing.
-- This file, as committed, has no live/uncommented logic — it exists as an instructor scratchpad/skeleton for live-coding `if-else` and `switch` during the session.
+- **Lines 9–14** (commented) — an `if / else if / else` skeleton: the `else if`/`else` branches are brace-less, legal but discouraged per the courseware's "always use braces" advice; with `i == j == 10` here, "Same" is the branch that would actually run.
+- **Lines 16–23** (commented) — a `switch` skeleton mixing traditional `case value:` with `yield` (a hybrid legal since Java 13+), and `default: throw new IllegalArgumentException(...)` to fail loudly on unexpected values rather than silently doing nothing.
+- This file has no live/uncommented logic — it's an instructor scratchpad for live-coding `if-else`/`switch`.
 
 ### Code — `day1/scanner/ScannerDemo.java` (interactive input driving control flow)
 
 ```java
 1:  package com.acme.demo.day1.scanner;
-2:  
 3:  import java.util.Scanner;
-4:  
 5:  // take user inputs 
-6:  
 7:  public class ScannerDemo {
-8:  
 9:  	public static void main(String[] args) {
-10: 
 11: 		Scanner sc = new Scanner(System.in);
-12: 
 13: 		System.out.println("Welcome\nEnter your name:");
 14: 		String username = sc.next();
 15: 		System.out.println("Welcome " + username + "!");
-16: 
 17: 		sc.close();
-18: 
 19: 	}
-20: 
 21: }
 ```
 
-- **Line 3** — imports `java.util.Scanner`, the standard class for reading console input; unlike `java.lang`, `java.util` is not auto-imported.
-- **Line 11** — `new Scanner(System.in)` wraps standard input as a `Scanner`; this object is the typical driver behind interactive loops like the courseware's "keep prompting until valid input" `while` pattern.
-- **Line 13** — `\n` inside the string literal is an escape sequence producing a newline within a single `println`.
-- **Line 14** — `sc.next()` blocks execution, waiting for the user to type a single whitespace-delimited token, and returns it as a `String`.
-- **Line 15** — string concatenation with `+` builds the greeting; each `+` on `String` operands internally creates a new `String` object (immutability, covered in Module 7).
-- **Line 17** — `sc.close()` releases the underlying input stream resource. Closing `System.in`-backed scanners is often debated (it can prevent further console reads in the same JVM), but is shown here as good resource-hygiene practice.
+- **Line 11** — `new Scanner(System.in)` wraps standard input; `java.util` classes (unlike `java.lang`) always need an explicit import.
+- **Line 14** — `sc.next()` blocks, waiting for a single whitespace-delimited token, and returns it as a `String`.
+- **Line 17** — `sc.close()` releases the input stream — closing a `System.in`-backed scanner is debated (it can prevent further console reads in the same JVM) but shown here as resource-hygiene practice.
 
 ---
 
@@ -280,13 +215,9 @@ Access is via `array[index]`; `array.length` is a **field**, not a method (no pa
 
 ```java
 1:  package com.acme.demo.day2.commons.arrays;
-2:  
 3:  import java.util.Arrays;
-4:  
 5:  public class ArrayDemo {
-6:  
 7:  	public static void main(String[] args) {
-8:  
 9:  		int[] arr = { 25, 31, 17, 9, 22 };
 10: 		System.out.println("Original array");
 11: 		for (int a : arr)
@@ -296,21 +227,13 @@ Access is via `array[index]`; `array.length` is a **field**, not a method (no pa
 15: 		System.out.println("sorted array");
 16: 		for (int a : arr)
 17: 			System.out.println(a);
-18: 		
 19: //		Arrays.
-20: 
 21: 	}
-22: 
 23: }
 ```
 
-- **Line 3** — imports `java.util.Arrays`, the utility class providing static helper methods for array operations.
-- **Line 9** — `int[] arr = { 25, 31, 17, 9, 22 };` — array-initializer syntax; the compiler infers a length-5 array and fills it left to right.
-- **Lines 11–12** — a `for-each` loop; `a` takes each element's value in order (index not needed, so `for-each` is the idiomatic choice here per the courseware's guidance).
-- **Line 13** — `arr.length` — the array's fixed size (a field access, `5`), printed to show it before sorting mutates the *contents* (length itself never changes).
-- **Line 14** — `Arrays.sort(arr)` sorts `arr` **in place** (ascending, using a dual-pivot quicksort variant for primitives) — the original array object is mutated, no new array is returned.
-- **Lines 16–17** — re-iterates with the same `for-each` pattern to show the now-sorted contents (`9, 17, 22, 25, 31`).
-- **Line 19** — commented `Arrays.` — an IDE autocomplete exploration stub, left in to show the instructor was browsing `Arrays`' static method list live (e.g. `binarySearch`, `fill`, `copyOf`).
+- **Line 13** — `arr.length` is a **field** access (`5`), not a method call — printed before sorting to show the fixed size never changes even though contents do.
+- **Line 14** — `Arrays.sort(arr)` sorts **in place** (dual-pivot quicksort for primitives) — the original array object is mutated, no new array returned; re-iterating on lines 16–17 shows the sorted result (`9, 17, 22, 25, 31`).
 
 ---
 
@@ -328,11 +251,8 @@ Because every `+` on strings allocates a new object, building strings in a loop 
 
 ```java
 1:  package com.acme.demo.day2.commons.strings;
-2:  
 3:  public class StringDemo {
-4:  	
 5:  	public static void main(String[] args) {
-6:  		
 7:  		String str = "abcdef";
 8:  		System.out.println(str);
 9:  		System.out.println(str.length());
@@ -340,17 +260,13 @@ Because every `+` on strings allocates a new object, building strings in a loop 
 11: 		System.out.println(str.concat(str));
 12: 		System.out.println(String.valueOf(10 == 10));
 13: //		String.
-14: 		
 15: 	}
 16: }
 ```
 
-- **Line 7** — `String str = "abcdef";` — a string literal, placed in the string pool.
-- **Line 9** — `str.length()` — an instance **method** returning the character count (`6`); note this contrasts with array's `.length`, which is a field, not a method — a frequent point of confusion for beginners.
-- **Line 10** — `str.charAt(0)` — returns the character at index `0` (`'a'`), zero-indexed like arrays.
-- **Line 11** — `str.concat(str)` — concatenates `str` with itself, returning a **new** `String` (`"abcdefabcdef"`); `str` itself is unchanged because `String` is immutable — this line demonstrates immutability directly, since printing `str` again later would still show `"abcdef"`.
-- **Line 12** — `String.valueOf(10 == 10)` — `10 == 10` evaluates to the `boolean` `true`; `String.valueOf(boolean)` converts it to the literal string `"true"`. `String.valueOf` is overloaded for every type and is the standard "convert anything to a String" utility.
-- **Line 13** — commented `String.` — again an IDE-autocomplete exploration stub, showing the instructor browsing `String`'s static method list live.
+- **Line 9** — `str.length()` is an instance **method** (unlike array's `.length` field) — a frequent point of confusion for beginners.
+- **Line 11** — `str.concat(str)` returns a **new** `String` (`"abcdefabcdef"`); `str` itself stays `"abcdef"` because `String` is immutable — this line demonstrates immutability directly.
+- **Line 12** — `String.valueOf(10 == 10)` converts the `boolean` `true` to the literal string `"true"` — `String.valueOf` is overloaded for every type.
 
 ---
 
@@ -366,36 +282,27 @@ Execution order when `new` runs: static block (once, at class load) → instance
 
 ```java
 1:  package com.acme.demo.day1.classes;
-2:  
 3:  public class Employee {
-4:  
 5:  	static long officePhone = 123L;
-6:  
 7:  	int id;
 8:  	String name;
 9:  	double salary;
 10: 	long phone;
-11: 
 12: 	@Override
 13: 	public String toString() {
 14: 		return "Employee [id=" + id + ", name=" + name + ", salary=" + salary + "]";
 15: 	}
-16: 
 17: }
 ```
 
-- **Line 5** — `static long officePhone = 123L;` — a **static** field: one copy exists for the whole `Employee` class, shared by every instance, and is accessible via `Employee.officePhone` without needing an object.
-- **Lines 7–10** — instance fields (`id`, `name`, `salary`, `phone`) — package-private (no modifier), each object gets its own independent copy; default values apply since they're never explicitly initialized (`id`→`0`, `name`→`null`, `salary`→`0.0`, `phone`→`0L`).
-- **Line 12** — `@Override` on `toString()` — an annotation instructing the compiler to verify this method actually overrides a method from a superclass (here, `Object`); it fails to compile if it doesn't match a real overridable signature — a safety net against typos.
-- **Line 13–14** — the overridden `toString()`, string-concatenating each field into a readable representation; this is what `System.out.println(obj)` and `"" + obj` invoke implicitly instead of the default `ClassName@hashcode` form.
+- **Line 5** — `static long officePhone = 123L;` — a **static** field: one copy shared by the whole class, accessible via `Employee.officePhone` without an object.
+- **Lines 7–10** — instance fields default automatically since never explicitly initialized (`id`→`0`, `name`→`null`, `salary`→`0.0`, `phone`→`0L`).
+- **Line 12** — `@Override` makes the compiler verify this method genuinely overrides `Object`'s — a safety net against typos that would otherwise silently create an unrelated new method.
 
 ```java
 1:  package com.acme.demo.day1.classes;
-2:  
 3:  public class ClassDemo {
-4:  	
 5:  	public static void main(String[] args) {
-6:  		
 7:  		Employee obj = new Employee();
 8:  		System.out.println(obj.toString());
 9:  		obj.id = 1;
@@ -403,7 +310,6 @@ Execution order when `new` runs: static block (once, at class load) → instance
 11: //		obj.salary = 10.75;
 12: 		System.out.println(obj.toString());
 13: 		System.out.println(Employee.officePhone);
-14: 		
 15: 		Employee obj2 = new Employee();
 16: 		System.out.println(obj2.toString());
 17: 		obj2.id = 2;
@@ -411,40 +317,32 @@ Execution order when `new` runs: static block (once, at class load) → instance
 19: 		obj2.salary = 11.25;
 20: 		System.out.println(obj2.toString());
 21: 	}
-22: 
 23: }
 ```
 
-- **Line 7** — `Employee obj = new Employee();` — since `Employee` defines no explicit constructor, the compiler supplies a **default no-arg constructor** automatically; `new` allocates the object on the heap and `obj` is assigned its reference.
-- **Line 8** — prints the default-initialized state: `id=0, name=null, salary=0.0`.
-- **Lines 9–10** — field assignment directly on the object (legal because the fields are package-private, not `private`, and `ClassDemo` is in the same package). This is exactly the anti-pattern Module 13 (Encapsulation) later argues against.
-- **Line 11** — commented `obj.salary = 10.75;` — left unset deliberately, so line 12's print still shows `salary=0.0`, illustrating that fields not explicitly assigned keep their default.
-- **Line 13** — `Employee.officePhone` — accessed through the **class name**, not an object reference, because it's `static`; using `obj.officePhone` would also compile but is discouraged/misleading since it implies per-object state that doesn't exist.
-- **Lines 15–20** — a second, fully independent `Employee` object (`obj2`) is created and populated — demonstrating that each object has its own instance-field state (`obj`'s fields are unaffected by `obj2`'s assignments) while `officePhone` (static) would be shared and identical if printed from either.
+- **Line 7** — `Employee obj = new Employee();` — since `Employee` defines no explicit constructor, the compiler supplies a **default no-arg constructor** automatically.
+- **Lines 9–10** — direct field assignment is legal only because the fields are package-private (not `private`) and `ClassDemo` is in the same package — exactly the anti-pattern Module 13 (Encapsulation) argues against.
+- **Line 13** — `Employee.officePhone` is accessed through the **class name** since it's `static`; `obj.officePhone` would also compile but is misleading, implying per-object state that doesn't exist.
+- **Lines 15–20** — a second, independent `Employee` object (`obj2`) shows each object has its own instance-field state, while `officePhone` (static) is shared across both.
 
 ### Code — `day1/constructor/Employee.java` and `day1/constructor/ConstructorDemo.java` (constructor overloading, chaining side effect via `super()`)
 
 ```java
 1:  package com.acme.demo.day1.constructor;
-2:  
 3:  public class Employee {
-4:  
 5:  	int id;
 6:  	String name;
 7:  	double salary;
-8:  
 9:  	public Employee() {
 10: 		super();
 11: 		System.out.println("Default constructor");
 12: 	}
-13: 
 14: 	public Employee(int id, String name) {
 15: 		super();
 16: 		System.out.println("2 args constructor");
 17: 		this.id = id;
 18: 		this.name = name;
 19: 	}
-20: 
 21: 	public Employee(int id, String name, double salary) {
 22: 		super();
 23: 		System.out.println("All args constructor");
@@ -452,129 +350,76 @@ Execution order when `new` runs: static block (once, at class load) → instance
 25: 		this.name = name;
 26: 		this.salary = salary;
 27: 	}
-28: 
 29: 	@Override
 30: 	public String toString() {
 31: 		return "Employee [id=" + id + ", name=" + name + ", salary=" + salary + "]";
 32: 	}
-33: 
 34: }
 ```
 
-- **Lines 9–12, 14–19, 21–27** — three **overloaded constructors**: no-arg, two-arg (`id`, `name`), and three-arg (`id`, `name`, `salary`). The compiler picks the right one based on the argument list at each `new Employee(...)` call site — this is compile-time (static) polymorphism.
-- **Line 10, 15, 22** — `super();` explicitly calls `Object`'s no-arg constructor. This is what the compiler inserts automatically anyway when a constructor doesn't start with `this(...)` or `super(...)`; writing it explicitly here is purely for teaching visibility into what's implicit.
-- **Line 17–18, 24–26** — `this.id = id;` etc. — `this.` disambiguates the field from the identically-named constructor parameter; without `this.`, `id = id;` would just assign the parameter to itself and leave the field untouched.
-- **Line 11, 16, 23** — each constructor prints a distinct message, so running `ConstructorDemo` makes visible, at runtime, exactly which overload the compiler selected for each `new` call.
+- **Lines 9–12, 14–19, 21–27** — three **overloaded constructors** (no-arg, two-arg, three-arg); the compiler picks the right one by argument list at each `new Employee(...)` call site — compile-time polymorphism.
+- **Line 10, 15, 22** — `super();` explicitly calls `Object`'s no-arg constructor — what the compiler inserts automatically anyway; written here purely for teaching visibility.
+- **Line 17–18, 24–26** — `this.id = id;` — `this.` disambiguates the field from the identically-named parameter; without it, `id = id;` would assign the parameter to itself and leave the field untouched.
+- Each constructor prints a distinct message so running `ConstructorDemo` makes visible which overload was selected for each `new` call.
 
 ```java
 1:  package com.acme.demo.day1.constructor;
-2:  
 3:  public class ConstructorDemo {
-4:  
 5:  	public static void main(String[] args) {
-6:  
 7:  		Employee emp1 = new Employee();
 8:  		emp1.id = 1;
 9:  		emp1.name = "Sonu";
 10: 		emp1.salary = 10.75;
 11: 		System.out.println(emp1.toString());
-12: 		
 13: 		Employee emp2 = new Employee();
 14: 		emp2.id = 2;
 15: 		emp2.name = "Monu";
 16: 		emp2.salary = 11.25;
 17: 		System.out.println(emp2.toString());
-18: 
 19: 		Employee emp3 = new Employee(3, "Tonu", 12.50);
 20: 		System.out.println(emp3.toString());
-21: 
 22: 		Employee emp4 = new Employee(4, "Tonu");
 23: 		System.out.println(emp4.toString());
-24: 
 25: 	}
 26: }
 ```
 
-- **Line 7** — `new Employee()` invokes the no-arg overload → prints `"Default constructor"`, then fields are set individually via direct field access on lines 8–10 (again legal only because the fields are package-private, in the same package).
-- **Line 19** — `new Employee(3, "Tonu", 12.50)` matches the three-arg constructor by argument count/types → prints `"All args constructor"` and all three fields are set in one call.
-- **Line 22** — `new Employee(4, "Tonu")` matches the two-arg overload → prints `"2 args constructor"`; note `salary` is left at its default `0.0` since that constructor never touches it.
-- This file demonstrates overload resolution concretely: the exact same class exposes three different construction "shapes," and the compiler statically picks the matching one at each call site based purely on argument signature.
+- **Line 19** — `new Employee(3, "Tonu", 12.50)` matches the three-arg constructor by argument count/types.
+- **Line 22** — `new Employee(4, "Tonu")` matches the two-arg overload; `salary` stays at its default `0.0` since that constructor never touches it.
 
 ### Code — `day1/methods/MethodDemo.java` (instance vs static methods)
 
 ```java
 1:  package com.acme.demo.day1.methods;
-2:  
 3:  public class MethodDemo {
-4:  
 5:  	// instance method == objectName.methodName();
 6:  	void printNums() {
 7:  		for (int i = 1; i <= 5; i++)
 8:  			System.out.println(i);
 9:  	}
-10: 
 11: 	// static method == ClassName.methodName();
 12: 	static void printNums2() {
 13: 		for (int i = 1; i <= 5; i++)
 14: 			System.out.println(i);
 15: 	}
-16: 
 17: 	public static void main(String[] args) {
-18: 
 19: 		MethodDemo obj = new MethodDemo();
 20: 		obj.printNums(); // works
 21: 		MethodDemo.printNums2(); // works
 22: //		MethodDemo.printNums(); // CE 
 23: //		obj.printNums2(); // warning 
-24: 
 25: //		printNums2();
-26: 
 27: 	}
-28: 
 29: }
 ```
 
-- **Line 6–9** — `printNums()` is an **instance method** (no `static`); it must be called on an object (`obj.printNums()`), because conceptually it could reference `this`/instance fields even though this particular one happens not to.
-- **Line 12–15** — `printNums2()` is `static`; it belongs to the class itself and is called via the class name.
-- **Line 19–20** — `obj.printNums()` — correct, calling an instance method on an object.
-- **Line 21** — `MethodDemo.printNums2()` — correct, calling a static method via the class name.
-- **Line 22** — commented `MethodDemo.printNums(); // CE` — a genuine **compile error**: you cannot call an instance method through the class name alone, because there is no object context (no `this`) for the JVM to bind to.
-- **Line 23** — commented `obj.printNums2(); // warning` — this actually **compiles**, but the compiler emits a warning, because calling a static method via an object reference is misleading (it doesn't use `obj`'s state at all — it's resolved purely by `obj`'s declared/compile-time type). Idiomatic Java always calls static members via the class name.
-- **Line 25** — commented `printNums2();` — calling a static method "bare" (unqualified) *would* work here **only** because it's being called from within the same class (`main` is in `MethodDemo` too) — this shorthand is legal but the explicit `MethodDemo.printNums2()` form is clearer.
+- **Line 22** — commented `MethodDemo.printNums(); // CE` — a genuine **compile error**: an instance method cannot be called through the class name alone, since there's no object context (`this`) to bind to.
+- **Line 23** — commented `obj.printNums2(); // warning` — this **compiles** but warns, since calling a static method via an object reference is resolved purely by `obj`'s declared type, not its state — idiomatic Java always calls static members via the class name.
+- **Line 25** — a bare, unqualified `printNums2();` call would work here only because `main` is in the same class (`MethodDemo`) — legal shorthand, but `MethodDemo.printNums2()` is clearer.
 
 ### Code — `day1/object/Employee.java` and `day1/object/ObjectDemo.java` (bare object creation)
 
-```java
-1:  package com.acme.demo.day1.object;
-2:  	
-3:  public class Employee {
-4:  	
-5:  	int id;
-6:  	String name;
-7:  	double salary;
-8:  	
-9:  
-10: }
-```
-
-- A minimal POJO: three package-private instance fields with no constructors, methods, or `toString()` — the simplest possible class shape, used here purely to demonstrate object instantiation mechanics in `ObjectDemo`.
-
-```java
-1:  package com.acme.demo.day1.object;
-2:  	
-3:  public class ObjectDemo {
-4:  	
-5:  	public static void main(String[] args) {
-6:  		Employee emp = new Employee();
-7:  		emp.salary = 10.25;
-8:  		
-9:  	}
-10: 
-11: }
-```
-
-- **Line 6** — `new Employee()` — the compiler-supplied default constructor runs (since none is defined), allocating a new `Employee` object on the heap with all fields at their defaults.
-- **Line 7** — `emp.salary = 10.25;` — direct field mutation through the reference; the object now has `salary = 10.25` while `id` and `name` remain at their defaults (`0` and `null`). Nothing is printed in this file — it exists purely to demonstrate the mechanics of creating and mutating an object's state.
+A minimal POJO (`int id; String name; double salary;`, no constructors/methods) plus a driver that does only `Employee emp = new Employee(); emp.salary = 10.25;` — direct field mutation through the reference, `id`/`name` staying at their defaults. Nothing is printed; the pair exists purely to demonstrate bare object instantiation/mutation mechanics.
 
 ---
 
@@ -588,15 +433,11 @@ A **package** is a namespace that avoids class-name collisions and organizes rel
 
 ```java
 1:  package com.acme.demo.day1.modifiers;
-2:  
 3:  public class FinalDemo {
-4:  
 5:  	static int staticField;
 6:  	int instanceField;
 7:  	static final int NUM_VALUE = 30;
-8:  
 9:  	public static void main(String[] args) {
-10: 
 11: //		FinalDemo.staticField = 10;
 12: //		System.out.println(FinalDemo.staticField);
 13: //		FinalDemo obj = new FinalDemo();
@@ -605,132 +446,96 @@ A **package** is a namespace that avoids class-name collisions and organizes rel
 16: //		System.out.println(FinalDemo.NUM_VALUE);
 17: ////		FinalDemo.NUM_VALUE = 35; // CE 
 18: //		System.out.println(FinalDemo.NUM_VALUE);
-19: 		
 20: 		System.out.println(Integer.BYTES);
 21: 		System.out.println(Integer.SIZE);
 22: 		System.out.println(Integer.MIN_VALUE);
 23: 		System.out.println(Integer.MAX_VALUE);
-24: 
 25: 	}
-26: 
 27: }
 ```
 
-- **Line 5** — `static int staticField;` — package-private static field, one copy per class, defaults to `0`.
-- **Line 6** — `int instanceField;` — package-private instance field, one copy per object.
-- **Line 7** — `static final int NUM_VALUE = 30;` — a **constant**: `static` (one copy, class-level) plus `final` (cannot be reassigned once initialized). This is the idiomatic shape for named constants in Java (analogous to `Integer.MAX_VALUE` used further below).
-- **Line 11–15** (commented) — demonstrate normal static/instance field access: `FinalDemo.staticField = 10;` via class name, versus `obj.instanceField = 20;` which requires an object because it's per-instance state.
-- **Line 17** — commented `FinalDemo.NUM_VALUE = 35; // CE` — a genuine compile error the instructor is flagging: `final` fields, once assigned, can never be reassigned; attempting to do so is caught at compile time, not runtime.
-- **Lines 20–23** — the live code: `Integer.BYTES` (`4`, the number of bytes an `int` occupies), `Integer.SIZE` (`32`, the number of bits), `Integer.MIN_VALUE`/`MAX_VALUE` (`-2147483648`/`2147483647`) — all of these are themselves `public static final` constants defined inside the `Integer` wrapper class, making this a live illustration of the exact same `static final` pattern just discussed above, but from the JDK's own source.
+- **Line 7** — `static final int NUM_VALUE = 30;` — a **constant**: `static` (one copy, class-level) plus `final` (cannot be reassigned once initialized) — the idiomatic shape for named constants.
+- **Line 17** (commented) — `FinalDemo.NUM_VALUE = 35; // CE` — a genuine compile error: `final` fields, once assigned, can never be reassigned, caught at compile time not runtime.
+- **Lines 20–23** — `Integer.BYTES`/`SIZE`/`MIN_VALUE`/`MAX_VALUE` are themselves `public static final` constants inside the JDK's `Integer` class — a live illustration of the same `static final` pattern from the JDK's own source.
 
 ### Code — `day1/modifiers/package1/SpecifierDemo.java`
 
 ```java
 1:  package com.acme.demo.day1.modifiers.package1;
-2:  
 3:  public class SpecifierDemo {
-4:  
 5:  	public static int num1 = 10;
 6:  	protected static int num2 = 20;
 7:  	/*default*/ static int num3 = 30;
 8:  	private static int num4 = 40;
-9:  
 10: 	public static void main(String[] args) {
-11: 		
 12: 		System.out.println(SpecifierDemo.num1);
 13: 		System.out.println(SpecifierDemo.num2);
 14: 		System.out.println(SpecifierDemo.num3);
 15: 		System.out.println(SpecifierDemo.num4);
-16: 
 17: 	}
-18: 
 19: }
 ```
 
-- **Lines 5–8** — one field for each of the four access levels, all otherwise identical (`static int`): `public num1`, `protected num2`, package-private `num3` (the `/*default*/` comment is just documentation — there is no `default` keyword for member access; omitting a modifier *is* default access), and `private num4`.
-- **Lines 12–15** — all four prints succeed here, because they're accessed from **inside the declaring class itself** — `private` is always visible within its own class, and the wider modifiers are trivially visible too. This file alone cannot demonstrate the *restrictions*; that requires the companion files below.
+- **Lines 5–8** — one field per access level (`public`, `protected`, package-private — the `/*default*/` comment is just documentation, there's no `default` keyword — and `private`).
+- **Lines 12–15** — all four prints succeed since they're accessed **inside the declaring class itself**; the restrictions only show up in the companion files below.
 
 ### Code — `day1/modifiers/package1/WithinPackage.java` (same package, different class)
 
 ```java
 1:  package com.acme.demo.day1.modifiers.package1;
-2:  
 3:  public class WithinPackage {
-4:  
 5:  	public static void main(String[] args) {
-6:  
 7:  		System.out.println(SpecifierDemo.num1);
 8:  		System.out.println(SpecifierDemo.num2);
 9:  		System.out.println(SpecifierDemo.num3);
 10: //		System.out.println(SpecifierDemo.num4); // CE
-11: 
 12: 	}
 13: }
 ```
 
-- **Line 1** — same package (`package1`) as `SpecifierDemo`, but a **different class**.
-- **Line 7** — `num1` (public) — accessible, as expected.
-- **Line 8** — `num2` (protected) — accessible, because `protected` grants access to the whole package, not just subclasses.
-- **Line 9** — `num3` (default/package-private) — accessible, because `WithinPackage` is in the same package.
-- **Line 10** — commented `num4 // CE` — genuine compile error: `private` restricts access to the *declaring class only* (`SpecifierDemo`), so even another class in the same package cannot reach it. This line is the concrete proof of `private`'s "class-only" boundary.
+- From a **different class in the same package**: `num1` (public) and `num2` (protected — grants access to the whole package, not just subclasses) and `num3` (package-private) are all accessible.
+- **Line 10** (commented) — `num4 // CE` — genuine compile error: `private` restricts access to the *declaring class only*, so even another class in the same package cannot reach it.
 
 ### Code — `day1/modifiers/package2/OutsidePackage.java` (different package, not a subclass)
 
 ```java
 1:  package com.acme.demo.day1.modifiers.package2;
-2:  
 3:  import com.acme.demo.day1.modifiers.package1.SpecifierDemo;
-4:  
 5:  public class OutsidePackage {
-6:  	
 7:  	public static void main(String[] args) {
-8:  
 9:  		System.out.println(SpecifierDemo.num1);
 10: //		System.out.println(SpecifierDemo.num2);
 11: //		System.out.println(SpecifierDemo.num3);
 12: //		System.out.println(SpecifierDemo.num4); // CE
-13: 
 14: 	}
-15: 
 16: }
 ```
 
-- **Line 1** — declared in `package2`, a sibling package to `package1` — no inheritance relationship to `SpecifierDemo` exists.
-- **Line 3** — `import` is required here because `SpecifierDemo` lives in a different package; unlike `WithinPackage.java`, this class cannot see `SpecifierDemo` "for free."
-- **Line 9** — `num1` (public) — the only member that remains accessible: `public` is visible everywhere, unconditionally.
-- **Lines 10–12** (all commented) — `num2` (protected), `num3` (default), and `num4` (private) are **all** inaccessible here: `protected` fails because `OutsidePackage` is neither in the same package nor a subclass of `SpecifierDemo`; default fails because it's a different package; `private` fails for the same reason it always fails outside the declaring class. This file, read alongside `WithinPackage.java`, is the complete matrix proof of the access-modifier visibility table from the courseware.
+- Declared in a sibling package with no inheritance relationship to `SpecifierDemo`, so an explicit `import` is required (line 3).
+- **Line 9** — `num1` (public) is the only member accessible here: `protected`/default/private (lines 10–12, all commented) fail since `OutsidePackage` is neither same-package nor a subclass. Read alongside `WithinPackage.java`, this is the complete matrix proof of the access-modifier visibility table.
 
 ### Code — `day2/commons/packages/PackageDemo.java` (importing JDK packages)
 
 ```java
 1:  package com.acme.demo.day2.commons.packages;
-2:  
 3:  import java.util.Random;
 4:  import java.util.Scanner;
-5:  
 6:  public class PackageDemo {
-7:  
 8:  	public static void main(String[] args) {
-9:  
 10: //		Scanner sc = new Scanner(System.in);
 11: //		System.out.println("Enter:");
 12: //		int num = sc.nextInt();
 13: //		System.out.println(num);
 14: //		sc.close();
-15: 
 16: //		Random random = new Random();
 17: //		int num = random.nextInt(1000, 9999); // 4 digit otp 
 18: //		System.out.println(num);
-19: 
 20: 	}
-21: 
 22: }
 ```
 
-- **Lines 3–4** — explicit `import java.util.Random;` and `import java.util.Scanner;` — both required because `java.util` is not auto-imported (only `java.lang` is), reinforcing the module's point about needing explicit imports for anything outside `java.lang`.
-- **Lines 10–14** (commented) — a `Scanner`-based numeric input pattern: `sc.nextInt()` reads an `int` token from the console (contrast with `ScannerDemo.java`'s `sc.next()`, which reads a `String`).
-- **Lines 16–18** (commented) — `random.nextInt(1000, 9999)` (the two-argument overload, Java 17+) generates a random `int` in `[1000, 9999)` — illustrated here as a 4-digit OTP generator, a realistic use of an imported utility class.
-- The whole `main` body is commented out; this file exists to show *which imports are needed* for these two common `java.util` classes rather than to execute anything at runtime.
+- **Lines 10–14** (commented) — `sc.nextInt()` reads an `int` token (contrast with `ScannerDemo.java`'s `sc.next()`, which reads a `String`).
+- **Lines 16–18** (commented) — `random.nextInt(1000, 9999)` (the two-arg overload, Java 17+) generates a random `int` in `[1000, 9999)` — a 4-digit OTP generator. The whole `main` body is commented out; this file exists purely to show the needed imports.
 
 ---
 
@@ -746,92 +551,65 @@ Java supports single, multilevel (`A→B→C`), and hierarchical (multiple child
 
 ```java
 1:  package com.acme.demo.day2.oop.inheritance;
-2:  
 3:  public class Phone {
-4:  
 5:  }
-6:  
 7:  class BasicPhone {
-8:  
 9:  	public void call() {
 10: 		System.out.println("calling...");
 11: 	}
-12: 
 13: 	public void sms() {
 14: 		System.out.println("texting...");
 15: 	}
 16: }
-17: 
 18: class FeaturePhone extends BasicPhone {
-19: 
 20: 	public void music() {
 21: 		System.out.println("playing...");
 22: 	}
-23: 
 24: }
-25: 
 26: class SmartPhone extends FeaturePhone {
-27: 
 28: 	@Override
 29: 	public void music() {
 30: 		System.out.println("playing dolby...");
 31: 	}
-32: 	
 33: 	public void camera() {
 34: 		System.out.println("clicking...");
 35: 	}
-36: 
 37: }
 ```
 
-- **Line 3–5** — `public class Phone {}` — an unused public placeholder class (required so the filename `Phone.java` has a matching public top-level class); the real hierarchy lives in the package-private classes below it in the same file.
-- **Lines 7–16** — `BasicPhone` is the root of the hierarchy, with no `extends` clause (implicitly extends `Object`); it defines `call()` and `sms()` as the baseline capability every phone in this hierarchy will have.
-- **Line 18** — `class FeaturePhone extends BasicPhone` — **single inheritance**; `FeaturePhone` automatically has `call()` and `sms()` for free and adds `music()` (line 20) as new behavior — this is **multilevel inheritance** in the making, since `SmartPhone` will extend `FeaturePhone` next.
-- **Line 26** — `class SmartPhone extends FeaturePhone` — extends `FeaturePhone`, making the full chain `SmartPhone → FeaturePhone → BasicPhone → Object` (**multilevel inheritance**).
-- **Line 28–31** — `@Override public void music()` — `SmartPhone` overrides `FeaturePhone`'s `music()` with a more specific implementation ("playing dolby...") rather than inheriting the plain version unchanged; this is method overriding, resolved at runtime.
-- **Line 33–35** — `camera()` is new behavior unique to `SmartPhone`, not present anywhere up the chain.
+- **Line 3–5** — `public class Phone {}` is an unused placeholder (needed so the filename matches a public top-level class); the real hierarchy lives in the package-private classes below it in the same file.
+- **Line 18, 26** — `FeaturePhone extends BasicPhone` and `SmartPhone extends FeaturePhone` form a **multilevel** chain (`SmartPhone → FeaturePhone → BasicPhone → Object`), each adding new behavior (`music()`, `camera()`).
+- **Line 28–31** — `SmartPhone` **overrides** `FeaturePhone`'s `music()` with a more specific implementation rather than inheriting the plain version — resolved at runtime.
 
 ```java
 1:  package com.acme.demo.day2.oop.inheritance;
-2:  
 3:  public class InheritanceDemo {
-4:  	
 5:  	public static void main(String[] args) {
-6:  		
 7:  		BasicPhone phone1 = new BasicPhone();
 8:  		phone1.call();
 9:  		phone1.sms();
-10: 		
 11: 		FeaturePhone phone2 = new FeaturePhone();
 12: 		phone2.call();
 13: 		phone2.sms();
 14: 		phone2.music();
-15: 		
 16: 		SmartPhone phone3 = new SmartPhone();
 17: 		phone3.call();
 18: 		phone3.sms();
 19: 		phone3.music();
 20: 		phone3.camera();
-21: 		
 22: 		BasicPhone phone4 = new SmartPhone();
 23: 		phone4.call();
 24: 		phone4.sms();
 25: //		phone4.music(); // CE 
 26: //		phone4.camera(); // CE 
 27: //		advantages ? 
-28: 
-29: 		
 30: 	}
-31: 
 32: }
 ```
 
-- **Lines 7–9** — a plain `BasicPhone` can only `call()`/`sms()` — it has no `music()`/`camera()` because those are defined further down the hierarchy, not up.
-- **Lines 11–14** — `FeaturePhone` inherits `call()`/`sms()` from `BasicPhone` and additionally exposes its own `music()`.
-- **Lines 16–20** — `SmartPhone` inherits everything from both ancestors and additionally exposes `camera()`, plus its own overridden `music()` (which prints "playing dolby..." rather than the inherited "playing...").
-- **Line 22** — `BasicPhone phone4 = new SmartPhone();` — this is **upcasting**: a `SmartPhone` object assigned to a `BasicPhone`-typed reference variable. This is implicit and always safe, since every `SmartPhone` genuinely IS-A `BasicPhone`.
-- **Lines 23–24** — `phone4.call()`/`phone4.sms()` work fine — these are declared on `BasicPhone`, visible through the `BasicPhone`-typed reference.
-- **Lines 25–26** — commented `phone4.music(); // CE` and `phone4.camera(); // CE` — genuine compile errors: even though the underlying object is a `SmartPhone` with both methods, the **compile-time (declared) type** of `phone4` is `BasicPhone`, and the compiler only allows calling methods that the declared type knows about. To call `music()`/`camera()` here you would need an explicit downcast, `((SmartPhone) phone4).camera();` — this is precisely the upcasting/downcasting distinction from Module 11 (Polymorphism).
+- **Lines 7–20** — each object (`phone1`..`phone3`) can only call methods defined up to its own place in the hierarchy; `SmartPhone` inherits everything and adds `camera()` plus its overridden `music()`.
+- **Line 22** — `BasicPhone phone4 = new SmartPhone();` is **upcasting** — implicit and always safe, since a `SmartPhone` IS-A `BasicPhone`.
+- **Lines 25–26** (commented) — `phone4.music(); // CE` / `phone4.camera(); // CE` — genuine compile errors: even though the runtime object is a `SmartPhone`, the **compile-time (declared) type** of `phone4` is `BasicPhone`, and the compiler only allows methods the declared type knows about. Calling them requires an explicit downcast, `((SmartPhone) phone4).camera();`.
 
 ---
 
@@ -845,56 +623,40 @@ This is what makes processing heterogeneous collections clean: iterating an `Emp
 
 ```java
 1:  package com.acme.demo.day2.oop.polymorphism;
-2:  
 3:  public class Calc {
-4:  
 5:  	public static void addNums(int i, long j) {
 6:  		System.out.println(i + j);
 7:  	}
-8:  
 9:  	public static void addNums(long i, int j) {
 10: 		System.out.println(i + j);
 11: 	}
-12: 
 13: 	public static void addNums(int i, int j) {
 14: 		System.out.println(i + j);
 15: 	}
-16: 
 17: 	public static void addNums(int i, int j, int k) {
 18: 		System.out.println(i + j + k);
 19: 	}
-20: 
 21: 	public static void addNums(int i, int j, int k, int l) {
 22: 		System.out.println(i + j + k + l);
 23: 	}
 24: }
 ```
 
-- **Lines 5–7 vs 9–11** — two overloads that differ only in **parameter order and type** (`(int, long)` vs `(long, int)`) — both are legal and distinct overloads because their parameter signatures are different, even though a call like `addNums(10, 20)` (two `int` literals) is ambiguous between them *unless* an exact `(int, int)` overload also exists to win by best match.
-- **Lines 13–15** — `addNums(int, int)` — this is the overload the compiler actually selects for a call like `addNums(10, 20)`, because an exact-type match beats the widening conversions the `(int, long)`/`(long, int)` overloads would require.
-- **Lines 17–19, 21–23** — `addNums(int, int, int)` and `addNums(int, int, int, int)` — overloads distinguished purely by **argument count**, the simplest form of overloading.
-- This class demonstrates that overload resolution can consider both **arity** (count) and **type/order** of parameters — all decided by the compiler at compile time, never at runtime.
+- **Lines 5–15** — `(int, long)` and `(long, int)` are distinct legal overloads, but a call like `addNums(10, 20)` (two `int` literals) resolves to the exact-match `addNums(int, int)` overload (line 13) rather than either widening overload, since exact-type match wins over widening.
+- **Lines 17–23** — the three- and four-arg overloads are distinguished purely by **argument count** — the simplest form of overloading.
 
 ```java
 1:  package com.acme.demo.day2.oop.polymorphism;
-2:  
 3:  public class PolymorphismDemo {
-4:  	
 5:  	public static void main(String[] args) {
-6:  		
 7:  		Calc.addNums(10, 20);
 8:  		Calc.addNums(10, 20, 30);
 9:  		Calc.addNums(10, 20, 30, 40);
-10: 		
 11: 	}
-12: 
 13: }
 ```
 
-- **Line 7** — `Calc.addNums(10, 20)` — two `int` literals exactly match the `addNums(int, int)` overload (line 13 of `Calc.java`), so that one is chosen; output `30`.
-- **Line 8** — `Calc.addNums(10, 20, 30)` — three arguments match `addNums(int, int, int)` uniquely; output `60`.
-- **Line 9** — `Calc.addNums(10, 20, 30, 40)` — four arguments match `addNums(int, int, int, int)` uniquely; output `100`.
-- All three calls are resolved by the compiler purely from the literal argument lists — no object state or runtime type information is involved, which is the defining trait of compile-time (overload) polymorphism versus the runtime (override) polymorphism demonstrated in the Inheritance module's `Phone`/`SmartPhone` example.
+- All three calls resolve purely from argument count/type at compile time (`30`, `60`, `100`) — contrasting with the runtime (override) polymorphism in the Inheritance module's `Phone`/`SmartPhone` example.
 
 ---
 
@@ -908,7 +670,6 @@ Java 8 added **`default`** methods to interfaces (a method with a body that impl
 
 ```java
 1:  package com.acme.demo.day2.oop;
-2:  
 3:  /**
 4:   * Encapsulation - bind data and code together
 5:   * 
@@ -927,125 +688,89 @@ Java 8 added **`default`** methods to interfaces (a method with a body that impl
 18:  * Method overriding 
 19:  * 
 20:  */
-21: 
 22: public class OopDemo {
-23: 
 24: }
 ```
 
-- **Lines 3–20** — a Javadoc-style comment block (opens with `/**`, so IDEs would render it as documentation) summarizing all four OOP pillars in the instructor's own words before diving into the abstraction-specific packages below. It calls abstraction "minimum necessary representation" and "hide unnecessary details" — the same framing as the courseware.
-- **Line 22** — `public class OopDemo {}` — an empty class body; this file carries no executable logic, serving purely as an anchor point for the comment/overview at the start of the `day2.oop` package.
+- Lines 3–20 are a Javadoc-style comment summarizing all four OOP pillars; the class body itself is empty, serving purely as an anchor for the overview at the start of the `day2.oop` package.
 
 ### Code — `day2/oop/abstractconcrete/AbsDemo.java` (abstract class basics: concrete + abstract methods)
 
 ```java
 1:  package com.acme.demo.day2.oop.abstractconcrete;
-2:  
 3:  // abstract class 
 4:  public abstract  class AbsDemo {
-5:  
 6:  //	concrete method - what to do and how to do both 
-7:  
 8:  	// method signature - what does this method do ?
 9:  	public void doThis() 
 10: 	// method body - how does it do it ?
 11: 	{
 12: 		System.out.println("doing");
 13: 	}
-14: 
 15: //	 abstract method only what to do
 16: 	public abstract void doThisToo();
 17: }
 ```
 
-- **Line 4** — `public abstract class AbsDemo` — the `abstract` keyword means this class **cannot** be instantiated with `new AbsDemo()`, even though it has no abstract members forcing that in an obvious way here — any class can be marked `abstract` regardless of whether it declares abstract methods.
-- **Lines 8–13** — `doThis()` is a **concrete** method: it has both a signature (what it does) and a body (how it does it) — subclasses inherit this implementation unchanged unless they choose to override it.
-- **Line 16** — `public abstract void doThisToo();` — an **abstract method**: signature only, no body, terminated with `;` instead of `{}`. Any concrete (non-abstract) subclass of `AbsDemo` is *required* to provide an implementation for this method, or the compiler will refuse to compile it unless that subclass is itself declared `abstract`.
+- **Line 4** — `abstract` means `AbsDemo` **cannot** be instantiated with `new`, even though it has no abstract members forcing that — any class can be marked `abstract` regardless.
+- **Line 16** — `public abstract void doThisToo();` — signature only, no body, terminated with `;`. Any concrete subclass of `AbsDemo` is *required* to implement this or itself remain `abstract`.
 
 ### Code — `day2/oop/abstractconcrete/Banking.java` (abstract class + multiple interfaces)
 
 ```java
 1:  package com.acme.demo.day2.oop.abstractconcrete;
-2:  
 3:  public class Banking {
-4:  
 5:  }
-6:  
 7:  interface StateGovt {
-8:  
 9:  }
-10: 
 11: interface GovtOfIndia {
-12: 
 13: //	public abstract void checkNationality();
 14: 	void checkNationality();
-15: 
 16: }
-17: 
 18: abstract class Rbi {
-19: 
 20: 	abstract void doKyc();
-21: 
 22: 	public abstract void payInterest();
-23: 
 24: }
-25: 
 26: class HdfcBank extends Rbi implements GovtOfIndia, StateGovt {
-27: 
 28: 	@Override
 29: 	public void doKyc() {
 30: 		System.out.println("Aadhaar KYC");
 31: 	}
-32: 
 33: 	@Override
 34: 	public void payInterest() {
 35: 		System.out.println("Paying 4% interest");
 36: 	}
-37: 
 38: 	@Override
 39: 	public void checkNationality() {
 40: 		System.out.println("Is Indian?");
 41: 	}
 42: }
-43: 
 44: class IciciBank extends Rbi implements GovtOfIndia {
-45: 
 46: 	@Override
 47: 	public void doKyc() {
 48: 		System.out.println("PAN Card KYC");
 49: 	}
-50: 
 51: 	@Override
 52: 	public void payInterest() {
 53: 		System.out.println("Paying 5% interest");
 54: 	}
-55: 
 56: 	@Override
 57: 	public void checkNationality() {
 58: 		System.out.println("Is Foreign?");
 59: 	}
-60: 
 61: }
 ```
 
-- **Lines 3–5** — `public class Banking {}` — again just an anchor public class matching the filename; the meaningful types are the package-private declarations that follow in the same file (legal in Java: a single `.java` file may contain multiple top-level types as long as at most one is `public`).
-- **Line 7–9** — `interface StateGovt {}` — an empty **marker interface** (no methods) — it exists purely so classes can `implements` it to signal a category/capability, without requiring any method implementation. Similar in spirit to `java.io.Serializable`.
-- **Lines 11–16** — `interface GovtOfIndia` declares `checkNationality()`. Line 13 (commented) shows the fully explicit form `public abstract void checkNationality();`; line 14 is the same declaration written the idiomatic, terse way — **all interface methods are implicitly `public abstract`** unless marked `default`/`static`, so the modifiers are optional and conventionally omitted.
-- **Lines 18–24** — `abstract class Rbi` declares two abstract methods: `doKyc()` (line 20, package-private — legal for an abstract method in an abstract class, unlike interface methods which must be public) and `payInterest()` (line 22, explicitly `public abstract`). This mixes access-modifier styles deliberately to show abstract classes are *not* restricted to `public` members the way interfaces are.
-- **Line 26** — `class HdfcBank extends Rbi implements GovtOfIndia, StateGovt` — a single class combines **class inheritance** (`extends Rbi`, singular — only one superclass allowed) with **multiple interface implementation** (`implements GovtOfIndia, StateGovt`, comma-separated, any number allowed). `HdfcBank` must implement every abstract method from `Rbi` (`doKyc`, `payInterest`) and every abstract method from `GovtOfIndia` (`checkNationality`); `StateGovt` contributes no obligations since it's empty.
-- **Lines 28–41** — `HdfcBank`'s three `@Override` implementations fulfill the contracts from `Rbi` and `GovtOfIndia` respectively, each with bank-specific logic (Aadhaar KYC, 4% interest, nationality check).
-- **Line 44** — `class IciciBank extends Rbi implements GovtOfIndia` — a second, independent subclass of the same abstract class and interface, implementing all the same required methods but with entirely different logic (PAN Card KYC, 5% interest) — demonstrating that abstraction lets multiple concrete types share a contract while diverging completely in behavior, which is precisely the "what, not how" principle.
-- Note `IciciBank` does **not** implement `StateGovt` — showing that interface implementation is independently chosen per class, not inherited from siblings.
+- **Lines 7–14** — `StateGovt` is an empty **marker interface** (classes `implements` it to signal a category, similar to `java.io.Serializable`); line 13 vs 14 shows the fully explicit `public abstract void checkNationality();` versus the idiomatic terse form — **all interface methods are implicitly `public abstract`** unless `default`/`static`.
+- **Lines 18–26** — `abstract class Rbi` mixes a package-private abstract method (`doKyc`) with an explicitly `public abstract` one (`payInterest`), showing abstract classes aren't restricted to `public` members like interfaces are; `HdfcBank extends Rbi implements GovtOfIndia, StateGovt` combines **single class inheritance** with **multiple interface implementation**, and must implement every abstract method from both.
+- **Line 44** — `IciciBank` implements the same abstract class/interface with different logic, and notably skips `StateGovt` — interface adoption is chosen independently per class.
 
 ### Code — `day2/oop/abstractconcrete/AbstractAndConcreteDemo.java` (driving the hierarchy)
 
 ```java
 1:  package com.acme.demo.day2.oop.abstractconcrete;
-2:  
 3:  public class AbstractAndConcreteDemo {
-4:  	
 5:  	public static void main(String[] args) {
-6:  		
 7:  		HdfcBank bank1 = new HdfcBank();
 8:  		bank1.doKyc();
 9:  		bank1.payInterest();
@@ -1054,32 +779,25 @@ Java 8 added **`default`** methods to interfaces (a method with a body that impl
 12: 		bank2.doKyc();
 13: 		bank2.payInterest();
 14: 		bank2.checkNationality();
-15: 		
 16: 		Rbi bank3 = new HdfcBank();
 17: 		bank3.doKyc();
-18: 		
 19: 	}
-20: 
 21: }
 ```
 
-- **Line 7** — `new HdfcBank()` — legal because `HdfcBank` is **concrete** (implements every abstract method it inherits); `new Rbi()` or `new GovtOfIndia()` directly would both be compile errors, since abstract classes and interfaces cannot be instantiated.
-- **Lines 8–10** — calling all three methods on the `HdfcBank`-typed reference — every method (from both the abstract superclass and the interface) is visible because the reference's declared type is the concrete class itself.
-- **Lines 11–14** — the same pattern for `IciciBank`, showing a second, differently-behaving implementation invoked through identical method calls.
-- **Line 16** — `Rbi bank3 = new HdfcBank();` — **upcasting** a concrete `HdfcBank` object to its abstract superclass type `Rbi`. This is legal and implicit (an `HdfcBank` IS-A `Rbi`).
-- **Line 17** — `bank3.doKyc();` — works, because `doKyc()` is declared on `Rbi` itself; however, through the `Rbi`-typed reference, `bank3.checkNationality()` (from `GovtOfIndia`) would **not** compile — `Rbi`'s declared type has no knowledge of that interface, illustrating again that the compile-time reference type gates which methods are callable, even though the actual runtime object (`HdfcBank`) does implement more.
+- **Line 7** — `new HdfcBank()` is legal because `HdfcBank` is **concrete**; `new Rbi()`/`new GovtOfIndia()` directly would both be compile errors.
+- **Line 16** — `Rbi bank3 = new HdfcBank();` is **upcasting** to the abstract superclass type — legal and implicit.
+- **Line 17** — `bank3.doKyc()` works since `doKyc()` is declared on `Rbi`, but `bank3.checkNationality()` (from `GovtOfIndia`) would **not** compile through this reference — the declared type gates which methods are callable, even though the runtime object implements more.
 
 ### Code — `day2/oop/abstraction/AbstractionDemo.java`
 
 ```java
 1:  package com.acme.demo.day2.oop.abstraction;
-2:  
 3:  public class AbstractionDemo {
-4:  
 5:  }
 ```
 
-- An empty stub class with no members — this file exists as a placeholder/entry point in the dedicated `abstraction` package but carries no logic of its own; the substantive abstraction examples live in the sibling `abstractconcrete` package shown above.
+- An empty stub/placeholder — the substantive abstraction examples live in the sibling `abstractconcrete` package above.
 
 ---
 
@@ -1093,55 +811,42 @@ Encapsulation also lets you shape exactly what's readable/writable: **read-only*
 
 ```java
 1:  package com.acme.demo.day2.oop.encapsulation;
-2:  
 3:  import java.util.Objects;
-4:  
 5:  public class Employee {
-6:  
 7:  	private int id;
 8:  	private String name;
 9:  	private double salary;
-10: 
 11: 	public Employee() {
 12: 		super();
 13: 	}
-14: 
 15: 	public Employee(int id, String name, double salary) {
 16: 		super();
 17: 		this.id = id;
 18: 		this.name = name;
 19: 		this.salary = salary;
 20: 	}
-21: 
 22: 	public int getId() {
 23: 		return id;
 24: 	}
-25: 
 26: 	public void setId(int id) {
 27: 		this.id = id;
 28: 	}
-29: 
 30: 	public String getName() {
 31: 		return name;
 32: 	}
-33: 
 34: 	public void setName(String name) {
 35: 		this.name = name;
 36: 	}
-37: 
 38: 	public double getSalary() {
 39: 		return salary;
 40: 	}
-41: 
 42: 	public void setSalary(double salary) {
 43: 		this.salary = salary;
 44: 	}
-45: 
 46: 	@Override
 47: 	public int hashCode() {
 48: 		return Objects.hash(id, name, salary);
 49: 	}
-50: 
 51: 	@Override
 52: 	public boolean equals(Object obj) {
 53: 		if (this == obj)
@@ -1154,28 +859,19 @@ Encapsulation also lets you shape exactly what's readable/writable: **read-only*
 60: 		return id == other.id && Objects.equals(name, other.name)
 61: 				&& Double.doubleToLongBits(salary) == Double.doubleToLongBits(other.salary);
 62: 	}
-63: 
 64: 	@Override
 65: 	public String toString() {
 66: 		return "Employee [id=" + id + ", name=" + name + ", salary=" + salary + "]";
 67: 	}
-68: 
 69: }
 ```
 
-- **Lines 7–9** — `private int id; private String name; private double salary;` — the core encapsulation move: fields are unreachable from any class other than `Employee` itself, so all access must go through the public methods below.
-- **Lines 22–24, 30–32, 38–40** — standard getters, each returning the current field value; no validation needed on read.
-- **Lines 26–28, 34–36, 42–44** — standard setters, following the JavaBeans naming convention (`setId`, `setName`, `setSalary`) — note these particular setters have **no validation logic**, which the courseware explicitly flags as the "boilerplate, not real encapsulation" case; they still provide the *structural* benefit (a single choke point where validation could later be added without changing calling code), but as written they're mechanical passthroughs.
-- **Line 48** — `Objects.hash(id, name, salary)` — combines all three fields into a single well-distributed hash code; critically, it uses **exactly the same fields** referenced in `equals()`, satisfying the `equals`/`hashCode` contract required for correct behavior in `HashMap`/`HashSet` (see Module 14).
-- **Lines 53–58** — the standard four-step `equals()` pattern: same-reference shortcut (`this == obj`), null check, exact-type check via `getClass()` (stricter than `instanceof`, which would also match subclasses), then field-by-field comparison after casting.
-- **Line 60–61** — `Objects.equals(name, other.name)` null-safely compares the `String` fields; `Double.doubleToLongBits(salary) == Double.doubleToLongBits(other.salary)` is the correct way to compare `double`s for `equals()` purposes because it treats `NaN`/`-0.0` consistently (unlike a naive `==` on primitive doubles).
-- **Line 66** — `toString()` builds a readable field dump, overriding `Object`'s default `ClassName@hashcode` representation.
+- **Lines 7–9, 26–44** — `private` fields are the core encapsulation move (unreachable outside `Employee`); these particular setters have **no validation logic**, flagged by the courseware as "boilerplate, not real encapsulation" — still a single choke point where validation could later be added, but mechanical passthroughs as written.
+- **Lines 48, 53–61** — `Objects.hash(id, name, salary)` uses **exactly the same fields** as `equals()`, satisfying the contract required for correct `HashMap`/`HashSet` behavior; `equals()` follows the standard four-step pattern (same-reference shortcut, null check, `getClass()` exact-type check, field comparison), using `Double.doubleToLongBits(...)` for `salary` since it treats `NaN`/`-0.0` consistently unlike naive `==`.
 
 ```java
 1:  package com.acme.demo.day2.oop.encapsulation;
-2:  
 3:  public class EncapsulationDemo {
-4:  
 5:  	public static void main(String[] args) {
 6:  		Employee emp = new Employee();
 7:  		System.out.println(emp.toString());
@@ -1184,18 +880,11 @@ Encapsulation also lets you shape exactly what's readable/writable: **read-only*
 10: //		System.out.println(emp.salary);
 11: 		System.out.println(emp.getSalary());
 12: 		System.out.println(emp.toString());
-13: 
 14: 	}
-15: 
 16: }
 ```
 
-- **Line 6** — `new Employee()` — uses the no-arg constructor; all fields sit at their defaults (`id=0`, `name=null`, `salary=0.0`).
-- **Line 8** — commented `emp.salary = 10.25;` — this line, if uncommented, would be a **compile error**: `salary` is `private` in `Employee`, and `EncapsulationDemo`, despite being in the same package, cannot reach a `private` member (recall `private` is class-only, stricter than default/package access). This is the direct, concrete proof that encapsulation is being enforced by the compiler, not just convention.
-- **Line 9** — `emp.setSalary(10.25);` — the only legal way to change `salary` from outside `Employee`, going through the public setter.
-- **Line 10** — commented `System.out.println(emp.salary);` — same compile-error reasoning as line 8, this time for reading rather than writing.
-- **Line 11** — `emp.getSalary()` — the only legal way to read `salary` externally.
-- **Line 12** — prints the full object state via `toString()`, confirming the salary update actually took effect (`salary=10.25`).
+- **Lines 8, 10** (commented) — `emp.salary = 10.25;` / `emp.salary` would both be **compile errors**: `salary` is `private`, and even a same-package class like `EncapsulationDemo` cannot reach a `private` member — direct proof encapsulation is compiler-enforced, not just convention. Lines 9, 11 show the only legal path: the public setter/getter.
 
 ---
 
@@ -1209,33 +898,25 @@ Every class in Java implicitly extends `java.lang.Object`, inheriting `toString(
 
 ```java
 1:  package com.acme.demo.day2.commons.objects;
-2:  
 3:  import java.util.Objects;
-4:  
 5:  public class Employee {
-6:  
 7:  	int id;
 8:  	String name;
 9:  	double salary;
-10: 
 11: 	public Employee() {
 12: 		super();
 13: 	}
-14: 
 15: 	public Employee(int id, String name, double salary) {
 16: 		super();
 17: 		this.id = id;
 18: 		this.name = name;
 19: 		this.salary = salary;
 20: 	}
-21: 	
 22: 	// getters setters 
-23: 
 24: 	@Override
 25: 	public int hashCode() {
 26: 		return Objects.hash(id, name, salary);
 27: 	}
-28: 
 29: 	@Override
 30: 	public boolean equals(Object obj) {
 31: 		if (this == obj)
@@ -1248,46 +929,32 @@ Every class in Java implicitly extends `java.lang.Object`, inheriting `toString(
 38: 		return id == other.id && Objects.equals(name, other.name)
 39: 				&& Double.doubleToLongBits(salary) == Double.doubleToLongBits(other.salary);
 40: 	}
-41: 
 42: 	@Override
 43: 	public String toString() {
 44: 		return "Employee [id=" + id + ", name=" + name + ", salary=" + salary + "]";
 45: 	}
-46: 
 47: }
 ```
 
-- **Line 3** — `import java.util.Objects;` — the utility class supplying the null-safe `equals()` and multi-field `hash()` helpers used below.
-- **Lines 7–9** — fields here are package-private (not `private`, unlike the Encapsulation module's `Employee`) — this file's focus is `Object` method overrides, not access control, so it doesn't bother with getters/setters (see the frank `// getters setters` comment on line 22 marking the omission).
-- **Lines 24–27** — `hashCode()` override delegates to `Objects.hash(id, name, salary)`, combining all three fields exactly as `equals()` uses them below — required by the `equals`/`hashCode` contract.
-- **Lines 30–40** — the canonical `equals()` implementation: identity shortcut (line 31), null guard (line 33), strict type check via `getClass()` (line 35, stricter than `instanceof`), then a cast and field comparison (lines 37–39) — `id == other.id` for the primitive `int`, `Objects.equals(name, other.name)` for the null-safe `String` comparison, and `Double.doubleToLongBits(...)` comparison for `salary` (the correct way to compare `double` fields in `equals`, since it handles `NaN`/`-0.0` edge cases that plain `==` on primitive doubles would get wrong).
-- **Lines 42–45** — `toString()` overridden to produce a readable field dump instead of `Object`'s default hash-based string.
+- **Lines 7–9** — fields here are package-private (unlike the Encapsulation module's `Employee`) since this file's focus is `Object` method overrides, not access control; it skips getters/setters entirely (`// getters setters` comment marks the omission).
+- Same `hashCode()`/`equals()`/`toString()` pattern as `EncapsulationDemo`'s `Employee` above — see that walkthrough for the field-by-field reasoning.
 
 ```java
 1:  package com.acme.demo.day2.commons.objects;
-2:  
 3:  public class ObjectDemo {
-4:  
 5:  	public static void main(String[] args) {
-6:  
 7:  		Employee emp1 = new Employee(1, "Sonu", 10.25);
 8:  		Employee emp2 = new Employee(1, "Sonu", 10.25);
-9:  		
 10: 		System.out.println(emp1.toString());
 11: 		System.out.println(emp2.toString());
 12: 		System.out.println(emp1.hashCode());
 13: 		System.out.println(emp2.hashCode());
 14: 		System.out.println(emp1.equals(emp2));
-15: 
 16: 	}
-17: 
 18: }
 ```
 
-- **Lines 7–8** — `emp1` and `emp2` are constructed with **identical field values** but are two entirely separate objects on the heap (`new` is called twice) — `emp1 == emp2` would be `false`, since `==` compares references.
-- **Lines 10–11** — both `toString()` calls print the same formatted string (`Employee [id=1, name=Sonu, salary=10.25]`) because the field *values* are identical, even though the underlying objects are different.
-- **Lines 12–13** — `hashCode()` for both objects prints the **same** integer, because `Objects.hash(id, name, salary)` produces the same result for the same field values, regardless of which object instance it's called on — this satisfies the "equal objects must have equal hash codes" contract in advance of the `equals()` check.
-- **Line 14** — `emp1.equals(emp2)` prints `true`: because `equals()` was overridden to compare field *content* rather than reference identity, two distinct objects with matching data are correctly reported as equal. Without the override (i.e. relying on `Object`'s default `equals`), this would print `false` even though the data is identical — the exact contrast the courseware's Module 14 uses to motivate overriding `equals()`/`hashCode()` in the first place.
+- **Lines 7–14** — `emp1`/`emp2` are two separate heap objects with identical field values: `hashCode()` matches for both (satisfying the equals/hashCode contract), and `emp1.equals(emp2)` prints `true` because `equals()` was overridden to compare content, not reference identity — without the override, this would print `false` despite identical data.
 
 ---
 
@@ -1311,72 +978,47 @@ The courseware's summary table maps old-style anonymous-class idioms (`Runnable`
 
 ```java
      1	package com.acme.demo.day3.inner;
-     2	
      3	@FunctionalInterface
      4	interface Tax {
-     5	
      6		public abstract double gst(double amount);
      7	}
-     8	
      9	@FunctionalInterface
     10	public interface Calc {
-    11	
     12	public abstract int addNums(int i, int j);
-    13	
     14	//	public abstract int subNums(int i, int j);
-    15	
     16	}
-    17	
     18	class CalcMethods implements Calc {
-    19	
     20		@Override
     21		public int addNums(int i, int j) {
     22		return i + j;
     23	}
-    24	
     25	//	@Override
     26	//	public int subNums(int i, int j) {
     27	//		return i - j;
     28	//	}
-    29	
     30	}
 ```
 
-- **Line 1** — package declaration; groups this file with the rest of the `day3.inner` demo package.
-- **Line 3** — `@FunctionalInterface`: a marker annotation. It doesn't change runtime behavior; it tells the compiler to *verify* the annotated interface has exactly one abstract method, so it can legally be the target type of a lambda expression. This is the tie-in to Module 20 (lambdas) foreshadowed by the inner-classes/anonymous-class discussion.
-- **Line 4** — `interface Tax` declared without `public`: package-private visibility, only usable within `com.acme.demo.day3.inner`. Unlike a top-level `public` class, a file can have any number of package-private top-level types alongside one `public` one.
-- **Line 6** — `public abstract double gst(double amount);`: interface methods are implicitly `public abstract`; writing the modifiers explicitly here is redundant but harmless and sometimes used for clarity/teaching.
-- **Line 9** — same `@FunctionalInterface` marker applied to `Calc`.
-- **Line 10** — `public interface Calc`: this one is the file's single `public` top-level type (must match the filename `Calc.java`).
-- **Line 12** — declares the sole abstract method `addNums(int, int)` — this is what makes `Calc` a valid functional-interface target for a lambda `(i, j) -> i + j`.
-- **Line 14** — commented-out second abstract method `subNums`; if uncommented, `@FunctionalInterface` would cause a **compile error** because the interface would then have two abstract methods — this is the annotation actively doing verification work, illustrating why it's useful (catches an accidental second abstract method early rather than failing mysteriously at lambda-conversion sites).
-- **Line 18** — `class CalcMethods implements Calc`: a concrete, package-private, named class providing a traditional implementation (the "Option 1" approach referenced in `InnerDemo.java`, contrasted with anonymous-class and lambda approaches).
-- **Lines 20–23** — `@Override public int addNums(...) { return i + j; }`: standard method implementation; `@Override` here lets the compiler confirm this signature actually matches an interface method (protects against typos).
-- **Lines 25–28** — commented-out override of the (also commented-out) `subNums`, kept in sync with line 14's commented declaration, showing how the two files evolve together as the demo removes/adds a second interface method.
+- **Line 3, 9** — `@FunctionalInterface`: a marker annotation that tells the compiler to *verify* the annotated interface has exactly one abstract method, so it can legally be a lambda target — the tie-in to Module 20.
+- **Line 14** (commented) — if this second abstract method `subNums` were uncommented, `@FunctionalInterface` would cause a **compile error** — the annotation actively catches an accidental second abstract method rather than failing mysteriously at lambda-conversion sites.
+- **Line 18** — `CalcMethods implements Calc` is a traditional named-class implementation (the "Option 1" approach referenced in `InnerDemo.java`, contrasted with anonymous-class and lambda approaches below).
 
 ### `InnerDemo.java`
 
 ```java
      1	package com.acme.demo.day3.inner;
-     2	
      3	// use abstract method from an interface 
-     4	
      5	public class InnerDemo {
-     6	
      7		public static void main(String[] args) {
-     8	
      9		Tax tax = (amount) -> {
     10			return amount * 1.18;
     11	};
     12		Tax tax2 = amount -> {
     13		return amount * 1.18;
     14	};
-    15	
     16	Tax tax3 = amount -> amount * 1.18;
-    17	
     18	double finalAmount = tax.gst(100);
     19	System.out.println(finalAmount);
-    20	
     21	//		// Option 1 - use concrete class
     22	//		Calc calc = new CalcMethods();
     23	//		calc.addNums(10, 20);
@@ -1401,16 +1043,10 @@ The courseware's summary table maps old-style anonymous-class idioms (`Runnable`
     42	}
     43	}
 ```
-*(The file also retains two fully commented-out earlier drafts below the active code, exploring the same demo — including a version with a method-local class `LocalClass`, a regular inner class `InstanceClass`, and a static nested class `StaticClass` as inert placeholders illustrating the syntax for all four inner-class kinds discussed in the courseware.)*
+*(The file also retains commented-out drafts exploring `LocalClass`, `InstanceClass`, and `StaticClass` placeholders for the other three inner-class kinds discussed in the courseware.)*
 
-- **Line 5** — `public class InnerDemo`: the file's public entry-point class, matches filename.
-- **Line 7** — `public static void main(String[] args)`: JVM entry point.
-- **Line 9** — `Tax tax = (amount) -> { return amount * 1.18; };`: a **lambda expression** assigned to a variable of the functional-interface type `Tax`. Because `Tax` has exactly one abstract method (`gst`), the compiler knows this lambda's parameter list `(amount)` and body implement `gst`. This is functionally equivalent to an anonymous inner class `new Tax() { public double gst(double amount) { return amount * 1.18; } }`, but far more concise — the whole point of Module 15's closing "Modern Perspective" table.
-- **Line 12** — same lambda, but parentheses around the single parameter are omitted (`amount -> { ... }`) — legal Java syntax when there is exactly one inferred-type parameter; purely stylistic, same result as `tax`.
-- **Line 16** — `Tax tax3 = amount -> amount * 1.18;`: the **expression-lambda** form — no braces, no explicit `return`; the expression's value is implicitly returned. This is the most concise equivalent of the anonymous-class version.
-- **Line 18** — `tax.gst(100)` invokes the lambda body, passing `100` (auto-widened to `double`) as `amount`.
-- **Line 19** — prints the computed GST-inclusive amount.
-- **Lines 21–41** — large commented-out block enumerating three explicit strategies for implementing the `Calc` functional interface side-by-side: **Option 1** uses the named concrete class `CalcMethods` from `Calc.java` (`new CalcMethods()`); **Option 2** uses an **anonymous inner class** (`new Calc() { @Override public int addNums(...) {...} }`) — the direct anonymous-inner-class syntax the courseware describes as "create an object that implements `Calc`, using this body as the implementation"; **Option 3** uses a **lambda** (`(i, j) -> i + j`), the modern one-liner replacement. Keeping all three commented side-by-side is a deliberate teaching device showing the same behavior expressed three different ways with decreasing verbosity.
+- **Lines 9–16** — three progressively terser forms of the same lambda: `(amount) -> { return amount * 1.18; };` (full form), `amount -> { ... }` (parens dropped for a single inferred-type parameter), and `amount -> amount * 1.18;` (expression-lambda, no braces/`return`) — all functionally equivalent to `new Tax() { public double gst(double amount) {...} }`, but far more concise.
+- **Lines 21–41** (commented) — three explicit strategies for implementing `Calc` side-by-side: **Option 1** the named class `CalcMethods` (`new CalcMethods()`); **Option 2** an **anonymous inner class** (`new Calc() { @Override public int addNums(...) {...} }`); **Option 3** a **lambda** (`(i, j) -> i + j`) — a deliberate teaching device showing the same behavior with decreasing verbosity.
 
 ## 16. Enums
 
@@ -1432,51 +1068,36 @@ The closing comparison table crystallizes why enums win over int/String constant
 
 ```java
      1	package com.acme.demo.day3.miscelleneous;
-     2	
      3	public enum DayOfWeek {
-     4	
      5		MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY
-     6	
      7	}
 ```
 
-- **Line 1** — package declaration.
-- **Line 3** — `public enum DayOfWeek`: declares a new reference type with `enum` instead of `class`. Under the hood the compiler generates a `final class DayOfWeek extends java.lang.Enum<DayOfWeek>` with `private` constructors, so this type can never be subclassed and can never be instantiated with `new` from outside the enum body.
-- **Line 5** — the constant list `MONDAY, TUESDAY, ...`: each identifier becomes a `public static final DayOfWeek` singleton instance, in declaration order (this order backs `ordinal()`). No fields/constructor are declared here, so this is the "basic enum" form from the courseware — just type-safe named constants, nothing more. Note only six days are listed (no `SUNDAY`), a data omission in the demo, not a syntax feature.
+- **Line 3** — `public enum DayOfWeek`: under the hood the compiler generates `final class DayOfWeek extends java.lang.Enum<DayOfWeek>` with `private` constructors, so it can never be subclassed or instantiated with `new` from outside.
+- **Line 5** — each constant becomes a `public static final DayOfWeek` singleton in declaration order (backing `ordinal()`) — the "basic enum" form, just type-safe named constants. Note only six days are listed (no `SUNDAY`) — a data omission in the demo, not a syntax feature.
 
 ### `EnumDemo.java`
 
 ```java
      1	package com.acme.demo.day3.miscelleneous;
-     2	
      3	public class EnumDemo {
-     4	
      5		public static void main(String[] args) {
-     6	
      7	//		String today = "Monday";
      8	//		today = "Friday";
      9	//		today = "Dryday";
-    10	
     11	DayOfWeek today = DayOfWeek.MONDAY;
     12	System.out.println(today);
     13	today = DayOfWeek.FRIDAY;
     14	System.out.println(today);
     15	//		today = "Dryday"; // CE 
-    16	
     17	}
-    18	
     19	}
 ```
 *(A fully commented-out earlier iteration follows below, exploring `final` static constants — `private final static int NUM`, `private final static Employee EMPLOYEE` — as a contrast point, showing how `final` fields (single-assignment) differ from enums (a fixed, closed set of typed values) even though both involve "constant-like" declarations.)*
 
-- **Line 3** — `public class EnumDemo`: entry-point class matching the filename.
-- **Line 5** — `main` method — JVM entry point.
-- **Lines 7–9** — commented-out **before** version using a plain `String` for `today`, deliberately including a typo-able value `"Dryday"` that would silently compile (a String accepts any text) — this is the exact "no type safety" problem the courseware calls out as the reason to prefer enums.
-- **Line 11** — `DayOfWeek today = DayOfWeek.MONDAY;`: declares a variable of the enum type and assigns the singleton constant `MONDAY`, accessed via the enum type name (mandatory qualification, unlike inside a `switch` case where the type is inferred from context).
-- **Line 12** — `System.out.println(today)` implicitly calls `today.toString()`, which for a plain enum defaults to `.name()`, printing `MONDAY` — demonstrating the "readable by default" property versus an int constant printing `1`.
-- **Line 13** — reassigns `today` to a different constant, `FRIDAY`. Legal because `today` is a local variable, not `final`; the enum *type* is what's fixed, not this particular reference.
-- **Line 14** — prints `FRIDAY`.
-- **Line 15** — commented-out `today = "Dryday";` annotated `// CE` (compile error) — the payoff line proving the type-safety claim: unlike the String version above, assigning a String literal to an enum-typed variable does not compile.
+- **Lines 7–9** (commented) — the **before** version using a plain `String` for `today`, deliberately including a typo-able value `"Dryday"` that would silently compile — the exact "no type safety" problem enums fix.
+- **Line 12** — `System.out.println(today)` implicitly calls `.toString()`, which for a plain enum defaults to `.name()`, printing `MONDAY` — "readable by default" versus an int constant printing `1`.
+- **Line 15** (commented) — `today = "Dryday"; // CE` — the payoff line: unlike the String version above, assigning a String literal to an enum-typed variable does not compile.
 
 ## 17. Exception Handling
 
@@ -1500,16 +1121,11 @@ Best practices called out explicitly: catch specific exceptions rather than broa
 
 ```java
      1	package com.acme.demo.day2.exception;
-     2	
      3	import java.util.InputMismatchException;
      4	import java.util.Scanner;
-     5	
      6	public class ExceptionDemo {
-     7	
      8		public static void main(String[] args) {
-     9	
     10	int num3 = 0;
-    11	
     12	try (Scanner sc = new Scanner(System.in);) {
     13	System.out.println("Enter an integer: ");
     14	int num = sc.nextInt();
@@ -1521,55 +1137,39 @@ Best practices called out explicitly: catch specific exceptions rather than broa
     20	} finally {
     21	System.out.println(num3);
     22	}
-    23	
     24	}
-    25	
     26	}
 ```
-*(Below the active code, the file also retains fully commented-out earlier revisions: a version using a plain, non-try-with-resources `Scanner` with manual `sc.close()` in `finally` — the pre-Java-7-style pattern that `try-with-resources` replaces — a version with separate `catch (InputMismatchException e)`, `catch (ArithmeticException e)`, and a trailing `catch (RuntimeException e)` catch-all, illustrating the specific-before-general ordering rule; and an earliest version with no try/catch at all, where an exception would propagate uncaught to the JVM.)*
+*(Retains commented-out earlier revisions: manual `Scanner`/`sc.close()` — the pre-Java-7 pattern `try-with-resources` replaces — separate specific-before-general catches, and an earliest version with no try/catch, letting the exception propagate uncaught.)*
 
-- **Line 3** — imports `java.util.InputMismatchException`, thrown by `Scanner` when input doesn't match the requested type (e.g., non-numeric text for `nextInt()`); an unchecked `RuntimeException` subtype, so no `throws` declaration is needed.
-- **Line 4** — imports `java.util.Scanner`, used to read console input.
-- **Line 10** — `int num3 = 0;` declared *outside* the try block, initialized to a default, so it remains accessible (and printable) in `finally` even if an exception aborts the division on line 17.
-- **Line 12** — `try (Scanner sc = new Scanner(System.in);)`: **try-with-resources**. `Scanner` implements `Closeable`, so it is automatically closed when the block exits (success, caught exception, or uncaught exception), removing the need for a manual `sc.close()` in `finally`. The trailing semicolon after `Scanner sc = ...` inside the parens is optional/harmless (Java allows a trailing `;` before `)` in a resource list).
-- **Lines 13–16** — prompt and read two integers via `sc.nextInt()`; each call can throw `InputMismatchException` if the input token isn't a valid `int`.
-- **Line 17** — `num3 = num / num2;`: integer division; if `num2` is `0` this throws `ArithmeticException` ("/ by zero") — note this is *integer* division throwing at runtime, unlike floating-point division which would silently produce `Infinity`/`NaN`.
-- **Line 18** — `catch (InputMismatchException | ArithmeticException e)`: **multi-catch** — a single handler for two unrelated exception types, both unchecked, so no `throws` was ever required on `main`.
-- **Line 19** — generic recovery message; this swallows the specific cause (both types print the same "Wrong!"), a simplification the courseware would flag as "less informative" than separate catches, though acceptable for this teaching demo.
-- **Line 20** — `finally` block: runs unconditionally after the try/catch, whether or not an exception occurred.
-- **Line 21** — prints `num3`, which will be `0` if any exception occurred (since line 17 never completed) or the computed quotient otherwise — demonstrating why initializing the variable outside the try is necessary for `finally` to have something valid to print in all cases.
+- **Lines 10, 12** — `int num3 = 0;` is declared *outside* the try block so it's still printable in `finally` even if the division aborts; `try (Scanner sc = new Scanner(System.in);)` is **try-with-resources** — `Scanner` implements `Closeable`, so it's closed automatically on any exit path.
+- **Lines 17–18** — *integer* division throws `ArithmeticException` ("/ by zero") if `num2` is `0` (unlike floating-point division, which would silently produce `Infinity`/`NaN`); `catch (InputMismatchException | ArithmeticException e)` is **multi-catch** — one handler for two unrelated unchecked types, both printing the generic "Wrong!", a simplification less informative than separate catches.
+- **Line 21** — prints `num3`, `0` if any exception occurred or the real quotient otherwise — proving why the variable must be initialized outside the try.
 
 ### `NoAgeEligibilityException.java`
 
 ```java
      1	package com.acme.demo.day2.exception;
-     2	
      3	public class NoAgeEligibilityException extends RuntimeException {
-     4	
      5		private static final long serialVersionUID = 628355502492179165L;
-     6	
      7	public NoAgeEligibilityException() {
      8	super();
      9	}
-    10	
     11	public NoAgeEligibilityException(String message) {
     12	super(message);
     13	}
     14	}
 ```
 
-- **Line 3** — `public class NoAgeEligibilityException extends RuntimeException`: a **custom unchecked exception** — extending `RuntimeException` (not `Exception`) means callers are *not* forced by the compiler to catch or declare it, matching the courseware's guidance that "unchecked" is right for exceptions representing violated business rules the caller isn't strictly required to handle explicitly (as opposed to genuinely external failures).
-- **Line 5** — `private static final long serialVersionUID`: a field the Java serialization mechanism uses to verify a serialized object matches the class version when deserializing; `Throwable` (and hence all exceptions) implements `Serializable`, so IDEs commonly auto-generate this field to silence a compiler warning about missing an explicit version ID. It has no bearing on normal exception-handling behavior.
-- **Lines 7–9** — no-arg constructor calling `super()`, i.e., `RuntimeException`'s no-arg constructor (empty message, no cause).
-- **Lines 11–13** — a constructor taking a `String message`, forwarding it to `super(message)` so `getMessage()` on a caught instance returns that text — this is the constructor actually used by `ThrowDemo.java`.
+- **Line 3** — extending `RuntimeException` (not `Exception`) makes this a **custom unchecked exception** — callers are *not* compiler-forced to catch or declare it, matching the courseware's guidance that unchecked is right for violated-business-rule exceptions.
+- **Line 5** — `serialVersionUID` is auto-generated by IDEs to silence a compiler warning (since `Throwable` implements `Serializable`) — no bearing on normal exception-handling behavior.
+- **Lines 11–13** — the message-taking constructor forwards to `super(message)` so `getMessage()` returns that text — this is the one actually used by `ThrowDemo.java`.
 
 ### `ThrowDemo.java`
 
 ```java
      1	package com.acme.demo.day2.exception;
-     2	
      3	public class ThrowDemo {
-     4	
      5		public static void main(String[] args) {
      6	System.out.println("Start");
      7	try {
@@ -1579,7 +1179,6 @@ Best practices called out explicitly: catch specific exceptions rather than broa
     11	}
     12	System.out.println("End");
     13	}
-    14	
     15	static void checkEligibility(int age) {
     16	if (age >= 18) {
     17	System.out.println("Eligible");
@@ -1587,27 +1186,20 @@ Best practices called out explicitly: catch specific exceptions rather than broa
     19	// code
     20	throw new NoAgeEligibilityException("Age is < 18!");
     21	}
-    22	
     23	}
-    24	
     25	}
 ```
 *(Followed by a fully commented-out earlier draft that throws a plain `RuntimeException` instead of the custom type.)*
 
-- **Line 8** — calls `checkEligibility(17)` inside a `try`, anticipating it might throw.
-- **Line 9** — `catch (RuntimeException e)`: catches by the **supertype** `RuntimeException` rather than the specific `NoAgeEligibilityException` — works because `NoAgeEligibilityException` *is-a* `RuntimeException`, demonstrating polymorphic catching; also means this handler catches *any* unchecked exception, looser than ideal per the "catch specific" best practice, but valid.
-- **Line 10** — `e.printStackTrace()`: prints the exception type, message, and full call stack to `System.err` — useful for debugging.
-- **Line 15** — `static void checkEligibility(int age)`: no `throws` clause needed even though this method `throw`s — because `NoAgeEligibilityException` is unchecked, the compiler does not require declaration, unlike a checked exception which would force a `throws NoAgeEligibilityException` here.
-- **Lines 16–17** — normal-path branch when `age >= 18`.
-- **Line 20** — `throw new NoAgeEligibilityException("Age is < 18!");`: manually raises the custom exception with an explicit descriptive message, per the courseware's "always provide a clear message" guidance — control immediately exits this method and unwinds to the nearest matching catch (line 9's `main`).
+- **Line 9** — `catch (RuntimeException e)` catches by the **supertype** rather than the specific `NoAgeEligibilityException` — works via polymorphic catching, but is looser than ideal per the "catch specific" best practice.
+- **Line 15** — no `throws` clause needed on `checkEligibility` since `NoAgeEligibilityException` is unchecked — a checked exception would force a `throws` declaration here instead.
+- **Line 20** — `throw new NoAgeEligibilityException("Age is < 18!");` manually raises the custom exception, unwinding immediately to the nearest matching catch.
 
 ### `ThrowsDemo.java`
 
 ```java
      1	package com.acme.demo.day2.exception;
-     2	
      3	public class ThrowsDemo {
-     4	
      5	public static void main(String[] args) {
      6	System.out.println("Start");
      7	try {
@@ -1617,7 +1209,6 @@ Best practices called out explicitly: catch specific exceptions rather than broa
     11	}
     12	System.out.println("End");
     13	}
-    14	
     15	public static void printNums() throws InterruptedException {
     16	for (int i = 1; i <= 10; i++) {
     17	Thread.sleep(250);
@@ -1628,11 +1219,8 @@ Best practices called out explicitly: catch specific exceptions rather than broa
 ```
 *(Followed by a commented-out earlier draft where `printNums` catches `InterruptedException` internally via its own try/catch around `Thread.sleep`, instead of declaring `throws`.)*
 
-- **Line 9** — calls `printNums()` inside a `try`, required because `printNums` declares a checked exception it doesn't itself handle.
-- **Line 10** — `catch (InterruptedException e)`: `InterruptedException` is a **checked** exception (`Exception` subtype, not `RuntimeException`), so the compiler *forces* this catch (or a `throws` re-declaration on `main`) to exist — omitting it entirely would be a compile error. This is the clearest example in the code set of the checked-exception contract in action.
-- **Line 16** — `public static void printNums() throws InterruptedException`: the `throws` clause is the **declaration half of the checked-exception contract** — it tells any caller "I might propagate this checked exception; you must handle or re-declare it." Without this clause, line 18's `Thread.sleep(250)` (which itself declares `throws InterruptedException`) would not compile inside this method unless wrapped in a local try/catch.
-- **Line 18** — `Thread.sleep(250)`: pauses the current thread ~250ms; a checked-exception-throwing method by design because a thread can be interrupted asynchronously by another thread while sleeping — treated as an external, must-handle condition rather than a bug.
-- **Line 19** — prints the loop counter, executing after each successful sleep.
+- **Line 10** — `catch (InterruptedException e)`: `InterruptedException` is a **checked** exception, so the compiler *forces* this catch (or a `throws` re-declaration on `main`) — omitting it is a compile error. The clearest example in the code set of the checked-exception contract in action.
+- **Line 16** — `throws InterruptedException` is the **declaration half of the contract** — it tells callers "I might propagate this; you must handle or re-declare it." Without it, line 18's `Thread.sleep(250)` (itself `throws InterruptedException`) wouldn't compile here without a local try/catch.
 
 ## 18. Annotations
 
@@ -1670,28 +1258,19 @@ This single file is the source for topics 19, 20, and 21. Full listing shown onc
 
 ```java
      1	package com.acme.demo.day3.features;
-     2	
      3	import java.time.LocalDate;
      4	import java.time.Period;
      5	import java.util.*;
      6	import java.util.function.BinaryOperator;
      7	import java.util.function.Supplier;
      8	import java.util.stream.Collectors;
-     9	
     10	public class Java8Features {
-    11	
     12		public static void main(String[] args) {
-    13	
     14	// Lambda Expression
-    15	
     16	Runnable r = () -> System.out.println("Hi from Lambda");
-    17	
     18	r.run();
-    19	
     20	// Stream API
-    21	
     22	List<String> names = List.of("Sonu", "Monu", "Tonu", "Ponu");
-    23	
     24	//		 option 1 
     25	names.forEach((name) -> {
     26	System.out.println(name);
@@ -1699,106 +1278,59 @@ This single file is the source for topics 19, 20, and 21. Full listing shown onc
     28	//		option 2 
     29	names.forEach(name -> System.out.println(name));
     30	//		option 3 - method reference 
-    31	
     32	names.forEach(System.out::println);
-    33	
     34	names.stream().filter(n -> n.startsWith("A")).forEach(System.out::println);
-    35	
     36	// map()
-    37	
     38	List<String> upper = names.stream().map(String::toUpperCase).collect(Collectors.toList());
-    39	
     40	System.out.println(upper);
-    41	
     42	// sorted()
-    43	
     44	names.stream().sorted().forEach(System.out::println);
-    45	
     46	// count()
-    47	
     48	long count = names.stream().filter(n -> n.startsWith("A")).count();
-    49	
     50	System.out.println(count);
-    51	
     52	// Optional
-    53	
     54	Optional<String> name = Optional.of("Sonu");
     55	//		name.
-    56	
     57	name.ifPresent(System.out::println);
-    58	
     59	System.out.println(name.orElse("Unknown"));
-    60	
     61	// forEach + Method Reference
-    62	
     63	//		names.forEach(System.out::println);
-    64	
     65	// Date Time API
-    66	
     67	LocalDate today = LocalDate.now();
     68	//		today.
-    69	
     70	LocalDate birthday = LocalDate.of(1990, 5, 15);
-    71	
     72	Period age = Period.between(birthday, today);
-    73	
     74	System.out.println(age.getYears());
-    75	
     76	// Default Method
-    77	
     78	MyGreeter g = new MyGreeter();
-    79	
     80	g.greet();
-    81	
     82	// Functional Interface
-    83	
     84	Calculator c = (a, b) -> a + b;
-    85	
     86	System.out.println(c.add(10, 20));
-    87	
     88	// Predicate
-    89	
     89	List<Integer> nums = List.of(10, 15, 20, 25);
-    90	
     91	nums.stream().filter(n -> n % 2 == 0).forEach(System.out::println);
-    92	
     93	// Consumer
-    94	
     95	names.forEach(n -> System.out.println("Hello " + n));
-    96	
     97	// Supplier
-    98	
     99	Supplier<String> s = () -> "Java 8";
-   100	
    101	System.out.println(s.get());
-   102	
    103	// Binary Operator
-   104	
    105	BinaryOperator<Integer> bo = (a, b) -> a * b;
-   106	
    107	System.out.println(bo.apply(5, 6));
    108	}
    109	}
-   110	
    111	// Default Method Example
-   112	
    113	interface Greeter {
-   114	
    115	default void greet() {
-   116	
    117	System.out.println("Hello!");
    118	}
    119	}
-   120	
    121	class MyGreeter implements Greeter {
-   122	
    123	}
-   124	
    125	// Functional Interface Example
-   126	
    127	@FunctionalInterface
    128	interface Calculator {
-   129	
    130	int add(int a, int b);
    131	}
 ```
@@ -1806,17 +1338,10 @@ This single file is the source for topics 19, 20, and 21. Full listing shown onc
 
 **Line-by-line — lambda syntax focus:**
 
-- **Lines 3–8** — Imports. `java.util.function.BinaryOperator` and `Supplier` are imported explicitly (needed as named types), while `java.util.*` wildcard-imports `List`, `Optional`, etc. `java.util.stream.Collectors` is needed for `.collect(...)`.
-- **Line 16** — `Runnable r = () -> System.out.println("Hi from Lambda");` — zero-parameter lambda form (`()` is mandatory, unlike Python's implicit no-arg lambda). Target type is `Runnable`, whose single abstract method is `void run()`. The body is a single expression-statement, so no braces/`return` are needed (the method's return type is `void`).
-- **Line 18** — `r.run()` — invokes the lambda through the functional interface's abstract method name. This is a key contrast to Python: in Python you'd just call `r()`; in Java you must call whatever single method the target interface declares.
-- **Lines 25–27** — `names.forEach((name) -> { System.out.println(name); });` — full-ish form: parenthesized single parameter, braced body. Because the body is one statement, this is functionally identical to the more concise line 29.
-- **Line 29** — `names.forEach(name -> System.out.println(name));` — parentheses dropped (single inferred-type parameter), braces/`return` dropped (single expression body) — the idiomatic shorthand.
-- **Line 32** — `names.forEach(System.out::println);` — a method reference, semantically equivalent to `name -> System.out.println(name)`. Preferred style in real pipelines.
-- **Line 34** — `names.stream().filter(n -> n.startsWith("A")).forEach(System.out::println);` — a `Predicate<String>` lambda (`n -> n.startsWith("A")`) captures nothing from enclosing scope; `n` is the stream element, scoped only to the lambda.
-- **Line 38** — `String::toUpperCase` is an unbound instance method reference: the stream element itself becomes the receiver of `toUpperCase()`, equivalent to `s -> s.toUpperCase()`.
-- **Line 84** — `Calculator c = (a, b) -> a + b;` — a lambda targeting a *custom* functional interface (`Calculator`, defined at line 127) rather than a built-in one. Types of `a`, `b` are inferred from the interface's `add(int a, int b)` signature — lambdas are inherently tied to a target type and cannot be written standalone (unlike Python lambdas, which are first-class values with no interface requirement).
-- **Lines 105–107** — `BinaryOperator<Integer> bo = (a, b) -> a * b; ... bo.apply(5, 6);` — two-parameter, same-input/output-type lambda; invoked via `apply`, inherited from `BiFunction` that `BinaryOperator` specializes.
-- No local variable in this file is captured and later reassigned, so the effectively-final rule is never violated or demonstrated here — a conceptual gap between the courseware (which shows a compile-error example) and this working demo file.
+- **Line 16** — `Runnable r = () -> ...;` — zero-parameter lambda form (`()` mandatory, unlike Python's implicit no-arg lambda); invoked via `r.run()`, whichever method the target interface declares, not `r()` as Python would.
+- **Lines 25–32** — full-form `(name) -> { ... }` versus parens/braces-dropped `name -> ...` are functionally identical, the latter idiomatic; `System.out::println` (line 32) is a method reference, semantically equivalent and preferred in real pipelines.
+- **Line 38, 84** — `String::toUpperCase` is an unbound instance method reference (stream element becomes the receiver); `Calculator c = (a, b) -> a + b;` targets a *custom* functional interface (line 127) — Java lambdas are inherently tied to a target type, unlike Python's first-class lambdas.
+- No local variable in this file is captured and later reassigned, so the effectively-final rule is never demonstrated here — a gap between the courseware's compile-error example and this working demo.
 
 ## 20. Functional Interfaces
 
@@ -1850,20 +1375,16 @@ Relevant excerpt (original line numbers from the full listing above):
    107	System.out.println(bo.apply(5, 6));
    127	@FunctionalInterface
    128	interface Calculator {
-   129	
    130	int add(int a, int b);
    131	}
 ```
 
 **Line-by-line — which functional interfaces are used, and why:**
 
-- **Line 16** — `Runnable r = ...` — `Runnable` (from `java.lang`, canonical functional interface: single abstract method `void run()`). Chosen for a task with no input and no output.
-- **Line 18** — `r.run()` — you must call the interface's *named* abstract method, not some generic "invoke" syntax. A Python callable is invoked with `r()` regardless of what it is; a Java lambda's invocation syntax is dictated entirely by whichever interface it targets.
-- **Line 84** — `Calculator c = (a, b) -> a + b;` — targets the custom `Calculator` interface declared at lines 127–131. The compiler resolves `(a, b) -> a + b` against `int add(int a, int b)`: infers `a`/`b` are `int`, and the expression's value satisfies the return type. Demonstrates that "functional interface" is not restricted to `java.util.function` — any interface, first-party or custom, qualifies as long as it has exactly one abstract method.
-- **Lines 99–101** — `Supplier<String> s = () -> "Java 8"; ... s.get();` — `Supplier<T>` chosen because the lambda needs zero inputs and produces one output; `get()` is the interface's abstract method. The demo doesn't show the lazy-evaluation payoff, just basic mechanics.
-- **Lines 105–107** — `BinaryOperator<Integer> bo = (a, b) -> a * b; ... bo.apply(5, 6);` — `BinaryOperator<T>` is a `BiFunction<T,T,T>` specialization where all three type parameters collapse to one (`Integer`); invoked via the inherited `apply(T,T)`. Using it instead of a custom interface means the lambda interoperates with any API expecting a `BinaryOperator<Integer>` (e.g., `Stream.reduce`).
-- **Lines 127–131** — `@FunctionalInterface interface Calculator { int add(int a, int b); }` — a hand-written single-abstract-method interface. The annotation causes the compiler to error if a second abstract method were later added, catching accidental interface-contract breakage before it silently turns `Calculator` into something no lambda can target. This interface is functionally analogous to `BinaryOperator<Integer>`, illustrating that reaching for `java.util.function` first is usually preferable to writing a redundant custom interface.
-- Not shown in this excerpt but present in the full file: `Predicate` usage at line 91 (`n -> n % 2 == 0` passed to `.filter(...)`) and `Consumer` usage at line 95 (`n -> System.out.println("Hello " + n)` passed to `.forEach(...)`) — both implicit, inferred by the target parameter type of `filter`/`forEach` rather than being assigned to an explicitly-typed local variable first.
+- **Line 84** — `Calculator c = (a, b) -> a + b;` targets the custom `Calculator` interface (lines 127–131), demonstrating that "functional interface" isn't restricted to `java.util.function` — any interface with exactly one abstract method qualifies.
+- **Lines 105–107** — `BinaryOperator<Integer> bo = (a, b) -> a * b;` is a `BiFunction<T,T,T>` specialization where all three type parameters collapse to one — preferred over a custom interface since it interoperates with any API expecting `BinaryOperator<Integer>` (e.g. `Stream.reduce`).
+- **Lines 127–131** — the hand-written `@FunctionalInterface Calculator` causes the compiler to error if a second abstract method were later added — functionally analogous to `BinaryOperator<Integer>`, illustrating that reaching for `java.util.function` first is usually preferable to a redundant custom interface.
+- Also present in the file (not excerpted above): `Predicate` (line 91) and `Consumer` (line 95), both inferred implicitly from the target parameter type.
 
 ## 21. Stream API
 
@@ -1901,14 +1422,12 @@ Relevant excerpt (original line numbers):
 
 **Line-by-line — stream pipeline focus:**
 
-- **Line 8** — imports `Collectors`, required for `.collect(Collectors.toList())` on line 38 — a factory class of ready-made `Collector` implementations, conceptually analogous to how Python's comprehension-target syntax lets you materialize an iterable into a `list`/`set`/`dict`.
-- **Line 22** — `List<String> names = List.of(...)` — `List.of` creates an **immutable** list (Java 9+ factory method); the stream source itself doesn't need to be mutable since streams never mutate their source anyway.
-- **Line 34** — `names.stream().filter(n -> n.startsWith("A")).forEach(System.out::println);` — `stream()` opens the pipeline (source); `filter` is intermediate (lazy, returns a new `Stream<String>` without evaluating anything yet); `forEach` is the terminal op that triggers iteration. Since no name in this list starts with "A", the pipeline prints nothing — a real but silent runtime outcome, not a bug.
-- **Line 38** — `map` is intermediate (1:1 transform, `String → String`); `collect(Collectors.toList())` is terminal and materializes the lazy pipeline into a concrete `List<String>`. Java's equivalent of a Python list comprehension `[s.upper() for s in names]`, but explicit about the two-phase lazy-build/eager-materialize split.
-- **Line 44** — `sorted()` with no arguments uses natural ordering, requiring the element type to implement `Comparable` (`String` does, via lexicographic `compareTo`). `sorted()` returns a new stream and doesn't mutate `names` — a direct illustration of the "non-mutating" property.
-- **Line 48** — a *fresh* stream is created here (`names.stream()` called again) because streams are single-use; reusing the stream from line 34 would throw `IllegalStateException`. `count()` is terminal and returns `long` (not `int` — Java's counting APIs default to `long` to handle very large collections, unlike Python's `len()` which returns a plain `int`).
-- **Line 91** — same filter/forEach pattern applied to `List<Integer>`; note this stays a boxed `Stream<Integer>` rather than an `IntStream` since `nums.stream()` on a `List<Integer>` yields a reference-type stream — the courseware's `mapToInt`/`IntStream` primitive-specialization pattern isn't exercised in this demo file at all.
-- Not present in this file: `flatMap`, `groupingBy`/`partitioningBy`, `reduce`, `min`/`max`, `summarizingDouble`, `limit`/`skip`, `peek`, or parallel streams — the demo covers only the basic filter/map/sorted/count/forEach subset of what the courseware teaches.
+- **Line 22** — `List.of(...)` creates an **immutable** list (Java 9+); the stream source doesn't need to be mutable anyway since streams never mutate their source.
+- **Line 34** — `filter` is intermediate (lazy); `forEach` is terminal, triggering iteration. Since no name starts with "A", the pipeline prints nothing — a real but silent runtime outcome, not a bug.
+- **Line 38** — `map` (1:1 transform) then `collect(Collectors.toList())` materializes the lazy pipeline into a concrete list — Java's equivalent of a Python list comprehension, but explicit about the lazy-build/eager-materialize split.
+- **Line 48** — a *fresh* stream must be created (`names.stream()` called again) since streams are single-use — reusing line 34's stream would throw `IllegalStateException`. `count()` returns `long`, not `int`.
+- **Line 91** — stays a boxed `Stream<Integer>` rather than an `IntStream`, since `nums.stream()` on `List<Integer>` yields a reference-type stream — the `mapToInt`/`IntStream` primitive-specialization pattern isn't exercised here.
+- Not present in this file: `flatMap`, `groupingBy`/`partitioningBy`, `reduce`, `min`/`max`, `limit`/`skip`, `peek`, or parallel streams.
 
 ## 22. Optional
 
@@ -1933,18 +1452,15 @@ Relevant excerpt (original line numbers):
 ```java
     54	Optional<String> name = Optional.of("Sonu");
     55	//		name.
-    56	
     57	name.ifPresent(System.out::println);
-    58	
     59	System.out.println(name.orElse("Unknown"));
 ```
 
 **Line-by-line:**
 
-- **Line 54** — `Optional<String> name = Optional.of("Sonu");` — uses `Optional.of`, not `Optional.ofNullable`. Since `"Sonu"` is a compile-time non-null literal, `Optional.of` is the correct/safe choice here — using it on a value that could actually be null would risk an immediate `NullPointerException` at wrap time, defeating the purpose of using `Optional` at all. This line creates a *present* `Optional`.
-- **Line 55** — `// name.` — a commented-out IDE autocomplete artifact left in the source (likely someone was exploring the `Optional` API surface via autocomplete and left the trigger character in as a comment). Not executable; signals the file is exploratory/demo code rather than production-quality.
-- **Line 57** — `name.ifPresent(System.out::println);` — since `name` is present, executes the `Consumer`, printing `"Sonu"`. `ifPresent` takes a `Consumer<String>`; `System.out::println` is a bound-overload method reference matching the `void accept(String)` shape. No `if (name.isPresent())` guard needed — the point of the functional style.
-- **Line 59** — `System.out.println(name.orElse("Unknown"));` — `orElse` returns the contained value directly since `name` is present, printing `"Sonu"` again (not `"Unknown"` — the fallback branch is unreached in this demo). This means the demo never exercises the *empty* path of `Optional`, nor `orElseGet`, `orElseThrow`, `map`, `flatMap`, `filter`, `ifPresentOrElse`, or `stream()` — all covered by the courseware but with no corresponding example in the real code file. For those behaviors, rely on the courseware explanation above only.
+- **Line 54** — `Optional.of("Sonu")`, not `Optional.ofNullable` — correct since `"Sonu"` is a compile-time non-null literal; using `.of` on a value that could actually be null would risk an immediate `NullPointerException` at wrap time.
+- **Line 57** — `name.ifPresent(System.out::println);` executes the `Consumer` since `name` is present — no `if (name.isPresent())` guard needed, the point of the functional style.
+- **Line 59** — `name.orElse("Unknown")` returns the contained value directly since `name` is present (prints `"Sonu"`, not the fallback) — this demo never exercises the *empty* path, nor `orElseGet`, `orElseThrow`, `map`, `flatMap`, `filter`, `ifPresentOrElse`, or `stream()`; rely on the courseware explanation above for those.
 </content>
 
 ---
@@ -1982,16 +1498,12 @@ Relevant excerpt (original line numbers):
 
 ```java
 1:	package com.acme.demo.day3.threads;
-2:	
 3:	public class MultiThread extends Thread {
-4:	
 5:		public int num;
-6:	
 7:		@Override
 8:		public void run() {
 9:			printNums();
 10:	}
-11:	
 12:		public synchronized void printNums() {
 13:			for (int i = 1; i <= 10; i++) {
 14:				num++;
@@ -2007,97 +1519,55 @@ Relevant excerpt (original line numbers):
 24:	}
 ```
 
-- **Line 3** — `MultiThread extends Thread`: this is the "extend Thread" style of thread creation. Every `MultiThread` instance *is-a* `Thread`.
-- **Line 5** — `num` is an *instance* field, not static — each `MultiThread` object has its own `num`, starting at 0.
-- **Lines 7–10** — overrides `Thread.run()`. This is the method the JVM invokes on the new OS thread once `start()` is called. Here it just delegates to `printNums()`.
-- **Line 12** — `synchronized` on an *instance* method locks on `this` (the specific `MultiThread` object). Since `MultithreadingDemo` (below) creates three separate `MultiThread` objects (`obj`, `obj2`, `obj3`) and starts each one, each has its own lock — so `synchronized` here does **not** serialize `obj`, `obj2`, and `obj3` against each other; it would only matter if two threads shared the *same* `MultiThread` instance. This is a common misunderstanding: the presence of `synchronized` doesn't automatically mean "all threads wait for each other" — it means "threads sharing this particular object's monitor wait for each other."
-- **Line 14** — `num++` — not atomic, but since (per the above) no two threads touch the same object's `num`, there's no actual race in this particular program even though the increment isn't synchronized-safe in the abstract sense.
-- **Lines 15–19** — `Thread.sleep(250)` pauses this thread for 250ms between increments (simulates work); the checked `InterruptedException` is caught and `printStackTrace()`'d — note this program does *not* call `Thread.currentThread().interrupt()` to restore the interrupt flag, which is technically an anti-pattern flagged in the courseware (should be corrected in production code, but is common in throwaway demos).
-- **Line 20** — prints each `i` value without a newline, so you'll see interleaved digit streams from all three threads running concurrently on the console.
-- **Line 22** — prints the final `num` (always 10 for each object, since each thread only touches its own instance's counter across 10 iterations).
+- **Line 3** — `MultiThread extends Thread` — the "extend Thread" style of creation; every instance *is-a* `Thread`.
+- **Line 12** — `synchronized` on an *instance* method locks on `this` (the specific object). Since `MultithreadingDemo` creates three separate `MultiThread` objects, each has its own lock — `synchronized` here does **not** serialize them against each other; it only matters if two threads share the *same* instance. A common misunderstanding: `synchronized` means "threads sharing this object's monitor wait for each other," not "all threads wait for each other."
+- **Lines 15–19** — `Thread.sleep(250)`'s checked `InterruptedException` is caught and `printStackTrace()`'d, but the program does *not* call `Thread.currentThread().interrupt()` to restore the interrupt flag — technically an anti-pattern flagged in the courseware, common in throwaway demos.
 
 ### Code — `day3/threads/MultithreadingDemo.java`
 
 ```java
 1:	package com.acme.demo.day3.threads;
-2:	
 3:	public class MultithreadingDemo {
-4:	
 5:		public static void main(String[] args) {
-6:	
 7:			MultiThread obj = new MultiThread();
 8:			obj.start();
 9:			MultiThread obj2 = new MultiThread();
 10:		obj2.start();
 11:			MultiThread obj3 = new MultiThread();
 12:		obj3.start();
-13:	
 14://		for (int i = 1; i <= 10; i++) {
 15://			MultiThread obj = new MultiThread();
 16://			obj.start();
 17://		}
-18:	
 19:	}
 20:	}
 ```
 
-- **Lines 7–12** — creates three independent `MultiThread` objects and calls `start()` on each. `start()` (not `run()`) is what actually spins up a new OS thread; calling `obj.run()` instead here would execute all three "threads" sequentially on the main thread with no concurrency at all — the single most common mistake this module warns about.
-- Because each `obj`, `obj2`, `obj3` is a distinct object, their `synchronized printNums()` locks are independent — all three genuinely interleave their console output.
-- **Lines 14–17** — commented-out code showing an alternative that would spin up 10 threads in a loop; left in as a "try this too" exercise.
-- `main()` returns immediately after starting the three threads — it does not `join()` them, so the JVM keeps running until all non-daemon threads (including these three) finish on their own.
+- **Lines 7–12** — `start()` (not `run()`) is what actually spins up a new OS thread; calling `obj.run()` instead would execute all three "threads" sequentially on the main thread with no concurrency at all — the single most common mistake this module warns about.
+- `main()` doesn't `join()` the threads, so the JVM keeps running until all non-daemon threads finish on their own.
 
 ### Code — `day3/threads/ThreadDemo.java`
 
 ```java
-1:	package com.acme.demo.day3.threads;
-2:	
-3:	
-4:	public class ThreadDemo {
-5:	
-6:		public static void main(String[] args) {
-7:	
-8:			Thread t1 = new Thread(new Worker(), "Sonu");
-9:			Thread t2 = new Thread(new Worker(), "Monu");
-10:		Thread t3 = new Thread(new Worker(), "Tonu");
-11:	
-12:		t1.start();
-13:			t2.start();
-14:			t3.start();
-15:	}
-16:	}
+Thread t1 = new Thread(new Worker(), "Sonu");   // new Thread(Runnable, String) -- the "implement Runnable" style
+Thread t2 = new Thread(new Worker(), "Monu");
+Thread t3 = new Thread(new Worker(), "Tonu");
+t1.start(); t2.start(); t3.start();
 ```
-
-- **Line 8** — `new Thread(Runnable, String)`: this is the "implement Runnable" style — a `Worker` (a plain `Runnable`, not a `Thread` subclass) is wrapped in a `Thread`. The second constructor argument names the thread ("Sonu"), retrievable via `Thread.currentThread().getName()`.
-- **Lines 8–10** — three separate `Worker` instances, each wrapped in its own named `Thread`. Each `Worker` here has no shared state, so there's nothing to race on.
-- **Lines 12–14** — `start()` on each launches genuine OS-level concurrency; output ordering between "Sonu", "Monu", "Tonu" lines is scheduler-dependent and not guaranteed.
 
 ### Code — `day3/threads/Worker.java`
 
 ```java
-1:	package com.acme.demo.day3.threads;
-2:	
-3:	class Worker implements Runnable {
-4://class Worker extends Thread {
-5:	
-6:		@Override
-7:		public void run() {
-8:			method();
-9:		}
-10:	
-11:		public void method() {
-12:	
-13:			for (int i = 1; i <= 3; i++) {
-14:	
-15:				System.out.println(Thread.currentThread().getName() + " working...");
-16:			}
-17:		}
-18:	}
+class Worker implements Runnable {           // preferred: pure task, agnostic to how it's run
+	public void run() { method(); }
+	public void method() {
+		for (int i = 1; i <= 3; i++)
+			System.out.println(Thread.currentThread().getName() + " working...");
+	}
+}
 ```
 
-- **Line 3** — `implements Runnable`, the preferred pattern per the courseware — `Worker` is a pure task, agnostic to how it's actually run (could be handed to a raw `Thread`, an `ExecutorService`, or run synchronously for testing).
-- **Line 4** — commented-out alternative showing the class *could* instead extend `Thread`; kept as a teaching contrast.
-- **Line 15** — `Thread.currentThread()` returns whichever `Thread` object is executing this code right now — this is how a `Runnable` (which has no `Thread` reference of its own) discovers its own thread's name at runtime. This only works correctly because `ThreadDemo` gave each wrapping `Thread` a distinct name.
-
+- The second `Thread` constructor argument names the thread, retrievable via `Thread.currentThread().getName()` — how a `Runnable` (which has no `Thread` reference of its own) discovers its own thread's name at runtime. Output ordering across the three started threads is scheduler-dependent, not guaranteed.
 
 ---
 
@@ -2131,44 +1601,32 @@ Relevant excerpt (original line numbers):
 
 ```java
 1:	package com.acme.demo.day3.concurency;
-2:	
 3:	import java.util.concurrent.*;
-4:	
 5:	public class CallableDemo {
-6:	
 7:	    public static void main(String[] args)
 8:	            throws Exception {
-9:	
 10:	        ExecutorService service =
 11:	                Executors.newSingleThreadExecutor();
-12:	
 13:	        Callable<Integer> task = () -> {
-14:	
 15:	            return 100;
 16:	        };
-17:	
 18:	        Future<Integer> future =
 19:	                service.submit(task);
-20:	
 21:	        System.out.println(future.get());
-22:	
 23:	        service.shutdown();
 24:	    }
 25:	}
 ```
 
-- **Line 7** — `throws Exception` on `main` is a shortcut so the demo doesn't need to catch `InterruptedException`/`ExecutionException` individually — acceptable in a scratch demo, not in production code where you'd want to handle each distinctly (e.g., restoring the interrupt flag).
-- **Line 11** — a single-thread executor: only ever one worker thread, tasks run strictly in submission order.
-- **Lines 13–16** — a `Callable<Integer>` lambda; since `Callable`'s single abstract method is `T call() throws Exception`, the lambda body's `return 100;` becomes the implementation of `call()`. Unlike `Runnable`, this compiles specifically because `Callable` declares a return type.
-- **Line 19** — `submit(Callable<T>)` returns `Future<Integer>` immediately (non-blocking) — the task is now running (or queued) asynchronously on the executor's thread.
-- **Line 21** — `future.get()` blocks the *main* thread until the callable finishes and returns `100`.
-- **Line 23** — `shutdown()` is essential; without it, the single-thread executor's worker thread stays alive as a non-daemon thread and the JVM process would hang after `main()` returns.
+- **Line 7** — `throws Exception` on `main` is a scratch-demo shortcut avoiding individual `InterruptedException`/`ExecutionException` catches — production code would handle each distinctly.
+- **Lines 13–16** — a `Callable<Integer>` lambda; since `Callable`'s abstract method is `T call() throws Exception`, `return 100;` becomes its implementation — unlike `Runnable`, this compiles specifically because `Callable` declares a return type.
+- **Line 21** — `future.get()` blocks the *main* thread until the callable finishes.
+- **Line 23** — `shutdown()` is essential; without it, the executor's worker thread stays alive as non-daemon and the JVM hangs after `main()` returns.
 
 ### Code — `day3/concurency/ConcurrencyDemo.java`
 
 ```java
 1:	package com.acme.demo.day3.concurency;
-2:	
 3:	import java.util.ArrayList;
 4:	import java.util.List;
 5:	import java.util.concurrent.Callable;
@@ -2176,11 +1634,8 @@ Relevant excerpt (original line numbers):
 7:	import java.util.concurrent.Executors;
 8:	import java.util.concurrent.Future;
 9:	import java.util.concurrent.TimeUnit;
-10:	
 11:	public class ConcurrencyDemo {
-12:	
 13:		public static void main(String[] args) throws Exception {
-14:	
 15:			Callable<Integer> sumTask = () -> {
 16:				int sum = 0;
 17:				for (int i = 1; i <= 10; i++)
@@ -2188,68 +1643,49 @@ Relevant excerpt (original line numbers):
 19:				System.out.println(Thread.currentThread().getName() + " computed: " + sum);
 20:				return sum;
 21:			};
-22:	
 23:			// Fixed pool with 3 threads
 24:			ExecutorService pool = Executors.newFixedThreadPool(3);
-25:	
 26:			// Submit multiple tasks, collect futures
 27:			List<Future<Integer>> futures = new ArrayList<>();
-28:	
 29:			for (int i = 0; i < 5; i++) {
 30:				futures.add(pool.submit(sumTask));
 31:			}
-32:	
 33:			// Collect all results
 34:			int grandTotal = 0;
 35:			for (Future<Integer> f : futures) {
 36:				grandTotal += f.get(); // blocks per future
 37:			}
-38:	
 39:			System.out.println("Grand total: " + grandTotal); // 55 x 5 = 275
-40:	
 41:			// invokeAll -- submit all and get all results at once
 42:			List<Future<Integer>> all = pool.invokeAll(List.of(sumTask, sumTask, sumTask));
 43://		System.out.println(all);
 44:			// invokeAny -- return first successful result, cancel others
 45:			Integer first = pool.invokeAny(List.of(sumTask, sumTask, sumTask));
 46:			System.out.println("First result: " + first);
-47:	
 48:			pool.shutdown();
 49:			pool.awaitTermination(10, TimeUnit.SECONDS);
 50:		}
 51:	}
 ```
 
-- **Lines 15–21** — `sumTask` is a reusable `Callable<Integer>` (sums 1..10 = 55). Because it's a lambda referencing no external mutable state, the exact same `sumTask` object can safely be submitted multiple times concurrently — each submission runs the lambda body independently with its own local `sum`.
-- **Line 24** — a fixed pool of exactly 3 worker threads: with 5 tasks submitted (line 29–31), at most 3 run at once and the rest queue.
-- **Line 27, 29–31** — submits `sumTask` five times, storing each returned `Future<Integer>` in a list without blocking — all five submissions return instantly even though only 3 can execute concurrently.
-- **Lines 34–37** — iterates the futures *in submission order* and calls `get()` on each — note this blocks on `futures.get(0)` first even if a later task finishes sooner; this is a common subtlety (`Future.get()` is per-future blocking, not "wait for whichever finishes first").
-- **Line 39** — `275` = `55 x 5`, confirming all five tasks completed correctly despite concurrent execution.
-- **Line 42** — `invokeAll(Collection<Callable<T>>)` submits a batch and blocks the *calling* thread until every task in the batch is done, returning `List<Future<T>>` all already completed.
-- **Line 45** — `invokeAny(Collection<Callable<T>>)` submits the batch, blocks until the first one finishes successfully, returns that raw value directly (not wrapped in `Future`), and best-effort cancels the still-running others — useful when several alternatives could answer and you only need the fastest.
-- **Lines 48–49** — proper shutdown sequence: `shutdown()` stops new submissions, `awaitTermination(10, SECONDS)` blocks up to 10s for in-flight tasks to finish before the method returns — this is the "clean shutdown" pattern the courseware calls out explicitly.
+- **Lines 15–24** — `sumTask` is a reusable `Callable<Integer>` (sums 1..10 = 55) referencing no external mutable state, so it's safe to submit concurrently; a fixed pool of 3 threads runs at most 3 of the 5 submitted tasks at once, queueing the rest.
+- **Lines 34–37** — iterates futures *in submission order*, blocking on `futures.get(0)` first even if a later task finishes sooner — `Future.get()` is per-future blocking, not "wait for whichever finishes first."
+- **Lines 42, 45** — `invokeAll(...)` blocks until every batch task is done, returning `List<Future<T>>` all already completed; `invokeAny(...)` blocks until the first succeeds, returns that raw value directly (not wrapped in `Future`), and best-effort cancels the rest.
+- **Lines 48–49** — the "clean shutdown" pattern: `shutdown()` stops new submissions, `awaitTermination(10, SECONDS)` blocks up to 10s for in-flight tasks.
 
 ### Code — `day3/concurency/ConcurrencyDemo2.java`
 
 ```java
 1:	package com.acme.demo.day3.concurency;
-2:	
 3:	import java.util.concurrent.ExecutorService;
 4:	import java.util.concurrent.Executors;
-5:	
 6:	public class ConcurrencyDemo2 {
-7:	
 8:	    public static void main(String[] args) {
-9:	
 10:	        ExecutorService service =
 11:	                Executors.newFixedThreadPool(3);
-12:	
 13:	        for (int i = 1; i <= 5; i++) {
-14:	
 15:	            int taskId = i;
-16:	
 17:	            service.execute(() -> {
-18:	
 19:	                System.out.println(
 20:	                        "Task " + taskId
 21:	                                + " : "
@@ -2257,17 +1693,14 @@ Relevant excerpt (original line numbers):
 23:	                );
 24:	            });
 25:	        }
-26:	
 27:	        service.shutdown();
 28:	    }
 29:	}
 ```
 
-- **Line 15** — `int taskId = i;` copies the loop variable into a new effectively-final local for each iteration. This is required because the lambda on line 17 captures `taskId` by value, and Java lambdas can only capture variables that are effectively final -- capturing the mutating loop variable `i` directly would not compile. This is a very common Java-specific gotcha for developers coming from Python/JS closures, which capture by reference to the enclosing scope rather than requiring immutability.
-- **Line 17** — `execute(Runnable)` (not `submit`) -- fire-and-forget: no `Future` is returned, so there's no way to retrieve a result or observe an exception from this lambda if one were thrown (it would propagate to the pool thread's default uncaught-exception handler and typically just print a stack trace to stderr, invisible to the caller).
-- **Lines 19–23** — prints which pool thread ("pool-1-thread-N") executed each task; because the pool has 3 threads and 5 tasks are submitted, output order across tasks is not deterministic, and you'll see thread names repeat as the pool reuses freed threads for later tasks.
-- **Line 27** — `shutdown()` only, no `awaitTermination()` -- `main()` can return before all tasks finish printing, though the JVM will still wait for the pool's non-daemon threads before actually exiting.
-
+- **Line 15** — `int taskId = i;` copies the loop variable into a new effectively-final local per iteration — required because the lambda captures `taskId` by value and Java lambdas can only capture effectively-final variables; capturing the mutating `i` directly would not compile. A common gotcha for developers used to Python/JS closures, which capture by reference.
+- **Line 17** — `execute(Runnable)` (not `submit`) is fire-and-forget: no `Future` is returned, so an exception thrown here would propagate to the pool thread's default handler, invisible to the caller.
+- **Line 27** — `shutdown()` only, no `awaitTermination()` — `main()` can return before all tasks finish printing.
 
 ---
 
@@ -2299,66 +1732,45 @@ The three demo files below read/write the plain-text fixture files that sit alon
 
 ```java
 1:	package com.acme.demo.day3.iosdemo;
-2:	
 3:	import java.io.FileReader;
-4:	
 5:	public class IoDemo {
-6:	
 7:		public static void main(String[] args) {
 8:			System.out.println("Start");
-9:	
 10:		try {
 11:				FileReader reader = new FileReader("sample.txt");
 12:				int ch;
-13:	
 14:			while ((ch = reader.read()) != -1) {
-15:	
 16:				System.out.print((char) ch);
 17:				}
-18:	
 19:			reader.close();
-20:	
 21:		} catch (Exception e) {
 22:				e.printStackTrace();
 23:			}
 24:			System.out.println("End");
-25:	
 26:	}
 27:	}
 ```
 
-- **Line 11** — `FileReader` is a character stream opened against the relative path `"sample.txt"` -- relative to the JVM's working directory at launch, *not* the source file's location, a frequent source of `FileNotFoundException` confusion for students.
-- **Line 12** — `int ch`, not `char ch`: `Reader.read()` returns an `int` so it can represent both a valid character (0–65535) and the sentinel `-1` for end-of-stream -- a `char` cannot hold `-1`, hence the wider type.
-- **Line 14** — the assignment `ch = reader.read()` happens *inside* the while condition; this combines "read the next character" and "check for EOF" into a single idiomatic loop header, a pattern used identically for `BufferedReader.readLine() != null` below.
-- **Line 16** — casts the `int` back to `char` for printing -- safe here since we already excluded `-1`.
-- **Line 19** — `reader.close()` releases the underlying file handle. Because this is inside the `try` block (not try-with-resources) and *before* the catch, if `read()` throws mid-loop, `close()` is skipped and the handle leaks -- this file demonstrates the *old*, less-safe idiom that Module 25's courseware explicitly says to avoid in favor of `try (FileReader r = ...)`.
-- **Line 21** — catches the general `Exception` (covers `FileNotFoundException` at open time and `IOException` during `read()`), which is broad but acceptable for a teaching demo -- production code would typically distinguish these.
+- **Line 11** — `"sample.txt"` is relative to the JVM's working directory at launch, *not* the source file's location — a frequent source of `FileNotFoundException` confusion.
+- **Line 12** — `int ch`, not `char ch`: `Reader.read()` returns an `int` so it can represent both a valid character and the sentinel `-1` for end-of-stream — a `char` cannot hold `-1`.
+- **Line 19** — `reader.close()` is inside the `try` block, *before* the catch (not try-with-resources) — if `read()` throws mid-loop, `close()` is skipped and the handle leaks. This file demonstrates the *old*, less-safe idiom the courseware says to avoid in favor of `try (FileReader r = ...)`.
 
 ### Code — `day3/iosdemo/BufferedDemo.java`
 
 ```java
 1:	package com.acme.demo.day3.iosdemo;
-2:	
 3:	import java.io.BufferedReader;
 4://import java.io.
 5:	import java.io.FileReader;
-6:	
 7:	public class BufferedDemo {
-8:	
 9:		public static void main(String[] args) {
-10:	
 11:		try {
 12:				BufferedReader br = new BufferedReader(new FileReader("sample.txt"));
-13:	
 14:			String line;
-15:	
 16:			while ((line = br.readLine()) != null) {
-17:	
 18:				System.out.println(line);
 19:				}
-20:	
 21:			br.close();
-22:	
 23:		} catch (Exception e) {
 24:				e.printStackTrace();
 25:			}
@@ -2366,33 +1778,23 @@ The three demo files below read/write the plain-text fixture files that sit alon
 27:	}
 ```
 
-- **Line 12** — the Decorator pattern in action: `new BufferedReader(new FileReader("sample.txt"))` -- `FileReader` is the raw character source, `BufferedReader` wraps it to add internal buffering *and* the higher-level `readLine()` method that plain `FileReader` lacks.
-- **Line 16** — `br.readLine()` returns a full line (without the line terminator) or `null` at EOF -- contrast with `IoDemo` above, which had to read and reassemble character-by-character; this is the "right way" to read text the courseware advocates for.
-- Since `sample.txt` in this repo has no embedded newline, this loop prints exactly one line then terminates.
-- **Line 21** — again closes manually rather than via try-with-resources, consistent with `IoDemo`'s older style -- worth mentally rewriting both files as `try (BufferedReader br = new BufferedReader(new FileReader("sample.txt"))) { ... }` as an exercise, since that's the pattern expected in an assessment answer.
+- **Line 12** — the Decorator pattern in action: `new BufferedReader(new FileReader(...))` — `BufferedReader` wraps the raw `FileReader` to add buffering *and* `readLine()`, which plain `FileReader` lacks.
+- **Line 16** — `br.readLine()` returns a full line (without the terminator) or `null` at EOF — the "right way" to read text, contrasting `IoDemo`'s character-by-character approach above.
+- **Line 21** — again closes manually rather than via try-with-resources — worth mentally rewriting as `try (BufferedReader br = ...)`, the pattern expected in an assessment answer.
 
 ### Code — `day3/iosdemo/BufferedWriterDemo.java`
 
 ```java
 1:	package com.acme.demo.day3.iosdemo;
-2:	
 3:	import java.io.BufferedWriter;
 4:	import java.io.FileWriter;
-5:	
 6:	public class BufferedWriterDemo {
-7:	
 8:		public static void main(String[] args) {
-9:		
 10:		String file = "sample2.txt";
-11:	
 12:		try {
-13:	
 14:			BufferedWriter bw = new BufferedWriter(new FileWriter(file));
-15:	
 16:			bw.write("Sonu");
-17:	
 18:			bw.close();
-19:	
 20:		} catch (Exception e) {
 21:				e.printStackTrace();
 22:			}
@@ -2400,10 +1802,8 @@ The three demo files below read/write the plain-text fixture files that sit alon
 24:	}
 ```
 
-- **Line 14** — `new FileWriter(file)` with no second `true` argument means overwrite/truncate mode (not append) -- every run of this program replaces `sample2.txt`'s entire contents; this matches the current contents (`"Sonu"`) seen in the fixture file.
-- **Line 16** — `bw.write("Sonu")` buffers the string internally; nothing is guaranteed to reach disk until the buffer is flushed.
-- **Line 18** — `bw.close()` implicitly flushes any buffered content before releasing the handle -- this is *why* the write actually lands on disk despite no explicit `flush()` call; forgetting to close a `BufferedWriter` (e.g., if an exception is thrown between `write()` and `close()`) is a classic way to lose data that "should have" been written -- another argument for try-with-resources, which guarantees `close()` (and thus the flush) runs even on an exception path.
-
+- **Line 14** — `new FileWriter(file)` with no second `true` argument means overwrite/truncate mode (not append) — every run replaces `sample2.txt`'s contents entirely.
+- **Line 18** — `bw.close()` implicitly flushes any buffered content before releasing the handle — *why* the write lands on disk despite no explicit `flush()` call; forgetting to close (e.g. an exception between `write()` and `close()`) is a classic way to lose data — another argument for try-with-resources.
 
 ---
 
@@ -2431,16 +1831,11 @@ The three demo files below read/write the plain-text fixture files that sit alon
 
 ```java
 1:	package com.acme.demo.day3.collection;
-2:	
 3:	import java.util.ArrayList;
-4:	
 5:	public class CollctionWithGenerics { 
-6:	
 7:		public static void main(String[] args) {
-8:	
 9://		ArrayList<String> friends = new ArrayList<String>();
 10:		ArrayList<String> friends = new ArrayList<>();
-11:	
 12:		System.out.println(friends.size());
 13:			System.out.println(friends);
 14:			friends.add("Sonu");
@@ -2453,32 +1848,21 @@ The three demo files below read/write the plain-text fixture files that sit alon
 21://		friends.add(null);
 22:		System.out.println(friends.size());
 23:			System.out.println(friends);
-24:	
 25:	}
-26:	
 27:	}
 ```
 
-- **Line 9 (comment) vs Line 10** — shows the pre-diamond-operator style (`new ArrayList<String>()`, explicit type argument on both sides) versus the Java 7+ diamond operator (`new ArrayList<>()`), which infers the type argument from the declared variable type `ArrayList<String> friends`. Both compile identically; the diamond is the modern idiom.
-- **Line 12** — `friends.size()` is `0` right after construction — an empty `ArrayList` is not `null`, it's a valid zero-length container (unlike an uninitialized reference).
-- **Line 13** — printing an empty `ArrayList` calls its `toString()`, which produces `[]`.
-- **Lines 14–16** — `add(String)` is legal *only* because `friends` is declared `ArrayList<String>` — the type parameter is enforced by the compiler at every call site.
-- **Lines 19–21 (commented)** — `friends.add(10.25)` and `friends.add(false)` would each be a **compile error** — `double`/`boolean` are not `String` and won't autobox to one; this is the entire point of the demo — showing that generics catch what pre-generics code would only catch at runtime via `ClassCastException`. `friends.add(null)` would actually *compile and run fine* — `ArrayList` permits `null` elements (unlike the Java 9+ `List.of()` factories) — worth noting as a contrast point.
-- **Lines 22–23** — confirms size is still 3 and contents are `[Sonu, Monu, Tonu]` since none of the commented lines executed.
+- **Line 9 vs 10** — pre-diamond-operator style `new ArrayList<String>()` versus the Java 7+ diamond `new ArrayList<>()`, which infers the type argument from the declared variable type — both compile identically, the diamond is the modern idiom.
+- **Lines 19–21** (commented) — `friends.add(10.25)`/`add(false)` would each be a **compile error** — the entire point of the demo, showing generics catch what pre-generics code would only catch at runtime via `ClassCastException`. `friends.add(null)` would actually compile and run fine — `ArrayList` permits `null` (unlike Java 9+ `List.of()`).
 
 ### Code — `day3/collection/CollectionDemo.java`
 
 ```java
 1:	package com.acme.demo.day3.collection;
-2:	
 3:	import java.util.ArrayList;
-4:	
 5:	public class CollectionDemo {
-6:	
 7:		public static void main(String[] args) {
-8:	
 9://		String[] str = { "Sonu", "Monu", "Tonu" };
-10:	
 11:		ArrayList friends = new ArrayList();
 12:			System.out.println(friends.size());
 13:			System.out.println(friends);
@@ -2493,122 +1877,86 @@ The three demo files below read/write the plain-text fixture files that sit alon
 22:			friends.remove("Zonu");
 23:			System.out.println(friends.size());
 24:			System.out.println(friends);
-25:	
 26:	}
-27:	
 28:	}
 ```
 
-- **Line 11** — `ArrayList friends = new ArrayList();` — a **raw type**, deliberately contrasting with the previous file. With no type parameter, the compiler treats every element as `Object`; you lose compile-time type checking entirely and the IDE/compiler will emit an unchecked-operations warning. This still compiles (raw types are legal for backward compatibility with pre-Java-5 code) but is exactly what modern Java style guides forbid.
-- **Line 19** — `friends.remove(2)` — this is the **overload trap**: `List.remove(int index)` removes by *position*. Because `friends` holds `String`s, and there's no ambiguity with `remove(Object)` when the argument is a primitive `int` literal, the compiler picks the `int`-index overload — this removes `"Tonu"` (index 2), not an element equal to the integer `2`. If the list held `Integer`s instead, `remove(2)` would still call the index overload (not `remove(Object)` with an autoboxed `2`) — you'd need `remove(Integer.valueOf(2))` or `remove((Object) 2)` to remove *by value*. This exact ambiguity is a classic Java assessment gotcha.
-- **Line 22** — `friends.remove("Zonu")` calls the *other* overload, `remove(Object o)`, because the argument is a `String` reference, not an `int`. Since `"Zonu"` was never added, `remove()` returns `false` and the list is unchanged (no exception — removing a non-existent object is a safe no-op, unlike removing an out-of-range index, which *does* throw `IndexOutOfBoundsException`).
-- **Trailing block comment** — an alternate/earlier version of the file kept for reference, showing plain array usage and demonstrating that arrays are fixed-size (`str[3] = "Ponu"` would throw `ArrayIndexOutOfBoundsException`) versus mutable-in-place assignment within bounds (`str[2] = "Ponu"`) — left as a contrast against the resizable `ArrayList` above.
+- **Line 11** — `ArrayList friends = new ArrayList();` — a **raw type**, deliberately contrasting with the previous file: with no type parameter, every element is treated as `Object`, losing compile-time checking entirely — legal for backward compatibility, but exactly what modern style guides forbid.
+- **Line 19** — `friends.remove(2)` is the **overload trap**: `List.remove(int index)` removes by *position*, so this removes `"Tonu"` (index 2), not a value equal to `2`. Even for `Integer` lists, `remove(2)` still calls the index overload — you'd need `remove(Integer.valueOf(2))` to remove by value. A classic assessment gotcha.
+- **Line 22** — `friends.remove("Zonu")` calls the *other* overload, `remove(Object)`, because the argument is a `String` — since `"Zonu"` was never added, this is a safe no-op (`false`, no exception), unlike an out-of-range index which throws.
 
 ### Code — `day3/collection/CollectionIteration.java`
 
 ```java
 1:	package com.acme.demo.day3.collection;
-2:	
 3:	import java.util.ArrayList;
 4:	import java.util.Iterator;
 5:	import java.util.List;
-6:	
 7:	public class CollectionIteration {
-8:	
 9:		public static void main(String[] args) {
-10:	
 11:		List<String> friends = new ArrayList<>();
-12:	
 13:		friends.add("Sonu");
 14:			friends.add("Monu");
 15:			friends.add("Tonu");
-16:	
 17://		iterate  - for loop, for each loop, iterator, forEach 
-18:	
 19:		System.out.println("List of the friends using forEach method ");
 20://		friends.forEach((friend) -> {
 21://			System.out.println(friend);
 22://		});
-23:		
 24:		friends.forEach(friend -> System.out.println(friend));
 25://		friends.forEach(null);
-26:		
 27:		System.out.println("List of the friends using iterator method ");
-28:		
 29:		Iterator<String> it = friends.iterator();
-30:		
 31:		while (it.hasNext())
 32:				System.out.println(it.next());
-33:		
 34:	}
-35:	
 36:	}
 ```
 
-- **Line 11** — declared as the `List<String>` *interface* type rather than `ArrayList<String>` — standard best practice: code against the interface, so the concrete implementation can be swapped (e.g., to `LinkedList`) without touching call sites.
-- **Line 17 (comment)** — enumerates the four idiomatic ways to iterate a Java collection: classic indexed `for`, enhanced `for-each`, explicit `Iterator`, and the `forEach(Consumer)` method (Java 8+) — all four are conceptually equivalent to just doing `for x in friends:` in Python, but Java exposes each mechanism as a distinct, separately-named tool, each with different trade-offs (e.g., `Iterator` supports safe removal *during* iteration via `it.remove()`, which `for-each` does not — modifying a list mid-for-each throws `ConcurrentModificationException`).
-- **Lines 20–22 (commented)** — the block-lambda form of the same `forEach` call, shown as an equivalent-but-more-verbose alternative to line 24's expression lambda.
-- **Line 24** — `friends.forEach(friend -> System.out.println(friend))` — `forEach` takes a `Consumer<String>`; this could be further simplified to a method reference `friends.forEach(System.out::println)`.
-- **Line 25 (commented)** — `friends.forEach(null)` would compile (the parameter type accepts a null `Consumer` reference) but throw `NullPointerException` at runtime the moment `forEach` tries to invoke it — a reminder that generic method parameters are still ordinary references that can be null unless guarded.
-- **Line 29** — `friends.iterator()` returns an `Iterator<String>` — a cursor object with internal position state, separate from the list itself.
-- **Lines 31–32** — the classic `while (it.hasNext()) { ... it.next(); }` idiom: `hasNext()` checks without advancing, `next()` both advances and returns the element — calling `next()` past the end throws `NoSuchElementException`, which is why the `hasNext()` guard is mandatory.
+- **Line 11** — declared as the `List<String>` *interface* type rather than `ArrayList<String>` — code against the interface so the concrete implementation can be swapped without touching call sites.
+- **Line 17** (comment) — enumerates the four idiomatic ways to iterate: indexed `for`, `for-each`, explicit `Iterator`, and `forEach(Consumer)` — `Iterator` uniquely supports safe removal *during* iteration via `it.remove()`, which `for-each` does not (throws `ConcurrentModificationException` instead).
+- **Line 25** (commented) — `friends.forEach(null)` would compile but throw `NullPointerException` at runtime the moment `forEach` invokes it — generic parameters are still ordinary references that can be null.
+- **Lines 31–32** — the classic `while (it.hasNext()) { ... it.next(); }` idiom — calling `next()` past the end throws `NoSuchElementException`, which is why the `hasNext()` guard is mandatory.
 
 ### Code — `day3/collection/CollectionMethods.java`
 
 ```java
 1:	package com.acme.demo.day3.collection;
-2:	
 3:	import java.util.ArrayList;
 4:	import java.util.LinkedList;
 5:	import java.util.List;
-6:	
 7:	public class CollectionMethods {
-8:	
 9:		public static void main(String[] args) {
-10:	
 11:		ArrayList<String> friends = new ArrayList<>();
-12:		
 13:		List<String> friends2 = new ArrayList<>();
 14:			int num = 10;
-15:		
 16://		friends =  new LinkedList<String>();
 17:		friends2 = new LinkedList<>();
-18:	
 19:		friends.add("Sonu");
 20:			friends.add("Monu");
 21:			friends.add("Tonu");
-22:	
 23:		System.out.println(friends);
-24:	
 25:		@SuppressWarnings("unchecked")
 26:			ArrayList<String> friends3 = (ArrayList<String>) friends.clone();
 27://		ArrayList<String> friends3 =  new ArrayList<>(friends);
-28:	
 29:		System.out.println(friends3);
-30:	
 31:		friends3.add("Ponu");
-32:	
 33:		System.out.println(friends);
 34:			System.out.println(friends2);
 35:			System.out.println(friends3);
 36://		friends.
-37:	
 38://		 friends2.clone(); // CE 
 39:	}
 40:	}
 ```
 
-- **Lines 11 vs 13** — `friends` is declared as concrete `ArrayList<String>`; `friends2` is declared as interface type `List<String>` — this difference is the whole point of lines 16–17: because `friends2`'s *static* type is the interface `List`, it can be reassigned to *any* `List` implementation, including a `LinkedList` (line 17). `friends`'s static type is the concrete class `ArrayList`, so line 16's commented `friends = new LinkedList<String>();` would be a **compile error** — `LinkedList` is not an `ArrayList`, even though both implement `List`. This is a direct, concrete illustration of "program to the interface" and its practical payoff.
-- **Line 25** — `@SuppressWarnings("unchecked")` suppresses the compiler warning generated by the cast on line 26, because `clone()` on a generic collection returns raw `Object` internally — the cast to `ArrayList<String>` is unchecked at the bytecode level (type erasure means the JVM cannot verify it), so the compiler warns even though it's logically safe here.
-- **Line 26** — `friends.clone()` performs a **shallow copy**: it creates a new `ArrayList` with the same object references inside — for `String` elements (immutable) this behaves like a deep copy for practical purposes, but if the elements were mutable objects, both lists would still point to the *same* underlying objects, and mutating one would be visible through the other. `clone()` on collections is generally discouraged in modern Java in favor of the copy-constructor idiom shown commented on line 27, `new ArrayList<>(friends)`, which is clearer and doesn't require an unchecked cast.
-- **Line 31** — `friends3.add("Ponu")` adds only to the cloned list, not the original — proving `clone()` did produce an independent list *container* (even though shallow at the element level).
-- **Lines 33–35** — output confirms `friends` is unaffected by `friends3`'s addition (`[Sonu, Monu, Tonu]` vs `[Sonu, Monu, Tonu, Ponu]`), and `friends2` remains an empty `LinkedList` (`[]`) since nothing was ever added to it.
-- **Line 38 (comment)** — `friends2.clone()` would be a compile error because `clone()` is not declared on the `List` interface (it's `protected` on `Object` and only re-exposed as `public` by concrete classes like `ArrayList`) — since `friends2`'s static type is `List`, the compiler has no visibility into `clone()` regardless of the runtime type actually being a `LinkedList`. This reinforces the interface-vs-implementation distinction from the earlier note.
+- **Lines 11 vs 13, 16–17** — `friends` is declared as concrete `ArrayList<String>`; `friends2` as interface type `List<String>` — because `friends2`'s *static* type is `List`, it can be reassigned to any implementation including `LinkedList` (line 17), while `friends`'s commented `= new LinkedList<String>();` (line 16) would be a **compile error** — a direct illustration of "program to the interface."
+- **Lines 25–26** — `friends.clone()` performs a **shallow copy** (new `ArrayList`, same object references inside) — requires `@SuppressWarnings("unchecked")` since the cast is unchecked under type erasure. Discouraged in modern Java in favor of the copy-constructor idiom on line 27, `new ArrayList<>(friends)`.
+- **Line 38** (comment) — `friends2.clone()` would be a compile error because `clone()` isn't declared on the `List` interface (only re-exposed `public` by concrete classes) — `friends2`'s static type gates visibility regardless of its runtime `LinkedList` type.
 
 **Remaining collection files (briefly):**
 - **`CollectionTest.java`** (19 lines) is a minimal, single-purpose demo: builds `List<Integer> nums = {1,2,3}`, calls `nums.remove(1)`, and prints the result. It reinforces the same `remove(int)`-vs-`remove(Object)` overload trap as `CollectionDemo.java` above, but with an `Integer` list — `remove(1)` here removes by *index* (dropping `2`, the element at index 1), producing `[1, 3]`; to remove the *value* `1` you would need `nums.remove(Integer.valueOf(1))`.
 - **`MapDemo.java`** and **`SetDemo.java`** are both empty stub classes (just a package declaration and an empty class body — 5 lines each, no `main` method or logic). They exist as placeholders in the course repo but contain no runnable example; the `Map`/`Set` behavior described in the courseware summary above (`HashMap`, `TreeMap`, `HashSet`, `TreeSet`, etc.) has no corresponding hands-on code file in this repo — treat the courseware's inline snippets as the reference material for those two structures.
-
 
 ---
 
@@ -2640,56 +1988,42 @@ The three demo files below read/write the plain-text fixture files that sit alon
 
 ```java
 1:	package com.acme.demo.day3.garbage;
-2:	
 3:	public class GcDemo {
-4:	
 5:		@Override
 6:		protected void finalize() {
 7:			System.out.println("GC called");
 8:		}
-9:	
 10:		public static void main(String[] args) {
-11:	
 12:		GcDemo obj = new GcDemo();
 13:			System.out.println(obj.toString());
-14:	
 15:		obj = null;
-16:	
 17:		System.gc();
 18:	}
 19:	}
 ```
 
-- **Lines 5–8** — overrides `Object.finalize()` (deprecated for removal, and in fact *removed entirely* by Java 18 — this file will not even compile on JDK 18+ without the `-XX` legacy flags, or will simply have the override do nothing depending on the exact JDK). It's shown here purely as a teaching artifact of *how finalize used to work*, immediately followed by the courseware's explicit guidance to never use it in real code.
-- **Line 12** — allocates a `GcDemo` object; `obj` is a strong reference held by a local variable in `main()`'s stack frame — a GC root.
-- **Line 13** — `obj.toString()` uses the default `Object.toString()` (no override here), producing something like `com.acme.demo.day3.garbage.GcDemo@<hashcode>`.
-- **Line 15** — `obj = null` removes the only strong reference to the `GcDemo` instance, making it eligible for collection (assuming nothing else references it, which is true here).
-- **Line 17** — `System.gc()` is only a *suggestion* to the JVM to run garbage collection soon — it is **not guaranteed** to run immediately, or at all, or to actually collect the now-eligible object before the program exits. In practice on most JVMs this demo *does* usually print "GC called" because `System.gc()` triggers an eager collection pass in typical implementations, but relying on that behavior is explicitly the anti-pattern the courseware warns against — this file exists to demonstrate the mechanism, not to model good practice.
+- **Lines 5–8** — overrides `Object.finalize()`, which was deprecated for removal and *removed entirely* by Java 18 (this file won't even compile on JDK 18+ without legacy flags) — shown purely as a teaching artifact of how it used to work.
+- **Line 15** — `obj = null` removes the only strong reference, making the object eligible for collection.
+- **Line 17** — `System.gc()` is only a *suggestion* — not guaranteed to run immediately, or at all. In practice most JVMs eagerly collect here so "GC called" usually prints, but relying on that behavior is exactly the anti-pattern the courseware warns against.
 
 ### Code — `day3/garbage/ReferenceDemo.java`
 
 ```java
 1:	package com.acme.demo.day3.garbage;
-2:	
 3:	import java.lang.ref.PhantomReference;
 4:	import java.lang.ref.ReferenceQueue;
 5:	import java.lang.ref.SoftReference;
 6:	import java.lang.ref.WeakReference;
-7:	
 8:	public class ReferenceDemo {
-9:	
 10:		public static void main(String[] args) throws InterruptedException {
-11:	
 12:		// Strong Reference
 13:			String name = new String("Hello");
 14:			System.out.println("Strong ref: " + name);
 15:			name = null; // now eligible for GC
 16:			System.gc();
 17:			System.out.println("Strong ref set to null -> object may be collected\n");
-18:	
 19:		// Soft Reference
 20:			SoftReference<byte[]> cache = new SoftReference<>(new byte[1024]);
-21:	
 22:		byte[] data = cache.get(); // returns object if still alive
 23:			if (data != null) {
 24:				System.out.println("Soft ref - Cache hit: " + data.length + " bytes");
@@ -2697,35 +2031,25 @@ The three demo files below read/write the plain-text fixture files that sit alon
 26:				System.out.println("Soft ref - Cache miss: GC cleared it (low memory)");
 27:			}
 28:			System.out.println();
-29:	
 30:		// Weak Reference
 31:			String data2 = new String("temporary");
 32:			WeakReference<String> weak = new WeakReference<>(data2);
-33:	
 34:		System.out.println("Weak ref - Before GC: " + weak.get());
-35:	
 36:		data2 = null; // remove strong reference
 37:			System.gc();
 38:			Thread.sleep(100); // give GC a moment to run
-39:	
 40:		System.out.println("Weak ref - After  GC: " + weak.get() + "\n");
-41:	
 42:		// Phantom Reference
 43:			// PhantomReference requires a ReferenceQueue.
 44:			// get() ALWAYS returns null - the object is already finalized.
 45:			// We detect collection by polling the queue.
-46:	
 47:		ReferenceQueue<Object> queue = new ReferenceQueue<>();
-48:	
 49:		Object resource = new Object();
 50:			PhantomReference<Object> phantom = new PhantomReference<>(resource, queue);
-51:	
 52:		System.out.println("Phantom ref - get() before GC: " + phantom.get()); // always null
-53:	
 54:		resource = null; // remove strong reference
 55:			System.gc();
 56:			Thread.sleep(100); // give GC time to enqueue the phantom ref
-57:	
 58:		// Poll the queue to detect that the object has been collected
 59:			if (queue.poll() != null) {
 60:				System.out.println("Phantom ref - object collected -> safe to run cleanup");
@@ -2736,18 +2060,10 @@ The three demo files below read/write the plain-text fixture files that sit alon
 65:	}
 ```
 
-- **Line 13** — `new String("Hello")` deliberately forces a new heap-allocated `String` object (bypassing the string constant pool that a plain `"Hello"` literal would use) — necessary here because the constant pool holds a permanent strong reference to interned literals, which would defeat the entire "make it eligible for GC" demonstration.
-- **Line 15** — nulling the only strong reference makes the `String` object eligible; line 16's `System.gc()` is again just a hint, shown for illustration.
-- **Line 20** — `SoftReference<byte[]>` wraps a 1KB byte array. The JVM is permitted to clear soft references before throwing `OutOfMemoryError`, but is *not required* to clear them at any particular point otherwise — under normal heap pressure (as in this quick-running demo) the reference almost always survives, so `data` on line 22 is typically non-null and prints "Cache hit."
-- **Line 22** — `cache.get()` returns the referent if it's still alive, or `null` if the GC has already cleared it — this null-checking pattern is *mandatory* whenever working with `SoftReference`/`WeakReference`, since the object can vanish between any two lines of your code.
-- **Lines 31–32** — `data2` is a strong reference to a fresh `String`; `weak` wraps it in a `WeakReference`, meaning `weak.get()` currently returns the string ("Before GC" line 34 succeeds) but the moment the only strong reference (`data2`) is nulled, `weak` cannot keep the object alive by itself.
-- **Line 36** — removes the strong reference; unlike `SoftReference`, a `WeakReference`'s referent is eligible for collection at the *very next* GC cycle with no memory-pressure requirement — this is the defining difference between Soft and Weak.
-- **Line 38** — `Thread.sleep(100)` is a pragmatic (not guaranteed-correct) way to give the JVM's background GC thread(s) a moment to actually run after the `System.gc()` hint — there's no hard guarantee 100ms is enough, but it's typically sufficient for a demo. In production code you would never write logic that depends on this timing.
-- **Line 40** — after the GC pass, `weak.get()` typically returns `null`, demonstrating that a weak reference alone could not keep the `String` alive.
-- **Lines 49–50** — `PhantomReference<Object>` differs fundamentally from Soft/Weak: its `get()` **always returns null**, even while the object is technically still alive — you cannot resurrect or even read the referent through a phantom reference at all. It exists solely to let you know, via the associated `ReferenceQueue`, *when* an object has become phantom-reachable (post-finalization, pre-reclamation) so you can run cleanup logic.
-- **Line 52** — confirms `phantom.get()` is `null` even *before* any GC has run — reinforcing that phantom references are categorically different from Soft/Weak, not just "even weaker."
-- **Lines 54–58** — after nulling the strong reference and running/waiting for GC, the JVM enqueues the phantom reference into `queue` once the referent has been determined to be unreachable — `queue.poll()` (non-blocking) checks whether that enqueuing has happened yet, which is the *only* way to observe collection through a `PhantomReference`.
-
+- **Line 13** — `new String("Hello")` deliberately forces a new heap-allocated object (bypassing the string constant pool a plain literal would use) — necessary since the pool holds a permanent strong reference to interned literals, which would defeat the "make it eligible for GC" demonstration.
+- **Line 20** — `SoftReference<byte[]>` is cleared only under memory pressure — in a quick-running demo like this the reference almost always survives, so `cache.get()` (line 22) typically prints "Cache hit." This null-checking pattern is *mandatory* whenever working with `SoftReference`/`WeakReference`.
+- **Line 36** — unlike `SoftReference`, a `WeakReference`'s referent is eligible for collection at the *very next* GC cycle with no memory-pressure requirement — the defining Soft/Weak difference; after the GC pass, `weak.get()` (line 40) typically returns `null`.
+- **Lines 49–52** — `PhantomReference.get()` **always returns null**, even while the object is technically still alive — categorically different from Soft/Weak, not just "even weaker." It exists solely to let you know, via the `ReferenceQueue`, *when* an object has become phantom-reachable, via `queue.poll()` (line 59) — the only way to observe collection through a `PhantomReference`.
 
 ---
 
@@ -2765,13 +2081,9 @@ The three demo files below read/write the plain-text fixture files that sit alon
 
 ```java
 1:	package com.acme.demo.day3.features;
-2:	
 3:	public class Java13Features {
-4:	
 5:	    public static void main(String[] args) {
-6:	
 7:	        // Text Blocks
-8:	
 9:	        String html = """
 10:	                <html>
 11:	                    <body>
@@ -2779,160 +2091,91 @@ The three demo files below read/write the plain-text fixture files that sit alon
 13:	                    </body>
 14:	                </html>
 15:	                """;
-16:	
 17:	        System.out.println(html);
-18:	
 19:	        // switch expression
-20:	
 21:	        String day = "MONDAY";
-22:	
 23:	        String type = switch (day) {
-24:	
 25:	        case "SATURDAY", "SUNDAY" -> "Weekend";
-26:	
 27:	        default -> "Weekday";
 28:	        };
-29:	
 30:	        System.out.println(type);
-31:	
 32:	        // yield in switch
-33:	
 34:	        int num = 2;
-35:	
 36:	        String result = switch (num) {
-37:	
 38:	        case 1:
 39:	            yield "One";
-40:	
 41:	        case 2:
 42:	            yield "Two";
-43:	
 44:	        default:
 45:	            yield "Unknown";
 46:	        };
-47:	
 48:	        System.out.println(result);
-49:	
 50:	        // String methods
-51:	
 52:	        String name = "   Java 13   ";
-53:	
 54:	        System.out.println(name.strip());
-55:	
 56:	        System.out.println("".isBlank());
-57:	
 58:	        System.out.println("Java\nPython".lines().count());
-59:	
 60:	        // File Read/Write (NIO improvements)
-61:	
 62:	        try {
-63:	
 64:	            java.nio.file.Path path = java.nio.file.Path.of("demo.txt");
-65:	
 66:	            java.nio.file.Files.writeString(path, "Hello Java 13");
-67:	
 68:	            String data = java.nio.file.Files.readString(path);
-69:	
 70:	            System.out.println(data);
-71:	
 72:	        } catch (Exception e) {
-73:	
 74:	            e.printStackTrace();
 75:	        }
 76:	    }
 77:	}
 ```
 
-- **Lines 9–15** — a text block literal for an HTML fragment. The closing `"""` on line 15 sits at the same indentation column as the content lines (16 spaces before `<html>` etc. and before the closing delimiter itself), so the compiler strips exactly that common leading whitespace from every line — the printed output starts flush at column 0, not indented to match the source code's visual nesting.
-- **Line 23** — `String type = switch (day) { ... }` — a switch *expression* (note the trailing semicolon after the closing brace, required for expressions, unlike switch statements).
-- **Line 25** — `case "SATURDAY", "SUNDAY" -> "Weekend";` — comma-separated multi-label case; since `day` is `"MONDAY"`, this branch doesn't match.
-- **Line 27** — `default -> "Weekday";` executes because `"MONDAY"` isn't Saturday or Sunday — `type` becomes `"Weekday"`.
-- **Line 36** — a second switch expression, this time using the **traditional colon syntax** (`case 1:`) combined with `yield` rather than the arrow syntax — demonstrating that `yield` works with both switch forms, though it's required for value-producing colon-style cases (there's no implicit fall-through-avoidance the way arrow-case gives you, so each colon branch must explicitly `yield`).
-- **Lines 38–42** — since `num == 2`, execution matches `case 2:` and yields `"Two"`; note there's no `break` needed since `yield` both produces the value and exits the switch expression.
-- **Line 54** — `.strip()` (Java 11+) is the Unicode-aware replacement for `.trim()` — removes leading/trailing whitespace including Unicode whitespace characters that `.trim()` doesn't recognize; here it turns `"   Java 13   "` into `"Java 13"`.
-- **Line 56** — `"".isBlank()` checks whether a string is empty *or* consists entirely of whitespace — returns `true` for `""`.
-- **Line 58** — `.lines()` (Java 11+) splits a string into a `Stream<String>` of its lines without needing a manual `split("\n")`; `.count()` on `"Java\nPython"` yields `2`.
-- **Line 64** — `Path.of(...)` (Java 11+) is the modern equivalent of `Paths.get(...)`, both producing a `java.nio.file.Path`.
-- **Line 66** — `Files.writeString(path, "Hello Java 13")` (Java 11+) writes the entire string to `demo.txt` in one call, no explicit `Writer`/stream management needed — and matches the fixture file's actual on-disk content (`"Hello Java 13"`, confirmed by inspecting `demo.txt` in the repo).
-- **Line 68** — `Files.readString(path)` reads the whole file back into a `String` in one call — the write-then-read round trip on lines 66–68 is why the printed output on line 70 exactly echoes what was just written.
+- **Lines 9–15** — a text-block literal for HTML; the closing `"""` sits at the same indentation column as the content lines, so the compiler strips that common leading whitespace — output prints flush at column 0, not indented to match the source's visual nesting.
+- **Lines 23–36** — line 23 is a switch *expression* (trailing semicolon required, unlike statements); line 25's multi-label case doesn't match `"MONDAY"` so `default` wins. Line 36 repeats with **traditional colon syntax** + `yield` instead of arrow syntax — colon-style cases must explicitly `yield` (no implicit fall-through-avoidance).
+- **Lines 54, 58, 64–68** — `.strip()` (Unicode-aware `.trim()`), `.lines()` (splits into a `Stream<String>`), and `Path.of(...)` + `Files.writeString`/`readString` (all Java 11+) write/read a whole file in one call each — the round trip is why line 70's output echoes what was just written.
 
 ### Code — `day3/features/Java14Features.java`
 
 ```java
 1:	package com.acme.demo.day3.features;
-2:	
 3:	public class Java14Features {
-4:	
 5:	    public static void main(String[] args) {
-6:	
 7:	        // switch expression
-8:	
 9:	        int day = 6;
-10:	
 11:	        String result = switch (day) {
-12:	
 13:	        case 6, 7 -> "Weekend";
-14:	
 15:	        default -> "Weekday";
 16:	        };
-17:	
 18:	        System.out.println(result);
-19:	
 20:	        // Record (Preview in Java 14)
-21:	
 22:	        Employee e = new Employee(101, "Sonu", 50000);
-23:	
 24:	        System.out.println(e.id());
-25:	
 26:	        System.out.println(e.name());
-27:	
 28:	        System.out.println(e.salary());
-29:	
 30:	        System.out.println(e);
-31:	
 32:	        // instanceof pattern matching
-33:	
 34:	        Object obj = "Java 14";
-35:	
 36:	        if (obj instanceof String s) {
-37:	
 38:	            System.out.println(s.toUpperCase());
 39:	        }
-40:	
 41:	        // NullPointerException improvement
-42:	
 43:	        String str = null;
-44:	
 45:	        try {
-46:	
 47:	            System.out.println(str.length());
-48:	
 49:	        } catch (Exception ex) {
-50:	
 51:	            ex.printStackTrace();
 52:	        }
-53:	
 54:	        // Helpful JVM info
-55:	
 56:	        System.out.println(Runtime.version());
 57:	    }
 58:	}
-59:	
 60:	// Record Example
-61:	
 62:	record Employee(int id, String name, double salary) {
 63:	}
 ```
 
-- **Lines 9–16** — an `int`-based switch expression (`day = 6` matches `case 6, 7`), producing `"Weekend"` — the same arrow-switch mechanics as Module 29's text-block example, applied to an `int` selector instead of `String`.
-- **Line 62** — `record Employee(int id, String name, double salary) { }` — a compact record declaration at the *file* scope (outside `Java14Features`, so it's a package-private top-level type in this file). Even though this course code was written targeting Java 14 (where records were only a *preview* feature requiring `--enable-preview` to compile/run), the syntax shown is exactly what became standard in Java 16 and is covered in depth in Module 30 below.
-- **Line 22** — `new Employee(101, "Sonu", 50000)` invokes the compiler-generated canonical constructor — no explicit constructor was written in the record body.
-- **Lines 24–28** — `e.id()`, `e.name()`, `e.salary()` are compiler-generated **accessor** methods — note the naming convention: `id()`, not `getId()`. This is a deliberate, exam-relevant departure from JavaBean getter conventions.
-- **Line 30** — `System.out.println(e)` invokes the compiler-generated `toString()`, which prints all components in a standard format: `Employee[id=101, name=Sonu, salary=50000.0]`.
-- **Line 36** — `if (obj instanceof String s)` — pattern-matching `instanceof` (preview in Java 14, standard in Java 16): the check and the cast-and-bind happen in one expression; `s` is scoped to the `if`'s true-branch, already typed as `String`, no explicit cast required.
-- **Line 43, 47** — deliberately triggers a `NullPointerException` by calling `.length()` on a `null` `String` — this is the exact scenario that Java 14's helpful-NPE feature targets: the exception message (visible in `ex.printStackTrace()`'s output) would specify that `"str"` was null and that `String.length()` couldn't be invoked on it, rather than a bare, contextless `NullPointerException`.
-- **Line 56** — `Runtime.version()` returns a `Runtime.Version` object describing the exact running JDK build — useful diagnostic/logging info, unrelated to the NPE feature itself but grouped here as a general "helpful JVM info" showcase.
-
+- **Lines 9–16** — the same arrow-switch mechanics as Module 29's example, applied to an `int` selector instead of `String`.
+- **Lines 22–30, 62** — `record Employee(...)` at file scope (only *preview* when this course targeted Java 14, standard since 16, covered in depth in Module 30); `e.id()`/`e.name()`/`e.salary()` are compiler-generated **accessors** — note the naming convention `id()`, not `getId()`, a deliberate departure from JavaBean getters.
+- **Line 36** — `if (obj instanceof String s)` — pattern-matching `instanceof` (preview in 14, standard in 16): check and cast-and-bind happen in one expression.
+- **Line 43, 47** — deliberately triggers a `NullPointerException` to exercise Java 14's helpful-NPE feature: the message would specify `"str"` was null, rather than a bare, contextless exception.
 
 ---
 
@@ -2954,25 +2197,18 @@ The three demo files below read/write the plain-text fixture files that sit alon
 
 ```java
 1:	package com.acme.demo.day3.illustrative;
-2:	
 3:	import java.util.List;
-4:	
 5:	public class Java17FeaturesIllustrative {
-6:	
 7:		// Sealed hierarchy -- only these three classes may extend Employee
 8:		sealed interface Employee permits Manager, Developer, Contractor { }
-9:	
 10:		record Manager(int id, String name, double salary, int teamSize) implements Employee {
 11:			public Manager {
 12:				if (teamSize <= 0)
 13:					throw new IllegalArgumentException("Team size must be positive: " + teamSize);
 14:			}
 15:		}
-16:	
 17:		record Developer(int id, String name, double salary, String techStack) implements Employee { }
-18:	
 19:		record Contractor(int id, String name, double dailyRate) implements Employee { }
-20:	
 21:		static String describe(Employee e) {
 22:			return switch (e) {
 23:				case Manager m    -> "Manager with team of " + m.teamSize();
@@ -2981,7 +2217,6 @@ The three demo files below read/write the plain-text fixture files that sit alon
 26:				// no default needed -- Employee is sealed, all permitted types covered
 27:			};
 28:		}
-29:	
 30:		static String employeeName(Object obj) {
 31:			if (obj instanceof Manager m) {
 32:				return m.name();
@@ -2990,15 +2225,12 @@ The three demo files below read/write the plain-text fixture files that sit alon
 35:			}
 36:			return "Unknown";
 37:		}
-38:	
 39:		public static void main(String[] args) {
-40:	
 41:			List<Employee> team = List.of(
 42:				new Manager(201, "Ponu", 110000, 8),
 43:				new Developer(301, "Monu", 82000, "Java, Spring"),
 44:				new Contractor(401, "Gonu", 2500)
 45:			);
-46:	
 47:			for (Employee e : team) {
 48:				System.out.println(describe(e) + "  |  name via instanceof: " + employeeName(e));
 49:			}
@@ -3006,15 +2238,10 @@ The three demo files below read/write the plain-text fixture files that sit alon
 51:	}
 ```
 
-- **Line 8** — `sealed interface Employee permits Manager, Developer, Contractor` — declares a closed type hierarchy: only these three types may ever implement `Employee`. Attempting `class Intern implements Employee` elsewhere in the codebase would be a compile error.
-- **Lines 10–15** — `Manager` is a `record` implementing the sealed interface. Records satisfy the sealed hierarchy's implicit "must be final/sealed/non-sealed" requirement automatically, because records are implicitly `final` — they cannot be extended, so no explicit modifier is needed here (unlike an ordinary class permitted by a sealed type).
-- **Lines 11–14** — a **compact constructor**: no parameter list restated, just validation logic. If `teamSize <= 0`, it throws before the (compiler-generated) field assignments happen; otherwise, `id`, `name`, `salary`, `teamSize` are assigned automatically to the record's `final` fields exactly as passed in.
-- **Line 21** — `describe(Employee e)` takes the sealed interface type — the parameter's declared type is intentionally the closed hierarchy root, which is what lets the switch below be verified exhaustive.
-- **Lines 22–27** — a **pattern-matching switch expression** over the sealed type: each `case` matches on runtime type and binds a typed variable (`m`, `d`, `c`) in one step — no casts anywhere. Because the compiler knows `Employee`'s `permits` list exhaustively, **no `default` branch is required or even permitted to be missing** — if a fourth permitted type were added to `Employee` later and this switch weren't updated, the code would fail to compile, not silently misbehave at runtime. This exhaustiveness guarantee is the single biggest practical payoff of combining sealed types with pattern-matching switch.
-- **Lines 30–37** — a second, independent illustration of plain `instanceof` pattern matching (not switch-based): line 31's `obj instanceof Manager m` binds `m` only within that `if` branch; line 33 shows the pattern combined with `&&` — `d` is bound by the `instanceof` and immediately usable in the same boolean expression's right-hand side (`d.salary() > 80000`), which only evaluates if the `instanceof` already succeeded (short-circuit `&&` guarantees `d` is non-null and correctly typed by the time it's read).
-- **Line 43** — `Developer`'s salary is `82000`, which is `> 80000`, so `employeeName` for this entry returns `"Monu (senior)"` via the line 33 branch.
-- **Line 44** — `Contractor` matches neither `instanceof` branch in `employeeName`, so it falls through to `"Unknown"` on line 36 — illustrating that `instanceof`-chain dispatch (unlike the sealed-switch in `describe`) is *not* compiler-verified exhaustive; it's just a sequence of ordinary boolean checks, which is exactly why the switch-based approach above is preferred once your hierarchy is sealed.
-
+- **Line 8** — `sealed interface Employee permits Manager, Developer, Contractor` declares a closed type hierarchy — `class Intern implements Employee` elsewhere would be a compile error.
+- **Lines 10–15** — `Manager` is a `record` implementing the sealed interface; records satisfy the sealed hierarchy's implicit "must be final/sealed/non-sealed" requirement automatically since records are implicitly `final`. Its **compact constructor** (lines 11–14) validates before the (compiler-generated) field assignments happen.
+- **Lines 22–27** — a **pattern-matching switch expression**: each `case` matches on runtime type and binds a typed variable in one step, no casts. Because the compiler knows `Employee`'s `permits` list exhaustively, **no `default` branch is required or even permitted to be missing** — if a fourth type were added later without updating this switch, the code fails to compile rather than silently misbehaving at runtime. This is the biggest practical payoff of combining sealed types with pattern-matching switch.
+- **Lines 30–37** — plain `instanceof` pattern matching (not switch-based): line 33's `d.salary() > 80000` reads `d` safely since short-circuit `&&` guarantees the `instanceof` already succeeded. Unlike the sealed-switch above, this `instanceof` chain is *not* compiler-verified exhaustive — `Contractor` (line 44) matches neither branch and falls through to `"Unknown"`, illustrating why the switch-based approach is preferred once a hierarchy is sealed.
 
 ---
 
@@ -3038,19 +2265,14 @@ The three demo files below read/write the plain-text fixture files that sit alon
 
 ```java
 1:	package com.acme.demo.day3.illustrative;
-2:	
 3:	import java.util.*;
 4:	import java.util.concurrent.*;
-5:	
 6:	public class Java21FeaturesIllustrative {
-7:	
 8:		record EmployeeRecord(int id, String name, double salary, String department) { }
-9:	
 10:		static double fetchSalaryFromDb(int employeeId) throws InterruptedException {
 11:			Thread.sleep(100);   // simulate a blocking DB call
 12:			return 50000 + (employeeId % 5) * 10000;
 13:		}
-14:	
 15:		static String classify(Object obj) {
 16:			return switch (obj) {
 17:				case null -> "No data";
@@ -3060,13 +2282,10 @@ The three demo files below read/write the plain-text fixture files that sit alon
 21:				default -> "Unrecognized";
 22:			};
 23:		}
-24:	
 25:		public static void main(String[] args) throws Exception {
-26:	
 27:			// Virtual threads: process 1000 "employees" concurrently
 28:			long start = System.currentTimeMillis();
 29:			List<EmployeeRecord> results = new ArrayList<>();
-30:	
 31:			try (ExecutorService vExec = Executors.newVirtualThreadPerTaskExecutor()) {
 32:				List<Future<EmployeeRecord>> futures = new ArrayList<>();
 33:				for (int i = 1; i <= 1000; i++) {
@@ -3082,14 +2301,11 @@ The three demo files below read/write the plain-text fixture files that sit alon
 43:			}
 44:			System.out.println("Processed " + results.size() + " employees in "
 45:					+ (System.currentTimeMillis() - start) + "ms using virtual threads");
-46:	
 47:			// Sequenced collections
 48:			LinkedHashMap<Integer, EmployeeRecord> byId = new LinkedHashMap<>();
 49:			for (EmployeeRecord e : results) byId.put(e.id(), e);
-50:	
 51:			System.out.println("First: " + byId.firstEntry().getValue().name());
 52:			System.out.println("Last:  " + byId.lastEntry().getValue().name());
-53:	
 54:			// Record patterns with `when` guard and null case
 55:			System.out.println(classify(results.get(0)));
 56:			System.out.println(classify(null));
@@ -3097,19 +2313,9 @@ The three demo files below read/write the plain-text fixture files that sit alon
 58:	}
 ```
 
-- **Line 8** — `EmployeeRecord`, a plain record used as the payload type throughout — pattern-matched against later via record deconstruction.
-- **Line 10** — `fetchSalaryFromDb` sleeps 100ms to simulate a blocking I/O call — chosen deliberately since virtual threads only pay off for exactly this kind of blocking workload.
-- **Line 16** — `switch (obj)` over a plain `Object` — legal because `switch` in modern Java can pattern-match against any reference type, not just the traditional `int`/`String`/`enum` selectors.
-- **Line 17** — `case null -> "No data";` — explicit `null` handling (Java 21 standard); without this case, passing `null` into this switch would throw `NullPointerException` as it always did pre-21.
-- **Lines 18–19** — a **record pattern** destructures `EmployeeRecord` directly into four bound variables (`id`, `name`, `salary`, `dept`) without calling any accessor methods, combined with a **`when` guard** (`salary > 80000`) — both the type match *and* the guard condition must hold for this branch to be selected.
-- **Line 20** — a second, un-guarded record pattern for the same type — matches any `EmployeeRecord` that didn't satisfy the guard above; switch pattern matching evaluates cases top-to-bottom, so this "catch the rest of this type" case must come after the guarded one.
-- **Line 31** — `Executors.newVirtualThreadPerTaskExecutor()` — every task submitted to this executor gets its own dedicated virtual thread; the `try`-with-resources here relies on `ExecutorService` implementing `AutoCloseable` (Java 19+) — `close()` implicitly calls `shutdown()` and blocks until all tasks complete, so the explicit `shutdown()`/`awaitTermination()` boilerplate from Module 24 is no longer necessary with this modern idiom.
-- **Lines 33–38** — submits 1000 tasks, each independently sleeping 100ms inside `fetchSalaryFromDb`. With platform threads and any reasonably-sized fixed pool, 1000 tasks x 100ms would take multiple seconds in batches; with one virtual thread per task, all 1000 sleeps effectively overlap, and the whole loop typically completes in well under a second — the entire point of the demo.
-- **Line 48** — `LinkedHashMap` implements `SequencedMap` as of Java 21, so it gains `firstEntry()`/`lastEntry()` for free with no interface change needed at the call site — same class, new capability.
-- **Lines 51–52** — `firstEntry()`/`lastEntry()` replace what would previously have required manually iterating the map (or using `entrySet().iterator().next()` for the first entry and a full loop to find the last) — direct O(1)-ish access to the map's encounter-order boundaries.
-- **Line 55** — `results.get(0)` is `Emp-1` with salary `50000 + (1 % 5) * 10000 = 60000`, which is *not* `> 80000`, so `classify` falls through the guarded case (line 18–19) to the unguarded one (line 20), printing `"Emp-1 is staff in Dept-1"`.
-- **Line 56** — `classify(null)` matches `case null` directly, printing `"No data"` — demonstrating the null-handling feature explicitly rather than relying on it as an edge case.
-
+- **Line 17** — `case null -> "No data";` — explicit `null` handling (Java 21 standard, no longer throws `NullPointerException` as pre-21). **Lines 18–20** combine a **record pattern** (destructures `EmployeeRecord` without accessors) with a **`when` guard** (`salary > 80000`); the unguarded case on line 20 catches anything that fails the guard — cases evaluate top-to-bottom, so it must come after. Line 55's salary (`60000`) fails the guard, so it prints `"Emp-1 is staff in Dept-1"`.
+- **Line 31** — `Executors.newVirtualThreadPerTaskExecutor()` gives every task its own virtual thread; `try`-with-resources works since `ExecutorService` implements `AutoCloseable` (Java 19+) — `close()` implicitly calls `shutdown()`/blocks until done, replacing Module 24's manual boilerplate. **Lines 33–38**: 1000 tasks each sleep 100ms, but with one virtual thread per task all sleeps overlap, completing in well under a second — the entire point of the demo.
+- **Line 48** — `LinkedHashMap` implements `SequencedMap` as of Java 21, gaining `firstEntry()`/`lastEntry()` (lines 51–52) for free — direct access replacing manual iteration.
 
 ---
 
@@ -3131,20 +2337,14 @@ The three demo files below read/write the plain-text fixture files that sit alon
 
 ```java
 1:	package com.acme.demo.day3.illustrative;
-2:	
 3:	import java.util.*;
 4:	import java.util.stream.*;
-5:	
 6:	public class Java24FeaturesIllustrative {
-7:	
 8:		record EmployeeRecord(int id, String name, double salary) { }
-9:	
 10:		static final ScopedValue<String> APPROVER = ScopedValue.newInstance();
-11:	
 12:		static class Manager {
 13:			private final String name;
 14:			private final int teamSize;
-15:	
 16:			Manager(String rawName, int teamSize) {
 17:				var cleanedName = rawName == null ? "Unknown" : rawName.strip(); // runs BEFORE super()
 18:				if (teamSize <= 0) throw new IllegalArgumentException("teamSize must be positive");
@@ -3152,14 +2352,11 @@ The three demo files below read/write the plain-text fixture files that sit alon
 20:				this.teamSize = teamSize;
 21:			}
 22:		}
-23:	
 24:		static void printBatch(List<EmployeeRecord> batch) {
 25:			System.out.println("--- Batch (approved by " + APPROVER.get() + ") ---");
 26:			batch.forEach(e -> System.out.printf("  %-8s %.2f%n", e.name(), e.salary()));
 27:		}
-28:	
 29:		public static void main(String[] args) {
-30:	
 31:			List<EmployeeRecord> employees = List.of(
 32:				new EmployeeRecord(101, "Sonu", 75000),
 33:				new EmployeeRecord(102, "Monu", 82000),
@@ -3167,19 +2364,16 @@ The three demo files below read/write the plain-text fixture files that sit alon
 35:				new EmployeeRecord(104, "Ponu", 91000),
 36:				new EmployeeRecord(105, "Gonu", 68000)
 37:			);
-38:	
 39:			// Stream Gatherers: process in fixed-size batches
 40:			ScopedValue.where(APPROVER, "Ponu").run(() -> {
 41:				employees.stream()
 42:					.gather(Gatherers.windowFixed(2))
 43:					.forEach(Java24FeaturesIllustrative::printBatch);
-44:	
 45:				double totalGross = employees.stream()
 46:					.mapToDouble(EmployeeRecord::salary)
 47:					.sum();
 48:				System.out.printf("Total gross: %.2f (approved by %s)%n", totalGross, APPROVER.get());
 49:			});
-50:	
 51:			// Flexible constructor body -- validation runs before this class's field init
 52:			Manager m = new Manager("  Rina  ", 5);
 53:			System.out.println("Manager: " + m.name + ", team of " + m.teamSize);
@@ -3187,13 +2381,11 @@ The three demo files below read/write the plain-text fixture files that sit alon
 55:	}
 ```
 
-- **Line 10** — `static final ScopedValue<String> APPROVER = ScopedValue.newInstance();` — declared exactly like a `ThreadLocal` would be (`static final`), but a `ScopedValue` has no `set()` method at all; it can only be bound for the duration of a `run()`/`call()` block, enforcing immutability by construction rather than by convention.
-- **Lines 16–21** — `Manager`'s constructor demonstrates **flexible constructor bodies** conceptually: line 17 computes `cleanedName` and line 18 validates `teamSize` *before* any field assignment — under the pre-Java-24 rule, if this class extended another class, *no* statement could precede the mandatory `super()` call; Java 24 relaxes that specifically to allow argument preparation/validation ahead of `super()`, as long as `this` isn't referenced before the super call completes. (This particular class has no explicit superclass call to illustrate against since it only implicitly extends `Object`, but the pattern shown -- validate/prepare, then assign -- is exactly the shape JEP 492 unlocks for classes that *do* need to run logic before delegating to a real `super(...)`.)
-- **Line 40** — `ScopedValue.where(APPROVER, "Ponu").run(() -> { ... })` binds `APPROVER` to `"Ponu"` for the entire duration of the lambda passed to `run()` -- any code called transitively from within this lambda (including `printBatch`, called indirectly via the method reference on line 43) can read `APPROVER.get()` and will see `"Ponu"`; outside this `run()` block, `APPROVER` is unbound again (calling `.get()` there would throw `NoSuchElementException`).
-- **Line 42** — `employees.stream().gather(Gatherers.windowFixed(2))` -- a **Stream Gatherer**, the Java 24 standard feature: `windowFixed(2)` groups the 5-element stream into non-overlapping windows of size 2 -- `[Sonu, Monu]`, `[Tonu, Ponu]`, `[Gonu]` (the last window is short since 5 isn't evenly divisible by 2) -- each window delivered downstream as a `List<EmployeeRecord>`.
-- **Line 43** — `.forEach(Java24FeaturesIllustrative::printBatch)` -- each windowed batch is passed to `printBatch`, which itself reads `APPROVER.get()` -- demonstrating that the scoped value correctly propagates into a method called from deep inside a stream pipeline, without threading an `approver` parameter through every method signature manually.
-- **Line 48** — after the batched printing, the same lambda also computes and prints a grand total, again reading `APPROVER.get()` successfully since it's still within the `run()` block's dynamic scope.
-- **Line 52** — outside the `ScopedValue.where(...).run(...)` block entirely -- `APPROVER` is not referenced here, only the flexible-constructor `Manager` is exercised, keeping the two feature demonstrations cleanly separated.
+- **Line 10** — `ScopedValue` is declared `static final` like a `ThreadLocal` would be, but has no `set()` method at all — it can only be bound for the duration of a `run()`/`call()` block, enforcing immutability by construction rather than convention.
+- **Lines 16–21** — `Manager`'s constructor demonstrates **flexible constructor bodies**: lines 17–18 compute/validate *before* any field assignment. Under the pre-Java-24 rule, if this class extended another, *no* statement could precede the mandatory `super()`; Java 24 relaxes that to allow prep/validation ahead of `super()`, as long as `this` isn't referenced first.
+- **Line 40** — `ScopedValue.where(APPROVER, "Ponu").run(() -> {...})` binds `APPROVER` for the lambda's duration — any code called transitively (including `printBatch` via the method reference on line 43) can read `APPROVER.get()`; outside the block it's unbound (`.get()` would throw `NoSuchElementException`).
+- **Line 42** — `Gatherers.windowFixed(2)`, the Java 24 **Stream Gatherer** standard feature, groups the 5-element stream into non-overlapping windows of size 2 — `[Sonu, Monu]`, `[Tonu, Ponu]`, `[Gonu]` (short last window since 5 isn't evenly divisible).
+- **Line 43** — each windowed batch is passed to `printBatch`, demonstrating the scoped value correctly propagates into a method called deep inside a stream pipeline, with no `approver` parameter threaded through manually.
 
 ---
 

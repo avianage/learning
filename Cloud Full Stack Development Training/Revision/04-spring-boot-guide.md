@@ -11,22 +11,9 @@ This guide is built strictly from Aakash's course materials: the four courseware
 - `AppInitializer.java` extends `AbstractAnnotationConfigDispatcherServletInitializer` — this is the **classic Spring MVC** programmatic replacement for `web.xml` (Servlet 3.0+ `ServletContainerInitializer` mechanism), not anything Spring Boot provides.
 - The project is deployed as a **WAR** (`<packaging>war</packaging>`) to an external servlet container, not run as an executable JAR with an embedded server.
 
-So: **this is the same "Code/Spring MVC" style EMS project you've already seen, reused/mislabeled under a "Springboot" folder — it is a hand-configured, Java-config Spring MVC + Hibernate + Spring Data MongoDB + Spring JDBC application.** It is genuinely useful for this guide because the courseware's own EMS narrative walks the *same* Employee/Department/Project domain from Spring MVC to Spring Boot, and this repo happens to preserve the "before" state (manual config) while the courseware's `04_Spring_Boot_Basics.md` describes the "after" state (`@SpringBootApplication`, starters, `application.properties`, embedded Tomcat). Where the two diverge, this guide calls it out explicitly rather than pretending the repo is genuine Boot.
+So: **this is the same "Code/Spring MVC" style EMS project you've already seen, reused/mislabeled under a "Springboot" folder — it is a hand-configured, Java-config Spring MVC + Hibernate + Spring Data MongoDB + Spring JDBC application.** It's still useful here because the courseware's own EMS narrative walks the *same* Employee/Department/Project domain from Spring MVC to Spring Boot, and this repo preserves the "before" state (manual config) while `04_Spring_Boot_Basics.md` describes the "after" state (`@SpringBootApplication`, starters, `application.properties`, embedded Tomcat). Where the two diverge, this guide calls it out explicitly.
 
-**What true Spring Boot removes/automates, per the courseware, versus what this repo still does by hand:**
-
-| Concern | Classic Spring MVC (this repo, `Code/Springboot`) | True Spring Boot (per `04_Spring_Boot_Basics.md`) |
-|---|---|---|
-| Bootstrapping | `AppInitializer` (`AbstractAnnotationConfigDispatcherServletInitializer`) registers `DispatcherServlet` manually, mapped in `getServletMappings()` | `@SpringBootApplication` + `SpringApplication.run()` — Boot auto-registers `DispatcherServlet` via `DispatcherServletAutoConfiguration` |
-| Server | None bundled — WAR deployed to external Tomcat (needs `tomcat-embed-jasper` just for JSP compiling, `jakarta.servlet-api` as `provided`) | Embedded Tomcat inside the JAR — `java -jar app.jar`, no external server install |
-| DataSource | `H2Config` manually builds a `DriverManagerDataSource` bean, wires `JdbcTemplate` and a `DataSourceInitializer` for SQL scripts by hand | Auto-configured from `spring.datasource.*` properties — `DataSourceAutoConfiguration` builds the bean for you |
-| Hibernate/JPA | `HibernateConfig` manually builds `LocalSessionFactoryBean`, sets `hibernate.dialect`/`hibernate.hbm2ddl.auto`/`hibernate.show_sql` as raw `Properties`, and a separate `HibernateTransactionManager` bean | `spring-boot-starter-data-jpa` + `spring.jpa.*` properties — `HibernateJpaAutoConfiguration` wires `EntityManagerFactory` and `JpaTransactionManager` automatically |
-| Web MVC | `WebConfig` manually adds `@EnableWebMvc`, `@ComponentScan`, and hand-builds an `InternalResourceViewResolver` bean for JSP | Auto-configured `ViewResolver`/Jackson message converters via `WebMvcAutoConfiguration`; JSP isn't even the default (Thymeleaf is, per `08_Spring_Boot_Advanced.md`) |
-| MongoDB | `MongoConfig extends AbstractMongoClientConfiguration`, manually overrides `getDatabaseName()` and builds a `MongoClients.create(...)` bean | `spring-boot-starter-data-mongodb` + `spring.data.mongodb.*` properties — auto-configured |
-| Config files | `application.properties` here is *not* Boot's central config — it holds a handful of ad hoc keys (`mongodb.host`, `h2.url`, etc.) that nothing in the code actually binds via `@ConfigurationProperties`/`Environment` in the read files; each `*Config` class hardcodes its own connection constants instead | One `application.properties`/`.yml` (plus profile variants) that Boot's auto-configuration classes read directly — `spring.datasource.url`, `spring.jpa.hibernate.ddl-auto`, etc. |
-| Packaging | WAR, external deploy | Executable JAR, `mvn spring-boot:run` or `java -jar` |
-
-Keep this comparison in mind through Section 6 — the real project is annotated as "what Boot replaces," not as a Boot example.
+**What true Spring Boot removes/automates, per the courseware, versus what this repo still does by hand:** bootstrapping (`AppInitializer` vs `@SpringBootApplication`), the server (external WAR deploy vs embedded Tomcat in the JAR), the `DataSource` (hand-built `H2Config` vs `spring.datasource.*` auto-configuration), Hibernate/JPA wiring (`HibernateConfig`'s manual `LocalSessionFactoryBean` vs `spring-boot-starter-data-jpa`), Web MVC (`WebConfig`'s manual `@EnableWebMvc` + view resolver vs auto-configured `WebMvcAutoConfiguration`), MongoDB (`MongoConfig` vs `spring-boot-starter-data-mongodb`), and config files (this repo's `application.properties` holds ad hoc keys nothing actually binds to, versus Boot's properties being the live source of truth auto-configuration reads directly). Section 6 walks each of these concerns in full with the actual code, and the Assessment Quick-Reference table at the end of this guide tabulates the complete comparison — this intro just establishes the finding.
 
 ---
 
@@ -73,8 +60,8 @@ The `mvnw` (Maven wrapper) means no local Maven install is required — comparab
 5:      }
 6:  }
 ```
-- **Line 1** — `@SpringBootApplication` is a meta-annotation bundling three annotations: `@Configuration` (this class can declare `@Bean` methods), `@EnableAutoConfiguration` (turn on classpath-driven auto-config), and `@ComponentScan` (scan this package and sub-packages for `@Component`/`@Service`/`@Repository`/`@Controller`). This is the single annotation that replaces the 50+ lines of manual config the courseware contrasts it against.
-- **Line 4** — `SpringApplication.run(...)` boots the embedded servlet container, creates the `ApplicationContext`, and triggers auto-configuration. This is the Boot equivalent of Django's `manage.py runserver` combined app-loading step, except it also starts the HTTP server process itself (embedded Tomcat) rather than delegating to WSGI/ASGI.
+- **Line 1** — `@SpringBootApplication` is a meta-annotation bundling three: `@Configuration` (declare `@Bean` methods), `@EnableAutoConfiguration` (turn on classpath-driven auto-config), and `@ComponentScan` (scan this package and sub-packages). One annotation replaces the 50+ lines of manual config the courseware contrasts it against.
+- **Line 4** — `SpringApplication.run(...)` boots the embedded servlet container, creates the `ApplicationContext`, and triggers auto-configuration — like Django's `manage.py runserver` app-loading, except it also starts the HTTP server process itself (embedded Tomcat) rather than delegating to WSGI/ASGI.
 
 **How auto-configuration works**, per the courseware: on startup Boot scans the classpath for known libraries (Jackson, Hibernate, MySQL driver, etc.), applies a default config for each one found, lets your `application.properties` override the defaults, and — critically — **backs off if you define your own `@Bean` of the same type** (your bean wins). The actual mechanism: `spring-boot-autoconfigure.jar` contains `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`, listing 100+ conditional `@Configuration` classes (e.g. `DataSourceAutoConfiguration`, `HibernateJpaAutoConfiguration`, `DispatcherServletAutoConfiguration`, `JacksonAutoConfiguration`). To see exactly what got auto-configured and why: `logging.level.org.springframework.boot.autoconfigure=DEBUG`.
 
@@ -105,11 +92,7 @@ The `mvnw` (Maven wrapper) means no local Maven install is required — comparab
 22: ems.app.name=Employee Management System
 23: ems.app.max-employees=500
 ```
-- **Lines 2–3** — `server.port` / `server.servlet.context-path` configure the embedded Tomcat directly through properties — no `web.xml`, no manual `ServletContextInitializer`.
-- **Lines 6–9** — these four keys are all `DataSourceAutoConfiguration` needs to build a working `DataSource` bean; contrast with `H2Config` in the real project, which builds the same kind of object (`DriverManagerDataSource`) entirely by hand in Java.
-- **Lines 12–15** — `spring.jpa.hibernate.ddl-auto` controls schema generation (`update`/`validate`/`create-drop`, etc.); this is the properties-driven equivalent of the raw `Properties` object `HibernateConfig.sessionFactory()` builds manually in the real project (`hibernate.hbm2ddl.auto`, `hibernate.dialect`, `hibernate.show_sql`).
-- **Lines 18–19** — per-package log level tuning, no Logback XML required.
-- **Lines 22–23** — arbitrary custom properties; bindable into your own `@ConfigurationProperties` class or injected with `@Value("${ems.app.name}")`.
+- **Lines 2–3** — `server.port`/`context-path` configure embedded Tomcat directly, no `web.xml`. **Lines 6–9** are all `DataSourceAutoConfiguration` needs for a working `DataSource` (contrast with `H2Config` in the real project, Section 6.2, which builds the same by hand). **Lines 12–15** — `ddl-auto` controls schema generation (`update`/`validate`/`create-drop`), the properties-driven equivalent of `HibernateConfig.sessionFactory()`'s raw `Properties` object. **Lines 22–23** — custom properties, bindable via `@ConfigurationProperties` or `@Value("${ems.app.name}")`.
 
 ### 1.5 `pom.xml` — starter POMs
 
@@ -132,8 +115,8 @@ The `mvnw` (Maven wrapper) means no local Maven install is required — comparab
 16:     ...
 17: </dependencies>
 ```
-- **Lines 1–5** — `spring-boot-starter-parent` is a Maven parent POM that centrally manages dependency **versions** (a Bill-of-Materials) so you never specify a version per Boot dependency — one of the biggest ergonomic wins over hand-rolled Spring, where you pin `spring-webmvc`, `spring-orm`, `hibernate-core` versions individually and must keep them mutually compatible yourself (exactly what `Code/Springboot`'s `pom.xml` does: `spring-webmvc 6.1.8`, `spring-orm 6.1.8`, `hibernate-core 6.5.2.Final`, `spring-data-mongodb 4.3.1` — all pinned by hand).
-- **Lines 9–11 / 12–14** — `spring-boot-starter-web` pulls in Spring MVC + embedded Tomcat + Jackson in one line; `spring-boot-starter-data-jpa` pulls in Spring Data JPA + Hibernate + a transaction manager in one line. Compare to the real project's `pom.xml`, which lists `spring-webmvc`, `spring-orm`, `hibernate-core`, and `spring-jdbc` as four **separate, individually-versioned** dependencies — precisely what a "starter" collapses into one.
+- **Lines 1–5** — `spring-boot-starter-parent` is a Maven parent POM that centrally manages dependency **versions** (a Bill-of-Materials) so you never version-pin a Boot dependency yourself — contrast with `Code/Springboot`'s `pom.xml`, which pins `spring-webmvc`, `spring-orm`, `hibernate-core`, `spring-data-mongodb` individually and must keep them mutually compatible by hand.
+- **Lines 9–14** — `spring-boot-starter-web` pulls in Spring MVC + embedded Tomcat + Jackson in one line; `spring-boot-starter-data-jpa` pulls in Spring Data JPA + Hibernate + a transaction manager in one line — versus four separate, individually-versioned dependencies in the real project.
 
 ### 1.6 Sample EMS resources (Entity/Repository/Service/Controller)
 
@@ -178,7 +161,7 @@ Profile-scoped beans:
 4:      return (email, msg) -> System.out.println("[MOCK] Email to " + email + ": " + msg);
 5:  }
 ```
-- **Line 2** — `@Profile("dev")` means this bean is only registered when the `dev` profile is active; a parallel `@Profile("prod")` bean provides the real implementation. Spring picks whichever bean matches the active profile at context-startup time — same interface, environment-swapped implementation, a la Django's settings-driven backend swapping (e.g., `EMAIL_BACKEND`).
+- **Line 2** — `@Profile("dev")` means this bean is only registered when the `dev` profile is active; a parallel `@Profile("prod")` bean provides the real implementation. Spring picks whichever bean matches the active profile at context-startup time — same interface, environment-swapped implementation.
 
 ### 1.8 Logging
 
@@ -239,9 +222,9 @@ Custom health indicator:
 14:     }
 15: }
 ```
-- **Line 2** — implementing `HealthIndicator` and registering it as a `@Component` automatically merges this into `/actuator/health`'s `components` map — Actuator discovers it by type, no manual registration.
+- **Line 2** — implementing `HealthIndicator` and registering as a `@Component` auto-merges into `/actuator/health`'s `components` map — Actuator discovers it by type, no manual registration.
 
-Custom metrics use Micrometer's `MeterRegistry`/`Counter`, injected via constructor, incremented on business events (`hireCounter.increment()`), and queryable at `/actuator/metrics/ems.employees.hired`.
+Custom metrics use Micrometer's `MeterRegistry`/`Counter`, injected via constructor, incremented on business events, queryable at `/actuator/metrics/...`.
 
 ### 1.10 Section 1 Summary Table (from courseware)
 
@@ -313,16 +296,10 @@ Sits on top of JPA + Hibernate; you write an interface, Spring generates the imp
 44:     public enum EmployeeStatus { ACTIVE, ON_LEAVE, TERMINATED }
 45: }
 ```
-- **Line 1** — `@Entity` marks the class as a JPA-managed persistent type; Hibernate creates a proxy/mapping for it. This is the single mandatory annotation — without it, none of the other JPA annotations do anything.
-- **Line 2** — `@Table(name=...)` maps the class to a specific table name (defaults to the class name if omitted); `indexes` declares DB indexes as part of DDL generation.
-- **Line 7** — Lombok annotations generate getters/setters/`toString`/`equals`/`hashCode` (`@Data`), a no-arg constructor JPA requires internally (`@NoArgsConstructor`), an all-args constructor (`@AllArgsConstructor`), and a fluent builder (`@Builder`) — this is boilerplate JPA itself does *not* generate; Lombok is a compile-time code generator, not a Spring feature.
-- **Lines 10–12** — `@Id` marks the primary-key field; `@GeneratedValue(strategy = GenerationType.IDENTITY)` delegates PK generation to the DB's auto-increment column (MySQL `AUTO_INCREMENT`).
-- **Lines 14, 17, 20** — `@Column` customizes the mapped column: name override, `nullable`, `unique`, `length` (VARCHAR size), or `precision`/`scale` for exact decimal columns (critical for money — hence `BigDecimal salary`, not `double`, to avoid floating-point rounding errors).
-- **Lines 23–25** — `@Enumerated(EnumType.STRING)` stores the enum's *name* (`"ACTIVE"`) rather than its ordinal index, so column values stay stable if enum constants are reordered later — always prefer `STRING` over the default `ORDINAL`.
-- **Lines 27–29** — `@ManyToOne` + `@JoinColumn` is the "many" side of a one-to-many: many `Employee` rows reference one `Department` row via the `department_id` FK column; `fetch = FetchType.LAZY` means the department isn't loaded from the DB until `.getDepartment()` is actually called.
-- **Lines 31–35** — `@ManyToMany` + `@JoinTable` describes a peer-to-peer relationship backed by a join table (`employee_roles`), with `joinColumns`/`inverseJoinColumns` naming the two FK columns in that join table.
-- **Lines 37–39** — `@CreationTimestamp` auto-populates the field with the insert timestamp; `updatable = false` prevents it from ever being touched by later UPDATEs.
-- **Lines 41–42** — `@Transient` excludes a field/method from persistence — it's a computed value, never a DB column.
+- **Line 1** — `@Entity` marks the class as JPA-managed; the single mandatory annotation — without it, no other JPA annotation does anything. **Line 7** — Lombok generates getters/setters/`toString`/`equals`/`hashCode` (`@Data`), the no-arg constructor JPA requires internally, an all-args constructor, and a builder — boilerplate JPA itself does *not* generate. **Lines 10–12** — `@Id`/`@GeneratedValue(IDENTITY)` delegates PK generation to the DB's auto-increment column.
+- **Lines 14, 17, 20** — `@Column` customizes name/`nullable`/`unique`/`length`, or `precision`/`scale` for exact decimals (critical for money — hence `BigDecimal salary`, not `double`). **Lines 23–25** — `@Enumerated(EnumType.STRING)` stores the enum's *name*, not its ordinal, so values stay stable if constants are reordered — always prefer `STRING` over the default `ORDINAL`.
+- **Lines 27–29** — `@ManyToOne` + `@JoinColumn` is the "many" side via FK column; `LAZY` means the association isn't loaded until accessed. **Lines 31–35** — `@ManyToMany` + `@JoinTable` describes a peer-to-peer relationship backed by a join table naming its two FK columns.
+- **Lines 37–39** — `@CreationTimestamp` auto-populates the insert timestamp; `updatable = false` keeps it immutable after. **Lines 41–42** — `@Transient` excludes a field/method from persistence — a computed value, never a DB column.
 
 ### 2.3 Repository pattern
 
@@ -332,8 +309,7 @@ Sits on top of JPA + Hibernate; you write an interface, Spring generates the imp
 3:      // custom methods go here
 4:  }
 ```
-- **Line 2** — `JpaRepository<Employee, Long>` — first generic parameter is the entity type, second is the primary key's type. Extending it gives you `save`, `saveAll`, `findById`, `findAll`, `existsById`, `count`, `deleteById`, `delete`, `deleteAll`, `flush` — all implemented by a Spring-generated runtime proxy; you never write a class body. This is the direct Java analogue of Django's `Model.objects` manager, except explicit and interface-driven rather than implicit.
-- **Line 1** — `@Repository` is technically optional on interfaces extending `JpaRepository` (Spring Data detects them via the extended type), but it documents intent and enables Spring's exception-translation (wrapping DB-specific exceptions into Spring's `DataAccessException` hierarchy).
+- **Line 2** — `JpaRepository<Employee, Long>` (entity type, PK type) gives you `save`, `findById`, `findAll`, `existsById`, `count`, `deleteById`, `flush`, etc. — all implemented by a Spring-generated runtime proxy; you never write a class body. **Line 1** — `@Repository` is technically optional here (Spring Data detects extenders of `JpaRepository` by type) but documents intent and enables exception-translation into `DataAccessException`.
 
 ### 2.4 Derived query methods
 
@@ -349,11 +325,8 @@ Sits on top of JPA + Hibernate; you write an interface, Spring generates the imp
 9:  boolean existsByEmail(String email);
 10: void deleteByStatus(Employee.EmployeeStatus status);
 ```
-- **Line 1** — Spring parses the method name (`findBy` + `Email`), matches `Email` to the entity's `email` field, and generates `WHERE email = ?` — no SQL, no annotation.
-- **Line 3** — `findByDepartmentName` traverses the `department` association's `name` field — Spring Data JPA understands nested-property navigation from camelCase method names alone.
-- **Line 6** — `And` in the method name compiles multiple conditions with SQL `AND`.
-- **Line 7** — `OrderBy...Desc` appends an `ORDER BY salary DESC` clause.
-- Keyword reference table from the courseware: `And`/`Or`/`Between`/`LessThan`/`GreaterThan`/`Like`/`Containing`/`StartingWith`/`OrderBy`/`IsNull`/`In` all map to their obvious SQL equivalents.
+- **Line 1** — Spring parses the method name (`findBy` + `Email`), matches `Email` to the entity's `email` field, and generates `WHERE email = ?` — no SQL, no annotation. **Line 3** — `findByDepartmentName` traverses the `department` association's `name` field — nested-property navigation from camelCase alone. **Line 6** — `And` compiles multiple conditions with SQL `AND`; **Line 7** — `OrderBy...Desc` appends `ORDER BY salary DESC`.
+- Keyword reference: `And`/`Or`/`Between`/`LessThan`/`GreaterThan`/`Like`/`Containing`/`StartingWith`/`OrderBy`/`IsNull`/`In` all map to their obvious SQL equivalents.
 
 ### 2.5 JPQL and native queries
 
@@ -371,11 +344,8 @@ Sits on top of JPA + Hibernate; you write an interface, Spring generates the imp
 11: @Query("UPDATE Employee e SET e.salary = e.salary * :factor WHERE e.department.id = :deptId")
 12: int applyRaiseToAllInDept(@Param("deptId") Long deptId, @Param("factor") double factor);
 ```
-- **Lines 1–3** — `@Query` with JPQL (Java Persistence Query Language) references **entity/field names** (`Employee`, `e.salary`), not table/column names — it's a Java-object-oriented query language that Hibernate translates to SQL. `@Param` binds named parameters (`:minSalary`) to method arguments.
-- **Lines 5–7** — `nativeQuery = true` switches to raw SQL against actual table/column names (`employees`, `join_date`) — used when JPQL can't express something (DB-specific functions like `YEAR()`).
-- **Lines 9–11** — `@Modifying` is required on any `@Query` that isn't a `SELECT` (UPDATE/DELETE); paired with `@Transactional` since bulk writes must run inside a transaction. Returns the number of affected rows (`int`).
-
-DTO projection via JPQL constructor expressions (`SELECT new com.ems.dto.EmployeeSummaryDto(...)`) lets you fetch a slim, denormalized view without loading full entities — analogous to Django's `.values()`/`only()` projections.
+- **Lines 1–3** — `@Query` with JPQL references **entity/field names**, not table/column names — Hibernate translates it to SQL; `@Param` binds named parameters. **Lines 5–7** — `nativeQuery = true` switches to raw SQL against real table/column names, for things JPQL can't express (DB-specific functions). **Lines 9–11** — `@Modifying` is required on any non-`SELECT` `@Query`, paired with `@Transactional`; returns affected row count.
+- DTO projection via JPQL constructor expressions (`SELECT new ...Dto(...)`) fetches a slim, denormalized view without loading full entities — analogous to Django's `.values()`/`only()`.
 
 ### 2.6 Entity relationships, fetch types, cascades
 
@@ -420,10 +390,7 @@ DTO projection via JPQL constructor expressions (`SELECT new com.ems.dto.Employe
 11: @CacheEvict(value = "employees", key = "#id")
 12: public void delete(Long id) { employeeRepository.deleteById(id); }
 ```
-- **Line 1** — `@Cacheable` caches the method's return value keyed by `#id` (SpEL expression referencing the parameter); subsequent calls with the same `id` skip the method body entirely and return the cached object.
-- **Line 8** — `@CachePut` always executes the method (unlike `@Cacheable`) *and* writes the result into the cache — used for writes that must also refresh the cache. `#result` refers to the method's return value in SpEL.
-- **Line 11** — `@CacheEvict` removes an entry (or, with `allEntries = true`, the whole cache region) when data changes — keeps the cache consistent with the DB.
-- Requires `@EnableCaching` on the `@SpringBootApplication` class plus `spring-boot-starter-cache` (optionally backed by Redis via `spring-boot-starter-data-redis` and `spring.cache.redis.time-to-live`).
+- **Line 1** — `@Cacheable` caches the return value keyed by `#id` (SpEL); later calls with the same key skip the method body entirely. **Line 8** — `@CachePut` always executes the method *and* writes the result into the cache — for writes that must also refresh it (`#result` is the return value in SpEL). **Line 11** — `@CacheEvict` removes an entry (or, `allEntries = true`, the whole region) when data changes. Requires `@EnableCaching` plus `spring-boot-starter-cache` (optionally Redis-backed).
 
 ### 2.9 Validations
 
@@ -443,8 +410,7 @@ DTO projection via JPQL constructor expressions (`SELECT new com.ems.dto.Employe
 13:     private BigDecimal salary;
 14: }
 ```
-- **Lines 3–4** — `@NotBlank` rejects null/empty/whitespace-only strings; `@Size` bounds string length. Requires `spring-boot-starter-validation` (Jakarta Bean Validation).
-- **Line 8** — `@Email` validates format via regex.
+- `@NotBlank`/`@Size`/`@Email`/`@NotNull`/`@DecimalMin` validate presence, length, format, and numeric bounds respectively — all require `spring-boot-starter-validation` (Jakarta Bean Validation).
 
 ```java
 1:  @PostMapping
@@ -453,7 +419,7 @@ DTO projection via JPQL constructor expressions (`SELECT new com.ems.dto.Employe
 4:      return ResponseEntity.status(HttpStatus.CREATED).body(emp);
 5:  }
 ```
-- **Line 2** — `@Valid` on the `@RequestBody` parameter triggers Bean Validation before the method body runs; if validation fails, Spring throws `MethodArgumentNotValidException` before your code ever executes — you don't call a `.validate()` method yourself, unlike, e.g., a manually-invoked Pydantic/marshmallow schema in Flask.
+- **Line 2** — `@Valid` on `@RequestBody` triggers Bean Validation before the method body runs; on failure Spring throws `MethodArgumentNotValidException` before your code executes — no manual `.validate()` call, unlike a manually-invoked Pydantic/marshmallow schema in Flask.
 
 Centralised error handling:
 ```java
@@ -475,8 +441,8 @@ Centralised error handling:
 16:     public ResponseEntity<Map<String, Object>> handleNotFound(ResourceNotFoundException ex) { ... }
 17: }
 ```
-- **Line 1** — `@RestControllerAdvice` (`= @ControllerAdvice + @ResponseBody`) applies these exception handlers globally, across **every** `@RestController` in the app — one place to catch `MethodArgumentNotValidException` (validation failures), custom exceptions like `ResourceNotFoundException`, and a catch-all `Exception` handler, rather than try/catch in each controller method. This is the Spring analogue of a Flask/Django global error handler / DRF exception handler.
-- **Line 4** — `@ExceptionHandler(Type.class)` routes any uncaught exception of that type (thrown anywhere in a request's call stack) to this method.
+- **Line 1** — `@RestControllerAdvice` (`= @ControllerAdvice + @ResponseBody`) applies these exception handlers globally across **every** `@RestController` — one place to catch validation failures, custom exceptions, and a catch-all, instead of try/catch per controller method — the Spring analogue of a Flask/Django global error handler.
+- **Line 4** — `@ExceptionHandler(Type.class)` routes any uncaught exception of that type to this method.
 
 ### 2.10 Section 2 Summary Table (from courseware)
 
@@ -534,12 +500,8 @@ Authentication = "who are you?"; authorisation = "what can you do?" — coursewa
 23:     }
 24: }
 ```
-- **Line 2** — `@EnableWebSecurity` activates Spring Security's web infrastructure (registers the filter chain into the servlet container).
-- **Line 6** — the `SecurityFilterChain` bean is the modern (Spring Security 6+) way to configure HTTP security — a lambda-DSL builder replacing the older `WebSecurityConfigurerAdapter` subclassing style.
-- **Line 8** — `csrf(csrf -> csrf.disable())` — CSRF protection (relevant for cookie/session-based browser forms) is disabled because stateless REST APIs authenticate via tokens/headers, not cookies, so CSRF doesn't apply the same way.
-- **Lines 9–13** — `authorizeHttpRequests` declares URL-pattern-based access rules, evaluated top-to-bottom, first match wins; `anyRequest().authenticated()` is the catch-all default-deny-unless-logged-in rule at the end.
-- **Line 14** — `httpBasic(...)` enables HTTP Basic Auth (credentials in the `Authorization: Basic base64(user:pass)` header on every request) — simple but stateful-feeling since credentials repeat each call; contrasted with JWT below.
-- **Lines 18–23** — `UserDetailsService` is the interface Spring Security calls to look up a user by username; `InMemoryUserDetailsManager` is a trivial in-memory implementation for demos (production would query a `UserRepository` against a DB-backed `User` entity, shown next).
+- **Line 6** — the `SecurityFilterChain` bean is the modern (Spring Security 6+) lambda-DSL way to configure HTTP security, replacing the older `WebSecurityConfigurerAdapter` subclassing style. **Line 8** — CSRF is disabled here because stateless REST APIs authenticate via tokens/headers, not cookies. **Lines 9–13** — `authorizeHttpRequests` declares URL-pattern rules evaluated top-to-bottom, first match wins; `anyRequest().authenticated()` is the catch-all default-deny rule.
+- **Line 14** — `httpBasic(...)` enables HTTP Basic Auth (`Authorization: Basic base64(user:pass)` every request) — contrasted with JWT below. **Lines 18–23** — `UserDetailsService` is the interface Spring Security calls to look up a user; `InMemoryUserDetailsManager` is a trivial demo implementation (production would query a DB-backed `User` entity, shown next).
 
 ### 3.3 JWT authentication (the production pattern)
 
@@ -569,9 +531,7 @@ Flow: client `POST /auth/login` -> server validates credentials -> returns a sig
 21:     @Override public boolean isAccountNonExpired()  { return true; }
 22: }
 ```
-- **Line 3** — implementing `UserDetails` directly on the JPA entity is how Spring Security's authentication machinery understands your domain `User` — it needs `getUsername()`, `getPassword()`, `getAuthorities()`, and four account-status booleans.
-- **Lines 16–20** — `getAuthorities()` converts your domain roles into Spring Security's `GrantedAuthority` objects, prefixing `ROLE_` — this prefix convention is required for `hasRole("ADMIN")` checks to match (Spring Security strips/adds `ROLE_` automatically depending on which API you use — `hasRole` vs `hasAuthority`).
-- **Line 9** — password is stored **hashed** (BCrypt), never plaintext — hashing happens at registration time via `PasswordEncoder.encode(...)`, shown in `AuthController` below.
+- **Line 3** — implementing `UserDetails` directly on the JPA entity is how Spring Security understands your domain `User` — it needs `getUsername()`, `getPassword()`, `getAuthorities()`, and four account-status booleans. **Lines 16–20** — `getAuthorities()` converts domain roles into `GrantedAuthority` objects, prefixing `ROLE_` (required for `hasRole("ADMIN")` to match). **Line 9** — password is stored **hashed** (BCrypt), never plaintext, via `PasswordEncoder.encode(...)` at registration.
 
 ```java
 1:  @Component
@@ -593,8 +553,7 @@ Flow: client `POST /auth/login` -> server validates credentials -> returns a sig
 17:     }
 18: }
 ```
-- **Line 3** — `@Value("${ems.jwt.secret}")` injects a property value directly into a field — the signing secret lives in `application.properties`, not hardcoded.
-- **Lines 10–16** — builds a signed JWT: claims (custom data, here `roles`), `subject` (username), `issuedAt`/`expiration` timestamps, `signWith` (HMAC signature using the secret key) — `compact()` serializes to the three-part `header.payload.signature` base64 string.
+- **Line 3** — `@Value("${ems.jwt.secret}")` injects the signing secret from `application.properties`, not hardcoded. **Lines 10–16** — builds a signed JWT: claims, `subject` (username), `issuedAt`/`expiration`, `signWith` (HMAC signature) — `compact()` serializes to the three-part `header.payload.signature` base64 string.
 
 ```java
 1:  @Component
@@ -622,9 +581,7 @@ Flow: client `POST /auth/login` -> server validates credentials -> returns a sig
 23:     }
 24: }
 ```
-- **Line 2** — `OncePerRequestFilter` guarantees this filter's logic runs exactly once per request even if the request is forwarded internally.
-- **Lines 7–11** — no `Authorization: Bearer ...` header -> skip straight to the next filter (`chain.doFilter`), letting the rest of the chain decide (e.g., reject as unauthenticated later).
-- **Lines 17–19** — on a valid token, manually constructs an authenticated `UsernamePasswordAuthenticationToken` and stashes it in `SecurityContextHolder` — this is what makes the rest of the request "logged in" for downstream authorization checks.
+- **Line 2** — `OncePerRequestFilter` guarantees this filter runs exactly once per request even if forwarded internally. **Lines 17–19** — on a valid token, manually constructs an authenticated `UsernamePasswordAuthenticationToken` and stashes it in `SecurityContextHolder` — what makes the rest of the request "logged in" for downstream authorization checks.
 
 ```java
 1:  @Bean
@@ -644,9 +601,7 @@ Flow: client `POST /auth/login` -> server validates credentials -> returns a sig
 15:     return http.build();
 16: }
 ```
-- **Line 5** — `SessionCreationPolicy.STATELESS` tells Spring Security to never create or use an `HttpSession` — every request must carry its own proof of identity (the JWT), which is what makes horizontal scaling trivial (no sticky sessions / shared session store needed).
-- **Lines 8–11** — per-HTTP-verb, per-path role rules: GET is broad (any authenticated role), POST/PUT restricted to HR/ADMIN, DELETE restricted to ADMIN only — this is the URL-level enforcement of the EMS role matrix (below).
-- **Line 14** — `addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)` inserts the custom JWT filter into the chain *before* Spring's built-in username/password filter, so token-based auth is checked first.
+- **Line 5** — `SessionCreationPolicy.STATELESS` means Spring Security never creates/uses an `HttpSession` — every request carries its own proof of identity (the JWT), making horizontal scaling trivial. **Lines 8–11** — per-verb, per-path role rules (GET broad, POST/PUT HR/ADMIN, DELETE ADMIN-only) enforce the EMS role matrix below. **Line 14** — `addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)` inserts the JWT filter *before* Spring's built-in filter, so token-based auth is checked first.
 
 EMS role matrix from the courseware:
 
@@ -674,11 +629,9 @@ EMS role matrix from the courseware:
 11: public Employee getByEmail(String email) { ... }
 ```
 - Enabled by `@EnableMethodSecurity` on the security config class.
-- **Line 1** — `@PreAuthorize` evaluates a SpEL security expression **before** the method body runs — if it evaluates false, the call is rejected with `AccessDeniedException` and the method body never executes.
-- **Line 7** — expressions can reference method parameters (`#id`) and the current `authentication` object — enabling row-level rules like "you may view your own record" alongside role checks.
-- **Line 10** — `@PostAuthorize` evaluates **after** the method runs, with `returnObject` bound to whatever it returned — useful when the authorization decision depends on data you only have post-fetch (e.g., "this record's email matches the caller's identity").
-
-`@AuthenticationPrincipal UserDetails currentUser` injects the authenticated user directly into a controller method parameter — an alternative to manually pulling it from `SecurityContextHolder.getContext().getAuthentication()`.
+- `@PreAuthorize` evaluates a SpEL security expression **before** the method runs — false rejects with `AccessDeniedException`, method body never executes. Expressions can reference parameters (`#id`) and `authentication`, enabling row-level rules ("view your own record") alongside role checks.
+- `@PostAuthorize` evaluates **after** the method runs, with `returnObject` bound to the return value — useful when the decision depends on post-fetch data.
+- `@AuthenticationPrincipal UserDetails currentUser` injects the authenticated user directly into a controller parameter — an alternative to pulling it from `SecurityContextHolder`.
 
 ### 3.5 Section 3 Summary Table (from courseware)
 
@@ -725,7 +678,7 @@ The web controller for Thymeleaf pages uses plain `@Controller` (not `@RestContr
 13:     }
 14: }
 ```
-- **Line 12** — the returned `String` is a **logical view name**; Boot's configured `ViewResolver` (Thymeleaf's, via `prefix`/`suffix`) resolves it to `templates/employees/list.html`.
+- **Line 12** — the returned `String` is a **logical view name**; the configured `ViewResolver` (Thymeleaf's, via `prefix`/`suffix`) resolves it to `templates/employees/list.html`.
 
 Key Thymeleaf template directives: `th:each` (loop), `th:text` (set element text from an expression), `th:if`/`th:unless` (conditional rendering), `th:object`/`th:field` (two-way form binding to a model object, similar to Django/WTForms model-bound forms), `sec:authorize="hasRole('ADMIN')"` (Spring Security integration — hide/show markup based on the current user's roles).
 
@@ -754,9 +707,9 @@ Courseware analogy: a payroll department's end-of-month run — reads all employ
 18:         .build();
 19: }
 ```
-- **Line 4** — `.chunk(100, transactionManager)` processes and commits 100 records at a time — bounds memory usage and limits transaction size for very large datasets (contrast with loading the entire employee table into memory and looping).
-- **Lines 8–10** — fault tolerance: up to 10 bad records can be skipped (logged, not fatal) before the whole job is aborted — critical for batch jobs where one malformed CSV row shouldn't kill an overnight run.
-- `@Scheduled(cron = "0 0 0 L * *")` triggers the job on a cron schedule (here: midnight on the last day of every month) via `JobLauncher.run(payrollJob, params)`.
+- **Line 4** — `.chunk(100, transactionManager)` processes and commits 100 records at a time — bounds memory usage and transaction size for very large datasets.
+- **Lines 8–10** — fault tolerance: up to 10 bad records skipped (logged, not fatal) before the job aborts — one malformed row shouldn't kill an overnight run.
+- `@Scheduled(cron = "0 0 0 L * *")` triggers the job on a cron schedule via `JobLauncher.run(payrollJob, params)`.
 
 ### 4.3 Spring JMS / messaging
 
@@ -787,9 +740,9 @@ Courseware analogy: a company notice board — HR posts "New Employee Hired" (pr
 22:     }
 23: }
 ```
-- **Line 9** — `jmsTemplate.convertAndSend(queue, event)` serializes the `event` object (via a configured `MappingJackson2MessageConverter`) and publishes it to the named queue — fire-and-forget, the hire request returns immediately without waiting on the email/notification work.
-- **Line 16** — `@JmsListener(destination=...)` marks a method as an async consumer for that queue — Spring invokes it whenever a message arrives, entirely decoupled from the producer's request/response cycle.
-- Queue vs Topic: `spring.jms.pub-sub-domain=false` (default) is point-to-point (one consumer gets each message); `=true` is publish-subscribe (every `@JmsListener` on that destination gets its own copy) — useful for broadcast-style notifications to multiple independent consumers.
+- **Line 9** — `jmsTemplate.convertAndSend(queue, event)` serializes and publishes the event — fire-and-forget, the hire request returns immediately without waiting on downstream work.
+- **Line 16** — `@JmsListener(destination=...)` marks a method as an async consumer, invoked whenever a message arrives, decoupled from the producer's request/response cycle.
+- Queue vs Topic: `spring.jms.pub-sub-domain=false` (default) is point-to-point (one consumer per message); `=true` is publish-subscribe (every listener gets its own copy) — for broadcast-style notifications.
 
 ### 4.4 Testing with MockMvc
 
@@ -810,11 +763,11 @@ Courseware analogy: a company notice board — HR posts "New Employee Hired" (pr
 14:     }
 15: }
 ```
-- **Line 1** — `@WebMvcTest` boots only the web/MVC layer (controllers, filters, validators) — not the full `ApplicationContext`, not a real DB — dramatically faster than a full integration test.
-- **Line 4** — `@MockBean` replaces the real `EmployeeService` bean in the test context with a Mockito mock, so the controller's dependency is stubbed rather than hitting a real service/DB.
-- **Lines 10–13** — `mockMvc.perform(get(...))` simulates an HTTP request without a running server; `.andExpect(...)` chains assertions on status code and JSON body (`jsonPath` — similar in spirit to Python's `jmespath`/dict-key assertions in a `pytest` + `requests`-mock test).
+- **Line 1** — `@WebMvcTest` boots only the web/MVC layer (controllers, filters, validators), not the full `ApplicationContext` or a real DB — dramatically faster than a full integration test.
+- **Line 4** — `@MockBean` replaces the real `EmployeeService` bean with a Mockito mock, stubbing the controller's dependency.
+- **Lines 10–13** — `mockMvc.perform(get(...))` simulates an HTTP request without a running server; `.andExpect(...)` chains assertions on status and JSON body (`jsonPath`, similar in spirit to Python's `jmespath`/dict assertions in a `pytest` + `requests`-mock test).
 
-Full integration variant uses `@SpringBootTest(webEnvironment = RANDOM_PORT)` + `@AutoConfigureMockMvc` — boots the **entire** application context (real beans, real embedded DB via `application-test.properties`) on a random free port, for end-to-end verification rather than isolated unit testing.
+Full integration variant: `@SpringBootTest(webEnvironment = RANDOM_PORT)` + `@AutoConfigureMockMvc` boots the **entire** context (real beans, real embedded DB) on a random port — end-to-end rather than isolated unit testing.
 
 ### 4.5 Section 4 Summary Table (from courseware)
 
@@ -836,7 +789,7 @@ Full integration variant uses `@SpringBootTest(webEnvironment = RANDOM_PORT)` + 
 
 ## 5. What This Project Actually Is
 
-Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Spring Data MongoDB + Spring JDBC application, not Spring Boot.** It reuses the exact EMS domain (Employee, Department, Project) that the courseware's Boot chapters model with `@SpringBootApplication`/JPA/starters — but here each concern is wired manually. It's a good "before" reference for seeing exactly what auto-configuration would otherwise do for you. Notably, the three entities each use a **different persistence technology**: `Department` -> raw Spring JDBC (`JdbcTemplate`), `Employee` -> Spring Data MongoDB, `Project` -> Hibernate/JPA via a manual DAO — a deliberate three-way comparison of data-access styles within one codebase.
+As established in the intro, **this is a hand-configured Spring MVC + Hibernate + Spring Data MongoDB + Spring JDBC application, not Spring Boot.** It reuses the exact EMS domain (Employee, Department, Project) that the courseware's Boot chapters model with `@SpringBootApplication`/JPA/starters — but here each concern is wired manually. It's a good "before" reference for seeing exactly what auto-configuration would otherwise do for you. Notably, the three entities each use a **different persistence technology**: `Department` -> raw Spring JDBC (`JdbcTemplate`), `Employee` -> Spring Data MongoDB, `Project` -> Hibernate/JPA via a manual DAO — a deliberate three-way comparison of data-access styles within one codebase.
 
 ## 6. Walkthrough — Config Layer
 
@@ -865,10 +818,8 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 20:     }
 21: }
 ```
-- **Line 5** — extending `AbstractAnnotationConfigDispatcherServletInitializer` is the Servlet-3.0+ programmatic mechanism the servlet container (Tomcat) auto-detects at deploy time (via `SpringServletContainerInitializer` + `META-INF/services`) — it's what `web.xml` used to do declaratively, now expressed in Java. **This entire class has no equivalent in a true Spring Boot app** — Boot's embedded Tomcat auto-registers `DispatcherServlet` through `DispatcherServletAutoConfiguration`; you'd never write this class in a real Boot project.
-- **Lines 8–10** — `getRootConfigClasses()` returning `null` means there's no separate "root" application context (typically holding service/repository beans shared across multiple `DispatcherServlet`s) — everything here lives in one servlet-scoped context.
-- **Lines 13–15** — `getServletConfigClasses()` returns `WebConfig.class` — this is the `@Configuration` class that gets loaded into the `DispatcherServlet`'s own context (see 6.4 below).
-- **Lines 18–20** — `"/"` maps the `DispatcherServlet` to handle every request path.
+- **Line 5** — extending `AbstractAnnotationConfigDispatcherServletInitializer` is the Servlet-3.0+ programmatic mechanism the container auto-detects at deploy time — what `web.xml` used to do declaratively, now in Java. **This entire class has no equivalent in a true Spring Boot app** — Boot's embedded Tomcat auto-registers `DispatcherServlet` via `DispatcherServletAutoConfiguration`; you'd never write this class in a real Boot project.
+- **Lines 8–10** — `getRootConfigClasses()` returning `null` means no separate "root" context shared across multiple servlets — everything lives in one servlet-scoped context. **Lines 13–20** — `getServletConfigClasses()` loads `WebConfig` (6.5) into the `DispatcherServlet`'s context; `getServletMappings()` returning `"/"` maps it to every request path.
 
 ### 6.2 `H2Config.java` — manual `DataSource`
 
@@ -910,10 +861,8 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 35:     }
 36: }
 ```
-- **Line 3** — `@Configuration` marks this as a Java-based bean-definition class — the direct analogue of an XML `<beans>` file, predates Boot but is still exactly how Boot's own auto-config classes are written internally.
-- **Lines 10–18** — builds a `DataSource` bean entirely by hand: driver class name, JDBC URL, credentials hardcoded as constants. **This is precisely what `spring.datasource.*` properties + `DataSourceAutoConfiguration` would generate for you in true Boot** — compare directly against Section 1.4's `application.properties` snippet.
-- **Lines 20–23** — `JdbcTemplate` wraps the raw `DataSource` with convenience methods (`query`, `update`) that handle `Connection`/`Statement`/`ResultSet` lifecycle and exception translation — used directly by `DepartmentRepository` (Section 8.1).
-- **Lines 25–35** — `DataSourceInitializer` + `ResourceDatabasePopulator` runs `departments.sql`/`projects.sql` against the DB at startup — a manual substitute for Boot's convention of auto-running `schema.sql`/`data.sql` from the classpath root with zero configuration.
+- **Lines 10–18** — builds a `DataSource` bean entirely by hand: driver class name, JDBC URL, credentials hardcoded as constants. **This is precisely what `spring.datasource.*` + `DataSourceAutoConfiguration` would generate for you in true Boot** — compare against Section 1.4's properties snippet.
+- **Lines 20–23** — `JdbcTemplate` wraps the raw `DataSource` with convenience methods (`query`, `update`) handling `Connection`/`Statement`/`ResultSet` lifecycle and exception translation — used by `DepartmentRepository` (8.1). **Lines 25–35** — `DataSourceInitializer` + `ResourceDatabasePopulator` runs `departments.sql`/`projects.sql` at startup — a manual substitute for Boot's zero-config auto-running of `schema.sql`/`data.sql`.
 
 ### 6.3 `HibernateConfig.java` — manual `SessionFactory`
 
@@ -941,9 +890,8 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 21:     }
 22: }
 ```
-- **Line 2** — `@EnableTransactionManagement` turns on Spring's `@Transactional` annotation processing (AOP-based proxying) — in Boot this is auto-enabled by `spring-boot-starter-data-jpa`/`spring-boot-starter-jdbc`.
-- **Lines 6–16** — builds a native Hibernate `SessionFactory` (via Spring's `LocalSessionFactoryBean` wrapper) by hand: which packages to scan for `@Entity` classes (`com.demo.model`), and raw Hibernate `Properties` for dialect/DDL-auto/SQL-logging. This is the **exact same information** as `spring.jpa.properties.hibernate.*` and `spring.jpa.hibernate.ddl-auto` in `application.properties` (Section 1.4) — just expressed as a Java `Properties` object instead of externalized config.
-- **Lines 18–21** — a `HibernateTransactionManager`, separate and distinct from JPA's `JpaTransactionManager` (which is what Boot's `HibernateJpaAutoConfiguration` wires when you use `spring-boot-starter-data-jpa`) — this project uses the native Hibernate API (`SessionFactory`/`Session`) rather than the JPA `EntityManager` API, visible in `ProjectDaoImpl` (Section 7.2).
+- **Line 2** — `@EnableTransactionManagement` turns on `@Transactional` AOP proxying — auto-enabled in Boot by `spring-boot-starter-data-jpa`/`-jdbc`. **Lines 6–16** — builds a native Hibernate `SessionFactory` by hand: packages to scan for `@Entity` classes plus raw `Properties` for dialect/DDL-auto/SQL-logging — the **exact same information** as `spring.jpa.properties.hibernate.*`/`ddl-auto` (Section 1.4), just as a Java `Properties` object.
+- **Lines 18–21** — a `HibernateTransactionManager`, distinct from JPA's `JpaTransactionManager` (what Boot wires) — this project uses the native Hibernate API (`SessionFactory`/`Session`), not JPA's `EntityManager`, visible in `ProjectDaoImpl` (7.2).
 
 ### 6.4 `MongoConfig.java` — manual Mongo client
 
@@ -963,9 +911,7 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 13:     }
 14: }
 ```
-- **Line 2** — `@EnableMongoRepositories` turns on Spring Data MongoDB's repository-proxy mechanism (the Mongo equivalent of `JpaRepository` support) for interfaces under `com.demo.repository`.
-- **Line 3** — extending `AbstractMongoClientConfiguration` is Spring Data MongoDB's template base class for Java-config Mongo setup — you override just the database name and client factory method; it wires the `MongoTemplate` bean for you internally.
-- **Line 12** — connection string is hardcoded (`localhost:27017`) rather than sourced from `spring.data.mongodb.uri` — in Boot, `spring-boot-starter-data-mongodb` + those properties would auto-configure the `MongoClient`/`MongoTemplate` beans without any `@Configuration` class at all.
+- **Line 2** — `@EnableMongoRepositories` turns on Spring Data MongoDB's repository-proxy mechanism (the Mongo equivalent of `JpaRepository` support). **Line 3** — extending `AbstractMongoClientConfiguration` is the template base class for Java-config Mongo setup — override just the DB name and client factory; it wires `MongoTemplate` internally. **Line 12** — connection string is hardcoded rather than sourced from `spring.data.mongodb.uri` — in Boot, `spring-boot-starter-data-mongodb` + that property would auto-configure everything with no `@Configuration` class at all.
 
 ### 6.5 `WebConfig.java` — manual MVC + view resolver
 
@@ -984,9 +930,8 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 12:     }
 13: }
 ```
-- **Line 2** — `@EnableWebMvc` turns on Spring MVC's full configuration (message converters, formatters, validation) — Boot applications almost never add this explicitly, because `WebMvcAutoConfiguration` already does it (adding your own `@EnableWebMvc` in a Boot app actually **disables** Boot's auto-config and reverts to fully-manual mode — an important gotcha).
-- **Line 3** — `@ComponentScan(basePackages = "com.demo")` explicitly declares which package to scan for `@Component`/`@Service`/`@Repository`/`@Controller` beans — in Boot this is implicit via `@SpringBootApplication`'s bundled `@ComponentScan`, which defaults to the package of the annotated class and everything beneath it.
-- **Lines 6–12** — builds a JSP `ViewResolver` by hand: any controller method returning `"employees"` resolves to `/WEB-INF/views/employees.jsp`. Note per Section 4.1, Boot's own default view technology in the courseware is **Thymeleaf**, not JSP — this project's JSP setup is itself a further sign it predates or diverges from the Boot chapters.
+- **Line 2** — `@EnableWebMvc` turns on Spring MVC's full configuration — Boot apps almost never add this explicitly since `WebMvcAutoConfiguration` already does (adding it yourself in a Boot app actually **disables** Boot's auto-config — an important gotcha). **Line 3** — `@ComponentScan(basePackages = "com.demo")` explicitly declares the scan package — in Boot this is implicit via `@SpringBootApplication`'s bundled scan.
+- **Lines 6–12** — builds a JSP `ViewResolver` by hand: `"employees"` resolves to `/WEB-INF/views/employees.jsp`. Per Section 4.1, Boot's own default view tech is **Thymeleaf**, not JSP — this project's JSP setup is a further sign it diverges from the Boot chapters.
 
 ## 7. Walkthrough — Project (JPA/Hibernate) Vertical Slice
 
@@ -1023,11 +968,8 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 28:     ...
 29: }
 ```
-- **Line 5** — `@Entity` (the code comment "// mandatory" is the student's own annotation, correctly identifying this as the non-negotiable annotation for JPA management).
-- **Line 6** — `@Table(name = "projects")` — without it, Hibernate would default to the class name `Project` as the table name.
-- **Lines 9–10** — `@Id` + `@GeneratedValue(strategy = GenerationType.IDENTITY)` — same PK pattern as the courseware's `Employee` entity (Section 2.2), here on an `int` rather than `Long` (courseware convention for PKs is `Long`, a Java best-practice this project doesn't follow — worth noting for the assessment: `int` PKs work but `Long`/`Integer` wrapper types are generally preferred so JPA can represent "no id yet" as `null`).
-- **Lines 17, 20** — a no-arg constructor (required by Hibernate to instantiate entities via reflection) plus a convenience all-args-minus-id constructor — hand-written here, versus Lombok's `@NoArgsConstructor`/`@AllArgsConstructor` generating both automatically in the courseware's style.
-- No Lombok anywhere in this file — every getter/setter is hand-written boilerplate, which is exactly the tedium `@Data` eliminates.
+- Same PK pattern as the courseware's `Employee` entity (Section 2.2), here on `int` rather than `Long` (courseware convention prefers `Long`/`Integer` wrapper types so JPA can represent "no id yet" as `null`).
+- No Lombok anywhere in this file — every getter/setter and both constructors are hand-written boilerplate, exactly what `@Data`/`@NoArgsConstructor`/`@AllArgsConstructor` eliminate in the courseware's style.
 
 ### 7.2 `ProjectDao` / `ProjectDaoImpl` — manual DAO over native Hibernate
 
@@ -1086,14 +1028,8 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 36:     }
 37: }
 ```
-- **Line 3** — `@Repository` here is a plain stereotype annotation (marks this as a persistence-layer bean, enables Spring's exception translation) — unlike `JpaRepository` subinterfaces, this class is **fully hand-implemented**, not proxy-generated.
-- **Line 4** — `@Transactional` at the class level wraps every public method in a database transaction — same annotation the courseware uses on `@Service` classes, here applied at the DAO level instead.
-- **Line 7–8** — `SessionFactory` injected via field `@Autowired` — this is the **native Hibernate API** (`Session`, not JPA's `EntityManager`), obtained from `HibernateConfig`'s `LocalSessionFactoryBean` (Section 6.3). `sessionFactory.getCurrentSession()` returns the transaction-bound `Session` for the current thread.
-- **Line 12** — `.persist(project)` is Hibernate's native insert operation (JPA's `EntityManager.persist()` has an equivalent signature — Hibernate's native API and JPA's API are near-identical by design since Hibernate is a JPA provider).
-- **Line 17** — `createQuery("from Project", Project.class)` is **HQL** (Hibernate Query Language) — nearly identical syntax to the courseware's JPQL (`"SELECT e FROM Employee e ..."`), since JPQL was modeled on HQL; the difference here is `"from Project"` uses HQL's shorthand omitting `SELECT p`.
-- **Line 22** — `.get(Project.class, id)` is a direct primary-key lookup, equivalent to `JpaRepository.findById(id)`.
-- **Line 27** — `.merge(project)` reattaches a detached entity and copies its state onto the managed instance — Hibernate's "upsert-by-copy" operation, roughly what `JpaRepository.save()` does under the hood for an entity that already has an ID.
-- **Lines 30–35** — delete requires a manual load-then-remove — `JpaRepository.deleteById(id)` collapses this into one call.
+- **Line 3** — `@Repository` here is a plain stereotype annotation — unlike `JpaRepository` subinterfaces, this class is **fully hand-implemented**, not proxy-generated. **Lines 7–8** — `SessionFactory` injected via field `@Autowired` is the **native Hibernate API** (`Session`, not JPA's `EntityManager`), obtained from `HibernateConfig` (6.3); `getCurrentSession()` returns the transaction-bound `Session` for the current thread.
+- **Line 17** — `createQuery("from Project", Project.class)` is **HQL**, nearly identical to the courseware's JPQL since JPQL was modeled on HQL. **Lines 22, 27, 30–35** — `.get(...)` is a PK lookup (≈ `findById`), `.merge(...)` reattaches/copies state onto the managed instance (≈ `save()` for an existing ID), and delete needs manual load-then-remove — all of which `JpaRepository` collapses into one call each.
 
 ### 7.3 `ProjectService` / `ProjectServiceImpl` — service layer over the DAO
 
@@ -1120,8 +1056,7 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 11:     ...
 12: }
 ```
-- **Line 1** (interface) — the service layer mirrors the DAO's method signatures exactly and simply delegates — in a larger app this is where business logic (validation, orchestration across multiple DAOs, computed fields) would live; here it's a thin pass-through, which is realistic for an early-course example.
-- **`ProjectServiceImpl2.java`** exists but its entire body is commented out — dead scaffold code, not used by the app; worth knowing it exists but not worth further analysis for the assessment.
+- The service layer mirrors the DAO's method signatures and simply delegates — in a larger app this is where business logic (validation, orchestration across DAOs) would live; here it's a thin pass-through, realistic for an early-course example. (`ProjectServiceImpl2.java` also exists, entirely commented out — dead scaffold code.)
 
 ### 7.4 `ProjectController.java` — MVC controller
 
@@ -1148,9 +1083,9 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 20:     }
 21: }
 ```
-- **Line 1** — `@Controller` (not `@RestController`) — this method returns a **view name**, not a JSON body; it's rendered as HTML/JSP through `WebConfig`'s `ViewResolver` (Section 6.5). This matters for the assessment: `@Controller` methods that *should* return raw data need `@ResponseBody` explicitly added (see `HelloController` below); `@RestController` = `@Controller` + `@ResponseBody` applied to every method automatically.
-- **Line 9** — `model.addAttribute("projects", ...)` populates the model that the JSP template reads via EL/JSTL (`${projects}`) — the classic Spring MVC server-rendered-page pattern, directly analogous to Django's `render(request, template, {"projects": ...})` or Flask's `render_template(..., projects=...)`.
-- **Lines 13–16** — `@RequestParam` binds individual HTML form fields to method parameters by name — no `@RequestBody`/JSON here, because this is a traditional HTML form POST, not a REST API call.
+- **Line 1** — `@Controller` (not `@RestController`) returns a **view name**, rendered as JSP through `WebConfig`'s `ViewResolver` (6.5); methods that should return raw data need `@ResponseBody` explicitly (see `HelloController`, 9.4) — `@RestController` = `@Controller` + `@ResponseBody` on every method automatically.
+- **Line 9** — `model.addAttribute("projects", ...)` populates the model the JSP reads via EL/JSTL (`${projects}`) — analogous to Django's `render(request, template, {...})` or Flask's `render_template(..., projects=...)`.
+- **Lines 13–16** — `@RequestParam` binds HTML form fields to method parameters by name — a traditional form POST, not a REST/JSON call.
 
 ## 8. Walkthrough — Department (Spring JDBC) Vertical Slice
 
@@ -1185,11 +1120,8 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 26:     }
 27: }
 ```
-- **Line 6** — constructor injection of `JdbcTemplate` (built by `H2Config`, Section 6.2) — this is the *third* distinct persistence style in this project: no JPA/Hibernate at all here, just raw SQL + manual row mapping.
-- **Lines 10–11** — `RowMapper<Department>` is a functional interface (lambda) that converts one JDBC `ResultSet` row into a `Department` object — you write this mapping by hand for every entity, exactly what `@Entity` + Hibernate's reflection-based mapping automates away.
-- **Line 14** — `jdbcTemplate.query(sql, rowMapper)` executes the SQL and applies the row mapper to every row, returning a `List<Department>` — no `Connection`/`Statement`/`ResultSet` open/close boilerplate (that's what `JdbcTemplate` itself abstracts, versus raw JDBC).
-- **Line 19** — `?` placeholders are positional parameters, bound safely (parameterized query, SQL-injection-safe) via the varargs at the end of `.query(sql, rowMapper, id)`.
-- **Line 24** — `jdbcTemplate.update(...)` is used for INSERT/UPDATE/DELETE, returning the number of affected rows (`int`) — same semantic as `@Modifying` JPQL queries in Section 2.5, just via raw SQL.
+- **Line 6** — constructor injection of `JdbcTemplate` (built by `H2Config`, 6.2) — the *third* distinct persistence style in this project: no JPA/Hibernate, just raw SQL + manual row mapping. **Lines 10–11** — `RowMapper<Department>` is a lambda converting one `ResultSet` row into an object — hand-written for every entity, exactly what `@Entity` + Hibernate's reflection-based mapping automates away.
+- **Line 14** — `jdbcTemplate.query(sql, rowMapper)` executes and maps every row, with no `Connection`/`Statement`/`ResultSet` open/close boilerplate. **Line 19** — `?` placeholders are positional, SQL-injection-safe bindings via varargs. **Line 24** — `jdbcTemplate.update(...)` handles INSERT/UPDATE/DELETE, returning affected row count — same semantic as `@Modifying` JPQL (2.5), via raw SQL.
 
 ### 8.2 `Department.java` — plain POJO, no persistence annotations at all
 
@@ -1203,7 +1135,7 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 7:      ...
 8:  }
 ```
-- No `@Entity`, no `@Table`, no `@Id` — because this class is never handed to Hibernate/JPA; it's a manually-mapped plain Java object, populated entirely by the `RowMapper` lambda above. This is a useful contrast point: the same "an object represents a table row" idea, achieved with zero ORM annotations versus the courseware's fully-annotated `@Entity` classes.
+- No `@Entity`, no `@Table`, no `@Id` — never handed to Hibernate/JPA; a manually-mapped plain Java object, populated entirely by the `RowMapper` lambda above. Useful contrast: the same "object represents a table row" idea achieved with zero ORM annotations versus the courseware's fully-annotated `@Entity` classes.
 
 ### 8.3 `DepartmentService.java` / `DepartmentController.java`
 
@@ -1219,7 +1151,7 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 9:      public int addDepartment(Department department) { return repository.save(department); }
 10: }
 ```
-- **Lines 4–6** — constructor injection (no `@Autowired` needed on the constructor itself when there's only one constructor — Spring auto-wires it) — same pattern the courseware's `EmployeeService` uses in Section 1.6.
+- Constructor injection — no `@Autowired` needed when there's only one constructor, Spring auto-wires it — same pattern the courseware's `EmployeeService` uses (Section 1.6).
 
 ```java
 1:  @Controller
@@ -1227,28 +1159,21 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 3:      private final DepartmentService service;
 4:      public DepartmentController(DepartmentService service) { this.service = service; }
 5:
-6:      @GetMapping("/departments")
-7:      public String getDepartments(Model model) {
-8:          List<Department> list = service.getAllDepartments();
-9:          model.addAttribute("departments", list);
-10:         return "departments";
-11:     }
-12:
-13:     @GetMapping("/departments/find")
-14:     public String findDepartmentById(@RequestParam("id") int id, Model model) {
-15:         Department dept = service.getDepartmentById(id);
-16:         if (dept != null) {
-17:             model.addAttribute("foundDepartment", dept);
-18:         } else {
-19:             model.addAttribute("notFound", "No department found with ID: " + id);
-20:         }
-21:         model.addAttribute("departments", service.getAllDepartments());
-22:         return "departments";
-23:     }
-24: }
+6:      @GetMapping("/departments/find")
+7:      public String findDepartmentById(@RequestParam("id") int id, Model model) {
+8:          Department dept = service.getDepartmentById(id);
+9:          if (dept != null) {
+10:             model.addAttribute("foundDepartment", dept);
+11:         } else {
+12:             model.addAttribute("notFound", "No department found with ID: " + id);
+13:         }
+14:         model.addAttribute("departments", service.getAllDepartments());
+15:         return "departments";
+16:     }
+17: }
 ```
-- **Line 14** — `@RequestParam("id")` explicitly names the query-string parameter to bind (`?id=2`) — explicit naming matters here because it doesn't match the Java parameter name pattern Spring can infer without `-parameters` compiler flag support (though the `pom.xml`'s `maven-compiler-plugin` does set `<arg>-parameters</arg>`, so implicit binding would actually work too — the explicit name is defensive/clear style).
-- **Lines 16–20** — manual null-check-and-branch to decide which model attribute to populate — a controller doing view-decision logic that a `ResourceNotFoundException` + `@RestControllerAdvice` pattern (Section 2.9) would centralize in a REST API context; here, since it's a server-rendered page, the "404" is just a different message rendered on the same page rather than an HTTP status code change.
+- **Line 6** — `@RequestParam("id")` explicitly names the query-string parameter (`?id=2`) — defensive style, since the `pom.xml`'s `-parameters` compiler flag would actually let Spring infer it implicitly too.
+- **Lines 8–12** — manual null-check-and-branch to pick which model attribute to populate — a `ResourceNotFoundException` + `@RestControllerAdvice` pattern (Section 2.9) would centralize this in a REST API; here, on a server-rendered page, "404" is just a different message on the same page, not an HTTP status change.
 
 ## 9. Walkthrough — Employee (Spring Data MongoDB) Vertical Slice
 
@@ -1277,11 +1202,9 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 20:     ...
 21: }
 ```
-- **Line 6** — `@Document(collection = "emps")` is Spring Data MongoDB's analogue of JPA's `@Entity`/`@Table` — maps this class to the `emps` MongoDB collection (note the code comment says "employees" but the actual `collection` value is `"emps"` — a discrepancy worth flagging if this comes up in the assessment: **the comment is stale/wrong**, the real collection name is `emps`).
-- **Line 3** — the `@Id` import here is `org.springframework.data.annotation.Id` (the generic Spring Data marker), **not** `jakarta.persistence.Id` used by `Project` (Section 7.1) — different `@Id` annotations for different Spring Data modules; mixing them up is a common student mistake worth calling out for the assessment.
-- **Line 11** — using `int` as MongoDB's `_id` is atypical (Mongo's native `_id` is usually an `ObjectId`), but Spring Data MongoDB allows any type you declare, including a plain `int`, as this project demonstrates — a pragmatic simplification for teaching purposes rather than production-realistic Mongo schema design.
-- No Lombok, no `@Entity`, no relational `@Column`/`@Table` — document-model persistence has fundamentally different mapping annotations from relational JPA, and this file is a clean example of that distinction alongside `Project.java`.
-- The file also contains an entire commented-out legacy version of the same class with zero Mongo annotations — visible evidence of the class's evolution from a plain in-memory POJO to a Mongo-backed document.
+- **Line 6** — `@Document(collection = "emps")` is Spring Data MongoDB's analogue of JPA's `@Entity`/`@Table` (the code comment says "employees" but the real collection name is `emps` — a stale comment). **Line 3** — the `@Id` import here is `org.springframework.data.annotation.Id` (generic Spring Data marker), **not** `jakarta.persistence.Id` used by `Project` (7.1) — mixing up `@Id` annotations across Spring Data modules is a common student mistake.
+- **Line 11** — using `int` as MongoDB's `_id` is atypical (native `_id` is usually `ObjectId`), but Spring Data MongoDB allows any declared type — a pragmatic teaching simplification, not production-realistic schema design.
+- No Lombok, no `@Entity`, no relational `@Column`/`@Table` — document-model persistence has fundamentally different mapping annotations from relational JPA.
 
 ### 9.2 `EmployeeRepository.java` — `MongoRepository`, the Mongo equivalent of `JpaRepository`
 
@@ -1302,9 +1225,8 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 14:     // deleteById(id) -> deleteEmployee (for later)
 15: }
 ```
-- **Line 9** — `MongoRepository<Employee, Integer>` mirrors `JpaRepository<T, ID>` structurally: entity type, ID type — same Spring Data "define an interface, get an implementation" pattern (Section 2.3) applied to a document store instead of a relational one. This is the cleanest proof-point in the whole project that Spring Data's *repository abstraction* is storage-agnostic — the same programming model works across JPA, MongoDB, and (via other Spring Data modules) Redis, Elasticsearch, etc.
-- Registered via `@EnableMongoRepositories(basePackages = "com.demo.repository")` in `MongoConfig` (Section 6.4) — this is the Mongo-specific bootstrapping step; in true Spring Boot with `spring-boot-starter-data-mongodb`, this scanning is auto-configured and you wouldn't write `@EnableMongoRepositories` yourself either.
-- Commented-out lines show a derived query method (`findByName`) and a `@Query` example that were never activated — same derived-query and `@Query` mechanisms as JPA (Section 2.4–2.5), just against Mongo's query dialect.
+- **Line 9** — `MongoRepository<Employee, Integer>` mirrors `JpaRepository<T, ID>` structurally — the same "define an interface, get an implementation" pattern (Section 2.3) applied to a document store instead of relational, proving Spring Data's *repository abstraction* is storage-agnostic (works across JPA, MongoDB, Redis, Elasticsearch, etc.).
+- Registered via `@EnableMongoRepositories` in `MongoConfig` (6.4) — the Mongo-specific bootstrapping step; true Boot with `spring-boot-starter-data-mongodb` auto-configures this scanning too.
 
 ### 9.3 `EmployeeService.java` / `EmployeeController.java`
 
@@ -1321,7 +1243,7 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 10:     public Employee addEmployee(Employee employee) { return repository.save(employee); } // inserts into MongoDB
 11: }
 ```
-- **Line 8** — `repository.findById(id)` returns `Optional<Employee>` (same as `JpaRepository`, Section 2.3) — `.orElse(null)` unwraps it, choosing to return `null` on absence rather than propagating the `Optional` or throwing (contrast with the courseware's `EmployeeService.findById` in Section 1.6, which throws `ResourceNotFoundException` via `.orElseThrow(...)` — a more robust pattern this project's simpler version doesn't use).
+- **Line 8** — `repository.findById(id)` returns `Optional<Employee>` (same as `JpaRepository`, 2.3); `.orElse(null)` returns `null` on absence rather than throwing — contrast with the courseware's `EmployeeService.findById` (1.6), which uses `.orElseThrow(...)` for a more robust pattern.
 
 ```java
 1:  @Controller
@@ -1329,31 +1251,21 @@ Reminder from the intro: **this is a hand-configured Spring MVC + Hibernate + Sp
 3:      @Autowired
 4:      private EmployeeService employeeService;
 5:
-6:      @GetMapping("/employees")
-7:      public String getEmployees(Model model) {
-8:          List<Employee> list = employeeService.getAllEmployees();
-9:          model.addAttribute("employees", list);
-10:         return "employees";
-11:     }
-12:
-13:     @PostMapping("/employees/add")
-14:     public String addEmployee(@RequestParam("id") int id, @RequestParam("name") String name,
-15:             @RequestParam("salary") double salary, Model model) {
-16:         Employee employee = new Employee(id, name, salary);
-17:         employeeService.addEmployee(employee);
-18:         model.addAttribute("employees", employeeService.getAllEmployees());
-19:         model.addAttribute("message", "Employee added successfully!");
-20:         return "employees";
-21:     }
-22:
-23:     // assignment
-24:     //  getEmployeeByName()
-25:     //  updateEmployee()
-26:     //  deleteEmployee()
-27: }
+6:      @PostMapping("/employees/add")
+7:      public String addEmployee(@RequestParam("id") int id, @RequestParam("name") String name,
+8:              @RequestParam("salary") double salary, Model model) {
+9:          Employee employee = new Employee(id, name, salary);
+10:         employeeService.addEmployee(employee);
+11:         model.addAttribute("employees", employeeService.getAllEmployees());
+12:         model.addAttribute("message", "Employee added successfully!");
+13:         return "employees";
+14:     }
+15:
+16:     // assignment: getEmployeeByName() / updateEmployee() / deleteEmployee()
+17: }
 ```
-- **Line 3** — field injection (`@Autowired` directly on the field) rather than constructor injection — contrast with `DepartmentController`/`ProjectController` in this same codebase, which both use constructor injection. Field injection works but is generally discouraged versus constructor injection (harder to unit-test, hides required dependencies, can't be `final`) — this inconsistency across controllers in the same project is worth noting for the assessment as a "spot the anti-pattern" example.
-- **Lines 23–26** — explicit comment marking this as unfinished student assignment work (`getEmployeeByName`, `updateEmployee`, `deleteEmployee` not yet implemented) — confirms this file is a teaching scaffold, not a finished CRUD controller.
+- **Line 3** — field injection (`@Autowired` on the field) rather than constructor injection — contrast with `DepartmentController`/`ProjectController` in the same codebase, both constructor-injected. Field injection works but is discouraged (harder to unit-test, hides required dependencies, can't be `final`) — a "spot the anti-pattern" inconsistency within this one project.
+- **Line 16** — comment marks unfinished student assignment work, confirming this file is a teaching scaffold, not a finished CRUD controller.
 
 ### 9.4 `HelloController.java` — minimal `@Controller` + `@ResponseBody`
 

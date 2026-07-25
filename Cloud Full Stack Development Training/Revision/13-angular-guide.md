@@ -2,7 +2,7 @@
 
 This guide is built strictly from Aakash's own course materials in `Courseware/07-angular/` (modules `00-getting-started.md` through `14-mcq-assessment.md`, plus `angular_discussion_qa.md`). The courseware teaches **Angular 21** using standalone components and Signals, built around a running example app called the Employee Management System (EMS).
 
-**IMPORTANT — grounding note on Case B:** The repo's `Code/Angular` folder does **not** contain genuine Angular code. It was verified before writing this guide (see Section 15 below for the full detail): `package.json` names the project `"acme-react-demo"`, dependencies are `react`, `react-dom`, `react-router`, `@reduxjs/toolkit`, `react-redux`, `axios`, and the build tool is `vite` — there is no `@angular/core`, no `@angular/cli`, and no `.ts`/`.html` file anywhere under `src/` contains `@Component`, `@NgModule`, `@Injectable`, or an `@angular/...` import. The files are `.tsx` React components (`App.tsx`, `pages/Login.tsx`, `redux/store.ts`, `routes/appRoutes.tsx`, etc.) — this is the same React/Redux/Vite project that appears elsewhere in the repo, mis-filed under an "Angular" folder name.
+**IMPORTANT — grounding note on Case B:** The repo's `Code/Angular` folder does **not** contain genuine Angular code — it's the same React/Redux/Vite project (`acme-react-demo`) that appears elsewhere in the repo, mis-filed under an "Angular" folder name. This was verified before writing this guide; see Section 15 below for the full evidence (package.json contents, grep results, file listing).
 
 Because of that, Section 15 ("Real code walkthrough") is **not** a walkthrough of course-repo Angular code — no such code exists to walk through. Instead it states that plainly and gives a small number of clearly-labelled illustrative snippets (not from the course repo) for the handful of concepts where seeing the syntax matters most for the assessment. All other examples throughout this guide (Sections 1–14) are reproduced from the actual courseware files and are genuine course content.
 
@@ -12,7 +12,7 @@ Because of that, Section 15 ("Real code walkthrough") is **not** a walkthrough o
 
 ### 1.1 What Angular is, and how it differs from React
 
-The courseware is explicit: **Angular is a full, opinionated framework**; **React is a UI library**. Angular ships routing (`@angular/router`), HTTP (`HttpClient`), forms (reactive + template-driven), a DI container, a CLI, and a testing setup, all built in. React gives you the view layer only — you pick React Router, Axios/fetch, React Hook Form, Redux/Context, and Vite yourself. This is exactly the situation Aakash's own `Code/Angular` folder demonstrates in reverse: it's a "React demo" (`acme-react-demo`) that chose React Router, Axios, and Redux Toolkit — precisely the kind of à la carte stack Angular replaces with built-ins.
+The courseware is explicit: **Angular is a full, opinionated framework**; **React is a UI library**. Angular ships routing (`@angular/router`), HTTP (`HttpClient`), forms (reactive + template-driven), a DI container, a CLI, and a testing setup, all built in. React gives you the view layer only — you pick React Router, Axios/fetch, React Hook Form, Redux/Context, and Vite yourself.
 
 Other mental-model contrasts from the courseware:
 
@@ -165,24 +165,20 @@ export class EmployeeCardComponent {
 <img [src]="employee.avatarUrl" [alt]="employee.name" />
 <button [disabled]="isSubmitting">Save</button>
 <div [class.active]="employee.isActive">
-<div [style.color]="employee.isActive ? 'green' : 'red'">
-<td [attr.colspan]="colSpan">
 ```
 
-The courseware note: `[src]="imageUrl"` and `src="{{ imageUrl }}"` are equivalent for strings; use property binding whenever the value is not a string (boolean, number, object).
+The courseware note: `[src]="imageUrl"` and `src="{{ imageUrl }}"` are equivalent for strings; use property binding whenever the value is not a string (boolean, number, object). The same `[target]` syntax also targets styles and attributes directly — `[style.color]="expr"`, `[attr.colspan]="expr"` — for cases a plain DOM property doesn't cover.
 
 **Event binding:**
 
 ```html
 <button (click)="handleDelete()">Delete</button>
 <input (input)="onInput($event)" />
-<form (ngSubmit)="onSubmit()">
 ```
 
 ```ts
 onInput(event: Event) {
-  const value = (event.target as HTMLInputElement).value
-  this.searchTerm = value
+  this.searchTerm = (event.target as HTMLInputElement).value
 }
 ```
 
@@ -288,15 +284,7 @@ export class EmployeeCardComponent {
 }
 ```
 
-**Legacy `@Input()` decorator** (still common in existing code):
-
-```ts
-export class EmployeeCardComponent {
-  @Input({ required: true }) employee!: Employee
-  @Input() compact = false
-  @Input({ transform: (v: string) => Number(v) }) salary = 0   // input transform, Angular 16+
-}
-```
+**Legacy `@Input()` decorator** (still common in existing code) uses field decorators instead: `@Input({ required: true }) employee!: Employee`, `@Input() compact = false`, and even supports an input transform (`@Input({ transform: (v: string) => Number(v) }) salary = 0`, Angular 16+).
 
 The course's rule: **prefer `input()` signals in new code**; `@Input()` remains fully supported and is common in existing projects.
 
@@ -315,15 +303,7 @@ export class EmployeeCardComponent {
 <app-employee-card [employee]="emp" (select)="handleSelect($event)" />
 ```
 
-**Legacy `@Output()` + `EventEmitter`:**
-
-```ts
-@Output() select = new EventEmitter<number>()
-```
-
-Both use `.emit(value)`, and both bind in the template identically with `(select)="handler($event)"`.
-
-**React contrast:** where React passes a callback prop down (`onSelect={handleSelect}`) and the child calls it directly, Angular's `output()`/`@Output()` is a declared, typed emitter the parent listens to via event binding — closer to a native DOM custom event than a plain function prop.
+**Legacy `@Output()` + `EventEmitter`** (`@Output() select = new EventEmitter<number>()`) works the same way. Both use `.emit(value)`, and both bind in the template identically with `(select)="handler($event)"` — a declared, typed emitter the parent listens to via event binding, unlike React's plain callback-prop convention.
 
 ### 3.3 View encapsulation
 
@@ -342,14 +322,8 @@ ngOnDestroy()          → component about to be removed
 ```
 
 ```ts
-export class EmployeeDetailComponent implements OnInit, OnDestroy, OnChanges {
+export class EmployeeDetailComponent implements OnInit, OnDestroy {
   employeeId = input.required<number>()
-
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['employeeId'] && !changes['employeeId'].firstChange) {
-      this.loadEmployee(this.employeeId())
-    }
-  }
   ngOnInit()    { this.loadEmployee(this.employeeId()) }
   ngOnDestroy() { this.subscription?.unsubscribe() }
 }
@@ -413,16 +387,12 @@ handleEmployeeAction(action: EmployeeAction) {
 
 ```ts
 console.table(this.employees())
-console.group('Signal update')
-console.log('new filter:', this.filter())
-console.groupEnd()
-
 constructor() {
-  effect(() => {
-    console.log('[DEBUG] employees changed:', this.employees().length)
-  })
+  effect(() => console.log('[DEBUG] employees changed:', this.employees().length))
 }
 ```
+
+(`console.group`/`console.groupEnd` are also used to nest related log output for readability.)
 
 ### 4.4 Common errors and fixes (heavily assessment-relevant)
 
@@ -481,17 +451,10 @@ constructor() {
 
 ```html
 <!-- NgClass, object syntax -->
-<div [ngClass]="{
-  'card--active':   employee.isActive,
-  'card--selected': employee.id === selectedId(),
-}">
+<div [ngClass]="{ 'card--active': employee.isActive, 'card--selected': employee.id === selectedId() }">
 
-<!-- Prefer single-class binding when possible -->
-<div class="card" [class.card--active]="employee().isActive">
-
-<!-- NgStyle -->
-<div [ngStyle]="{ 'font-size': compact() ? '12px' : '14px' }">
-<div [style.opacity]="employee().isActive ? 1 : 0.6">
+<!-- Prefer single-class/style binding when possible -->
+<div class="card" [class.card--active]="employee().isActive" [style.opacity]="employee().isActive ? 1 : 0.6">
 ```
 
 ### 5.3 Built-in structural directives — legacy `*` syntax
@@ -508,11 +471,7 @@ constructor() {
 </div>
 ```
 
-```ts
-trackById(index: number, employee: Employee): number { return employee.id }
-```
-
-The `*` prefix is syntactic sugar — `*ngIf` expands to `[ngIf]` on an `<ng-template>` (this is directly tested, MCQ Q29).
+`trackById(index, employee)` returning `employee.id` is the legacy analogue of `@for`'s mandatory `track`. The `*` prefix is syntactic sugar — `*ngIf` expands to `[ngIf]` on an `<ng-template>` (this is directly tested, MCQ Q29).
 
 ### 5.4 New control flow (preferred, Angular 17+)
 
@@ -621,15 +580,9 @@ export class EmployeeListComponent {
 }
 ```
 
-**Legacy constructor injection** (still common in existing codebases):
+**Legacy constructor injection** (`constructor(private employeeService: EmployeeService) {}`, still common in existing codebases) resolves to the same singleton instance — `inject()` is just the modern functional syntax (tested: MCQ Q34).
 
-```ts
-constructor(private employeeService: EmployeeService) {}
-```
-
-Both resolve to the same singleton instance — `inject()` is just the modern functional syntax (tested: MCQ Q34).
-
-**React contrast:** Angular's DI + `providedIn: 'root'` singleton service is the framework-native analogue of a React Context provider or a Redux store (which Aakash's actual `Code/Angular` — really `acme-react-demo` — folder implements via `@reduxjs/toolkit` in `src/redux/store.ts` and `src/redux/empSlice.tsx`, and via `AuthContextType.tsx`/`AuthProvider.tsx`). Where React requires you to wire a `Provider` component around the tree and consume it with `useContext`/`useSelector`, Angular's injector resolves the dependency automatically from a hierarchical injector tree, with no wrapping component needed.
+**React contrast:** Angular's DI + `providedIn: 'root'` singleton service is the framework-native analogue of a React Context provider or a Redux store. Where React requires you to wire a `Provider` component around the tree and consume it with `useContext`/`useSelector`, Angular's injector resolves the dependency automatically from a hierarchical injector tree, with no wrapping component needed.
 
 ### 6.4 Injector hierarchy — `providedIn: 'root'` vs component-level
 
@@ -643,10 +596,7 @@ Root Injector (providedIn: 'root')
 ```
 
 ```ts
-@Injectable({ providedIn: 'root' })   // shared app-wide
-export class EmployeeService {}
-
-@Component({ providers: [EmployeeFormService] })   // fresh instance per component
+@Component({ providers: [EmployeeFormService] })   // fresh instance per component + its children
 export class CreateEmployeeComponent {
   private formService = inject(EmployeeFormService)
 }
@@ -667,7 +617,6 @@ export class NotificationService {
     this._notifications.update(list => [...list, notification])
     if (durationMs > 0) setTimeout(() => this.dismiss(notification.id), durationMs)
   }
-  success(message: string) { this.show('success', message) }
 }
 ```
 
@@ -677,7 +626,7 @@ export class NotificationService {
 
 ### 7.1 How it works
 
-Angular Router intercepts browser URL changes and maps them to components, without a full page reload — this is what makes Angular an SPA framework (same underlying concept as `react-router`, which Aakash's actual `Code/Angular`/`acme-react-demo` project uses in `src/routes/appRoutes.tsx`).
+Angular Router intercepts browser URL changes and maps them to components, without a full page reload — this is what makes Angular an SPA framework (same underlying concept as `react-router`).
 
 ```
 URL: /employees/3/edit
@@ -741,16 +690,7 @@ export class EmployeeDetailPageComponent {
 }
 ```
 
-**Legacy manual approach with `ActivatedRoute`:**
-
-```ts
-constructor() {
-  this.route.paramMap.subscribe(params => {
-    const id = Number(params.get('id'))
-    this.employee.set(this.employeeService.getById(id) ?? null)
-  })
-}
-```
+**Legacy manual approach** subscribes to `ActivatedRoute.paramMap` directly in the constructor and sets a signal from the emitted value — more boilerplate than the same result `withComponentInputBinding()` gives for free.
 
 ### 7.5 Query parameters, route data, programmatic navigation
 
@@ -847,21 +787,15 @@ Forgetting to unsubscribe is a real memory leak — every mount/unmount cycle cr
 
 ```ts
 map(employees => employees.filter(e => e.isActive))       // transform
-filter((e: MouseEvent) => e.button === 0)                  // pass matching values only
 
 // switchMap — most-used operator; cancels previous inner Observable
-searchTerm$.pipe(switchMap(term => this.employeeService.search(term)))
-
-mergeMap(id => this.employeeService.delete$(id))            // run concurrently
-concatMap(employee => this.employeeService.save$(employee)) // run sequentially, in order
-
-debounceTime(300)            // wait for a pause before emitting
-distinctUntilChanged()       // only emit on actual change
+searchTerm$.pipe(debounceTime(300), distinctUntilChanged(), switchMap(term => this.employeeService.search(term)))
 
 catchError(err => { console.error(err); return of([]) })    // handle errors gracefully
 tap(employees => console.log('Received:', employees.length)) // side effects, doesn't change stream
-combineLatest([employees$, filter$])                          // combine multiple streams
 ```
+
+Other operators used the same way: `filter` (pass matching values only), `mergeMap` (run inner Observables concurrently), `concatMap` (run them sequentially, in order), `combineLatest` (combine multiple streams).
 
 `switchMap` vs `mergeMap` vs `concatMap`, per the discussion Q&A: `switchMap` cancels the previous inner Observable on each emission (ideal for search-as-you-type — only the latest request matters); `mergeMap` runs all inner Observables concurrently (parallel independent operations); `concatMap` queues them and runs strictly in order (when order matters, e.g. sequential saves).
 
@@ -944,10 +878,7 @@ export class EmployeeFormComponent implements OnInit {
 ```html
 <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
   <input id="name" formControlName="name" />
-  @if (nameCtrl.touched && nameCtrl.errors) {
-    @if (nameCtrl.errors['required'])  { <span class="error">Name is required</span> }
-    @if (nameCtrl.errors['minlength']) { <span class="error">Too short</span> }
-  }
+  @if (nameCtrl.touched && nameCtrl.errors?.['required']) { <span class="error">Name is required</span> }
   <button type="submit" [disabled]="form.invalid || form.pristine">Save</button>
 </form>
 ```
@@ -1128,12 +1059,6 @@ export class EmployeeService {
       tap(created => this._employees.update(list => [...list, created]))
     )
   }
-
-  delete$(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${id}`).pipe(
-      tap(() => this._employees.update(list => list.filter(e => e.id !== id)))
-    )
-  }
 }
 ```
 
@@ -1174,15 +1099,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) =>
   }))
 ```
 
-```ts
-export const loadingInterceptor: HttpInterceptorFn = (req, next) => {
-  const loading = inject(LoadingService)
-  loading.start()
-  return next(req).pipe(finalize(() => loading.stop()))   // guaranteed on success OR error
-}
-```
-
-`req.clone({ setHeaders })` creates a modified copy of the request — requests are immutable (tested, MCQ Q58). `finalize()` guarantees cleanup runs regardless of success/failure.
+`req.clone({ setHeaders })` creates a modified copy of the request — requests are immutable (tested, MCQ Q58). A `loadingInterceptor` follows the same shape, calling `loading.start()` before `next(req)` and `loading.stop()` inside `.pipe(finalize(() => ...))` — `finalize()` guarantees that cleanup runs regardless of success or failure.
 
 ### 11.5 HTTP → Signal
 
@@ -1192,8 +1109,6 @@ departments = toSignal(
   { initialValue: [] as Department[] }
 )
 ```
-
-**React contrast:** Angular centralizes cross-cutting HTTP concerns (auth headers, global error handling, loading spinners) into interceptors registered once in `app.config.ts`. React/Axios equivalents exist (`axios.interceptors.request.use(...)`), which is exactly the pattern Aakash's real `Code/Angular` (`acme-react-demo`) project would need to hand-roll itself using `axios` — Angular provides the interceptor mechanism as a first-class framework feature instead of a library convention.
 
 ---
 
@@ -1219,11 +1134,6 @@ export class AuthService {
   readonly currentUser = this._currentUser.asReadonly()
   readonly isLoggedIn  = computed(() => this._currentUser() !== null)
   readonly isAdmin     = computed(() => this._currentUser()?.role === 'admin')
-
-  private loadUserFromStorage(): AuthUser | null {
-    try { const stored = localStorage.getItem(USER_KEY); return stored ? JSON.parse(stored) : null }
-    catch { return null }
-  }
 
   getToken(): string | null { return localStorage.getItem(TOKEN_KEY) }
 
@@ -1288,7 +1198,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
 Course guidance: `localStorage` is fine for training; production should use `httpOnly` cookies + CSRF tokens or in-memory tokens with refresh rotation.
 
-**React contrast:** Aakash's real `Code/Angular` (`acme-react-demo`) project implements this same problem — auth state, login, protected routing — via `src/context/AuthProvider.tsx` + `AuthContextType.tsx` (React Context) and `src/pages/Login.tsx`/`src/routes/appRoutes.tsx` (React Router). Angular's guard functions (`CanActivateFn`) run *before* the router even renders the component, blocking navigation outright; React Router's typical pattern (a `<ProtectedRoute>` wrapper component checking context and redirecting) renders first and then redirects — a subtly different mechanism worth knowing for the assessment.
+**React contrast:** Angular's guard functions (`CanActivateFn`) run *before* the router even renders the component, blocking navigation outright; React Router's typical pattern (a `<ProtectedRoute>` wrapper component checking context and redirecting) renders first and then redirects — a subtly different mechanism.
 
 ---
 
@@ -1306,11 +1216,9 @@ export class ModalService {
     return new Promise(resolve => {
       const componentRef = createComponent(ConfirmDialogComponent, { environmentInjector: this.injector })
       componentRef.setInput('title', options.title)
-      componentRef.instance.confirmed.subscribe(() => { resolve(true); this.destroy(componentRef, host) })
+      componentRef.instance.confirmed.subscribe(() => resolve(true))
       this.appRef.attachView(componentRef.hostView)
-      const host = document.createElement('div')
-      document.body.appendChild(host)
-      host.appendChild(componentRef.location.nativeElement)
+      document.body.appendChild(componentRef.location.nativeElement)
     })
   }
 }
@@ -1330,13 +1238,9 @@ export class ModalService {
 } @error {
   <p>Could not load chart.</p>
 }
-
-@defer (on interaction) { <app-employee-audit-log [employeeId]="id()" /> } @placeholder { <button>Load Audit Log</button> }
-@defer (on idle)        { <app-recommendations /> }
-@defer (when showDetails()) { <app-employee-detail [employee]="employee()" /> }
 ```
 
-`@placeholder` shows fallback content before the deferred block starts loading, replaced once the real content loads (tested, MCQ Q76). Triggers: `on viewport`, `on idle`, `on interaction`, `when condition()`.
+`@placeholder` shows fallback content before the deferred block starts loading, replaced once the real content loads (tested, MCQ Q76). Other triggers work the same way: `on idle`, `on interaction`, `when condition()`.
 
 ### 13.3 NgModule — legacy context (still assessment-relevant)
 
@@ -1344,15 +1248,10 @@ export class ModalService {
 @NgModule({
   declarations: [AppComponent, EmployeeCardComponent],   // components/pipes/directives in this module
   imports: [BrowserModule, HttpClientModule, AppRoutingModule],
-  providers: [],
   bootstrap: [AppComponent],
 })
 export class AppModule {}
-```
-
-```ts
-// main.ts (NgModule-based bootstrap)
-platformBrowserDynamic().bootstrapModule(AppModule)
+// main.ts (NgModule-based bootstrap): platformBrowserDynamic().bootstrapModule(AppModule)
 ```
 
 | | NgModule (legacy) | Standalone (modern) |
@@ -1445,33 +1344,17 @@ describe('EmployeeService', () => {
 
 ```ts
 beforeEach(async () => {
-  await TestBed.configureTestingModule({ imports: [EmployeeCardComponent, CurrencyPipe, DatePipe] }).compileComponents()
+  await TestBed.configureTestingModule({ imports: [EmployeeCardComponent] }).compileComponents()
   fixture   = TestBed.createComponent(EmployeeCardComponent)
   component = fixture.componentInstance
   fixture.componentRef.setInput('employee', mockEmployee)   // set a required input() signal in tests
   fixture.detectChanges()                                     // triggers change detection / re-render
 })
-
-it('should emit select event when card is clicked', () => {
-  let emittedId: number | undefined
-  component.select.subscribe((id: number) => emittedId = id)
-  fixture.nativeElement.querySelector('.card').click()
-  fixture.detectChanges()
-  expect(emittedId).toBe(1)
-})
 ```
 
-**Mocking a service dependency:**
+To test an emitted `output()`, subscribe to it before triggering the DOM event (e.g. `component.select.subscribe(id => ...)`, then `fixture.nativeElement.querySelector('.card').click()`, then assert on the captured value).
 
-```ts
-const mockEmployeeService = { employees: signal(mockEmployees), loadAll: jasmine.createSpy('loadAll') }
-TestBed.configureTestingModule({
-  imports:   [EmployeeListPageComponent],
-  providers: [{ provide: EmployeeService, useValue: mockEmployeeService }],
-})
-```
-
-`jasmine.createSpyObj`/`createSpy` produce mock functions that track calls — used for isolating the unit under test from its real dependencies, same idea as `jest.fn()`.
+**Mocking a service dependency:** override the provider with a fake object built via `jasmine.createSpy`/`createSpyObj` (`providers: [{ provide: EmployeeService, useValue: mockEmployeeService }]`) — these produce mock functions that track calls, used to isolate the unit under test from its real dependencies, same idea as `jest.fn()`.
 
 ### 14.5 CLI deep dive
 
@@ -1526,11 +1409,11 @@ Signals roadmap per the courseware: introduced in v16 (preview) → stable + `@i
 
 There is no `@angular/core`, `@angular/cli`, `@angular/router`, or any `@angular/*` package anywhere in `dependencies` or `devDependencies`. The build tool is `vite` (`"dev": "vite"`, `"build": "tsc -b && vite build"`), not the Angular CLI.
 
-3. A directory listing of `Code/Angular/src/` confirms the file shapes are pure React/Vite conventions, not Angular's: `App.tsx`, `main.tsx`, `index.css`, `context/AuthProvider.tsx`, `context/AuthContextType.tsx`, `pages/Login.tsx`, `pages/Register.tsx`, `pages/Home.tsx`, `pages/EmployeeList.tsx`, `pages/EmployeeDetails.tsx`, `redux/store.ts`, `redux/empSlice.tsx`, `routes/appRoutes.tsx`, `services/api.service.ts`, `services/employee.service.ts`, `services/user.service.ts`, `models/employee.model.ts`. There is no `app.component.ts`, no `app.module.ts`, no `*.component.html`, no `angular.json` — none of the Angular-specific file conventions this course's Module 00 describes as the generated project shape.
+3. A directory listing of `Code/Angular/src/` confirms the file shapes are pure React/Vite conventions, not Angular's: `App.tsx`, `main.tsx`, `context/AuthProvider.tsx`, `pages/Login.tsx`, `pages/EmployeeList.tsx`, `redux/store.ts`, `routes/appRoutes.tsx`, `services/api.service.ts`, `models/employee.model.ts`, etc. There is no `app.component.ts`, no `app.module.ts`, no `*.component.html`, no `angular.json` — none of the Angular-specific file conventions this course's Module 00 describes as the generated project shape.
 
 ### 15.2 What this folder actually is
 
-This is the **same React + Redux Toolkit + React Router + Vite + Axios project** ("acme-react-demo") that appears — correctly labelled — elsewhere in the repo under the React course. Under `Code/Angular/`, it is simply mis-filed: same `package.json` name, same dependency set, same file layout (`context/`, `redux/`, `routes/`, `pages/`), same Jest + Testing Library test setup (`Login.test.tsx`, `AuthProvider.test.tsx`, `user.service.test.ts`). It happens to model a similar domain (employees, login/register, an API service layer) to the courseware's EMS example, which is likely why it was mistaken for or copied into the Angular folder — but structurally and technically it is 100% React, not Angular. No Angular code was fabricated to fill this gap.
+This is the same "acme-react-demo" project (§15.1) that appears — correctly labelled — elsewhere in the repo under the React course; under `Code/Angular/` it is simply mis-filed, with an identical `package.json`, dependency set, file layout, and Jest + Testing Library test setup (`Login.test.tsx`, `AuthProvider.test.tsx`, `user.service.test.ts`). It happens to model a similar domain (employees, login/register, an API service layer) to the courseware's EMS example, which is likely why it was mistaken for or copied into the Angular folder — but structurally and technically it is 100% React, not Angular. No Angular code was fabricated to fill this gap.
 
 ### 15.3 Minimal illustrative snippets (NOT from the course repo)
 
@@ -1539,66 +1422,54 @@ These three snippets exist only to make the syntax concrete for the assessment. 
 **Illustrative example (not from course repo) — a basic `@Component`:**
 
 ```typescript
-1:  import { Component, signal } from '@angular/core'
-2:
-3:  @Component({
-4:    selector: 'app-hello',
-5:    standalone: true,
-6:    template: `<h1>Hello, {{ name() }}</h1>`,
-7:  })
-8:  export class HelloComponent {
-9:    name = signal('Aakash')
-10: }
+import { Component, signal } from '@angular/core'
+
+@Component({
+  selector: 'app-hello',
+  standalone: true,
+  template: `<h1>Hello, {{ name() }}</h1>`,
+})
+export class HelloComponent {
+  name = signal('Aakash')
+}
 ```
 
-- **Line 1** — imports the `Component` decorator factory and the `signal()` function from Angular's core package.
-- **Line 3–7** — `@Component(...)` is a **class decorator**: it attaches metadata Angular's compiler reads to turn a plain TypeScript class into a UI component. `selector: 'app-hello'` is the custom HTML tag other templates use to place this component (`<app-hello>`); there is no equivalent decorator step in React, where a component is just a function you import and call as JSX.
-- **Line 5** — `standalone: true` means this component declares its own dependencies (via an `imports` array, omitted here since none are needed) instead of being registered inside an `@NgModule`.
-- **Line 6** — `template` is an inline template string (equivalent to `templateUrl` pointing at a separate `.html` file); `{{ name() }}` is **interpolation**, calling the `name` signal to read its current value.
-- **Line 9** — `name = signal('Aakash')` creates a writable reactive value. Unlike a plain class field, reading it inside a template (`name()`) registers that template as a dependent — Angular re-renders only this component when `name` changes.
+`@Component(...)` is a **class decorator**: metadata Angular's compiler reads to turn a plain class into a UI component, with `selector` as the custom HTML tag (`<app-hello>`) other templates use to place it — there is no equivalent step in React, where a component is just a function called as JSX. `standalone: true` means the component declares its own dependencies via its own `imports` array instead of registering inside an `@NgModule`. Reading `name()` inside the template registers that template as a dependent, so Angular re-renders only this component when the signal changes.
 
 **Illustrative example (not from course repo) — a service with dependency injection:**
 
 ```typescript
-1:  import { Injectable, signal } from '@angular/core'
-2:
-3:  @Injectable({ providedIn: 'root' })
-4:  export class CounterService {
-5:    private _count = signal(0)
-6:    readonly count = this._count.asReadonly()
-7:
-8:    increment(): void {
-9:      this._count.update(n => n + 1)
-10:   }
-11: }
-12:
-13: // In a component:
-14: // private counter = inject(CounterService)
-15: // this.counter.increment()
+import { Injectable, signal } from '@angular/core'
+
+@Injectable({ providedIn: 'root' })
+export class CounterService {
+  private _count = signal(0)
+  readonly count = this._count.asReadonly()
+
+  increment(): void {
+    this._count.update(n => n + 1)
+  }
+}
+
+// In a component: private counter = inject(CounterService); this.counter.increment()
 ```
 
-- **Line 3** — `@Injectable({ providedIn: 'root' })` marks this class as available for Dependency Injection and tells Angular's injector to create exactly **one instance for the entire application** (a singleton) — the DI-container equivalent of a React Context provider or a Redux store, but wired automatically without wrapping any component tree.
-- **Line 5–6** — the private-signal-plus-public-`asReadonly()` pattern: external code can read `count()` but cannot call `.set()`/`.update()` on it directly — all mutation must go through the service's own methods (`increment()`), keeping state changes centralized and predictable.
-- **Line 9** — `.update(n => n + 1)` derives the new value from the current one, as opposed to `.set(value)` which replaces it outright.
-- **Line 14** — `inject(CounterService)` is the modern (Angular 14+) way to retrieve the singleton instance inside another class's field initializer, without needing a constructor parameter.
+`@Injectable({ providedIn: 'root' })` tells Angular's injector to create exactly **one instance for the entire application** — the DI-container equivalent of a React Context provider or Redux store, but wired automatically without wrapping any component tree. The private-signal-plus-public-`asReadonly()` pattern means external code can read `count()` but must go through `increment()` to mutate it. `inject(CounterService)` is the modern (Angular 14+) way to retrieve the singleton in a field initializer, without a constructor parameter.
 
 **Illustrative example (not from course repo) — a template with `*ngIf`/`*ngFor`:**
 
 ```html
-1:  <ul *ngIf="items.length > 0; else empty">
-2:    <li *ngFor="let item of items; let i = index">
-3:      {{ i + 1 }}. {{ item.name }}
-4:    </li>
-5:  </ul>
-6:  <ng-template #empty>
-7:    <p>No items.</p>
-8:  </ng-template>
+<ul *ngIf="items.length > 0; else empty">
+  <li *ngFor="let item of items; let i = index">
+    {{ i + 1 }}. {{ item.name }}
+  </li>
+</ul>
+<ng-template #empty>
+  <p>No items.</p>
+</ng-template>
 ```
 
-- **Line 1** — `*ngIf="items.length > 0; else empty"` is a **structural directive**: the `*` prefix is sugar that Angular expands to `<ng-template [ngIf]="...">` wrapping the `<ul>`. If the condition is false, the `<ul>` is never added to the DOM at all, and Angular renders the `#empty` template reference instead (declared on line 6).
-- **Line 2** — `*ngFor="let item of items; let i = index"` repeats the `<li>` once per array element, exposing the current item as `item` and its position as `i` via Angular's built-in `index` local variable.
-- **Line 3** — `{{ i + 1 }}. {{ item.name }}` — two interpolations in one text node; each is evaluated independently against the component class.
-- **Line 6–8** — `<ng-template #empty>` defines a named template block that renders nothing by itself; it only appears when explicitly referenced (as it is by `else empty` on line 1). This is Angular's mechanism for defining alternate/fallback template content, unlike JSX's plain `{condition ? <A/> : <B/>}` ternary.
+The `*` prefix is sugar Angular expands to `<ng-template [ngIf]="...">` wrapping the `<ul>` — if false, the `<ul>` is never added to the DOM, and the `#empty` template renders instead. `let i = index` exposes the current position via Angular's built-in `index` local variable. `<ng-template #empty>` renders nothing by itself; it only appears when referenced (`else empty`) — Angular's mechanism for fallback template content, unlike JSX's plain `{condition ? <A/> : <B/>}` ternary.
 
 (Modern Angular 17+ code would prefer `@if`/`@for` block syntax over `*ngIf`/`*ngFor` — see Section 5.4 — but `*ngIf`/`*ngFor` remain common in existing/legacy Angular code and are directly assessed, so both are worth knowing.)
 

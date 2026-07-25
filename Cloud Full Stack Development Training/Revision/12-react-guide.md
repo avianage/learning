@@ -2,7 +2,7 @@
 
 This guide is grounded in two sources from Aakash's course: the 16-module React courseware (`Courseware/06-react/00-getting-started.md` through `15-bonus-and-roundup.md`, plus `react_discussion_qa.md`), and a real React + TypeScript "EMS" (Employee Management System) frontend at `Code/React/src`, which has routing, a Context-based auth layer, Redux Toolkit state, and an Axios service layer.
 
-Part 1 walks the courseware topic by topic, numbered exactly as the modules are numbered (00–15), so every concept the assessment can draw on is covered. Part 2 walks the actual project file by file, in dependency order — models → services → redux → context → routing → components → pages → app bootstrap — reproducing each file with line numbers and explaining every non-trivial line. Where the project code diverges from the "textbook" pattern shown in the courseware (and it does, in a few places — commented-out `BrowserRouter`/`StrictMode`, `any`-typed context, a couple of latent bugs), that is called out explicitly rather than smoothed over, because recognizing those differences is exactly the kind of thing an assessment tests.
+Part 1 walks the courseware topic by topic, numbered exactly as the modules are numbered (00–15). Part 2 walks the actual project file by file, in dependency order — models → services → redux → context → routing → components → pages → app bootstrap — reproducing each file with line numbers and explaining every non-trivial line. Where the project code diverges from the "textbook" pattern shown in the courseware (commented-out `BrowserRouter`/`StrictMode`, `any`-typed context, a couple of latent bugs), that is called out explicitly rather than smoothed over.
 
 As covered in the JavaScript/TypeScript guides from this same course, destructuring, spread, arrow functions, `async/await`, interfaces, and generics are assumed knowledge — explanations below focus on what is React-specific.
 
@@ -316,331 +316,191 @@ Every file below still contains large blocks of commented-out earlier iterations
 ### `src/services/api.service.ts`
 
 ```typescript
-1:  import axios from "axios";
-2:
-3:  const apiUrl = 'http://localhost:3000';
-4:
-5:  const api = axios.create({ baseURL: apiUrl });
-6:
-7:  api.interceptors.request.use((config) => {
-8:      console.log(config);
-9:      const token = localStorage.getItem('token');
-10:     console.log(token);
-11:     if (token) {
-12:         config.headers.Authorization = `Bearer ${token}`;
-13:     }
-14:     return config;
-15: });
-16:
-17: // export const loginUser = async (user: any) => api.post('/api/auth/login', user);
-18: // export const register = async (user: any) => api.post('/api/auth/register', user);
-19: // export const logout = async () => api.post('/api/auth/logout');
-20:
-21: export default api;
+const api = axios.create({ baseURL: 'http://localhost:3000' });
+
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) { config.headers.Authorization = `Bearer ${token}`; }
+    return config;
+});
+
+export default api;
 ```
 
-- **Lines 3–5** — a single centralised Axios instance with a fixed `baseURL`, exactly the pattern from Module 08: every service imports this `api` object rather than calling `axios` directly.
-- **Lines 7–15** — a **request interceptor**, run before every outgoing request. It reads the JWT from `localStorage` (the storage mechanism the courseware explicitly flags as XSS-vulnerable but acceptable for training) and, if present, attaches it as an `Authorization: Bearer <token>` header. This is how every authenticated API call in the app gets its token — no individual service function has to remember to add it.
-- **Line 9** — mutating `config.headers.Authorization` directly and then returning `config` on line 14 is the required interceptor contract: request interceptors must return the (possibly modified) config object.
-- **Lines 8, 10** — leftover `console.log` debug statements; harmless but would be stripped before production per the Module 14 deployment checklist.
-- Note there is **no response interceptor** here (unlike the courseware's Module 08 example, which adds one to globally catch 401s and force a redirect to `/login`) — in this project, expired/invalid tokens are instead handled implicitly wherever a protected route re-checks `isLoggedIn`.
+A single centralised Axios instance with a fixed `baseURL`, exactly the pattern from Module 08: every service imports this `api` object rather than calling `axios` directly. The **request interceptor** reads the JWT from `localStorage` (the storage mechanism the courseware explicitly flags as XSS-vulnerable but acceptable for training) and, if present, attaches it as an `Authorization: Bearer <token>` header — no individual service function has to remember to add it; returning `config` is the required interceptor contract. There is **no response interceptor** here (unlike the courseware's Module 08 example, which adds one to globally catch 401s and redirect to `/login`) — expired/invalid tokens are instead handled implicitly wherever a protected route re-checks `isLoggedIn`.
 
 ### `src/services/employee.service.ts`
 
 ```typescript
-1:
-2:  import api from "./api.service";
-3:
-4:  export const getEmployeeById = async (id) => {
-5:      console.log(id);
-6:      return await api.get(`/api/employees/${id}`);
-7:  };
-8:
-9:  export const getAllEmployees = async () => {
-10:     console.log(`${api}/api/employees`);
-11:     console.log('getAllEmployees');
-12:     return await api.get('/api/employees');
-13: };
+export const getEmployeeById = async (id) => await api.get(`/api/employees/${id}`);
+export const getAllEmployees = async () => await api.get('/api/employees');
 ```
 
-- **Line 4** — `id` has no type annotation (implicit `any`), a looseness the project accepts elsewhere too (see `Employee.tsx`'s `handleInput`/`getEmp` params). A stricter version would type it `id: string`.
-- **Lines 4–7, 9–13** — both functions are thin, typed-by-convention wrappers around `api.get`, returning the full Axios response object (so callers read `.data` themselves) — the "typed service layer" pattern from Module 08, minus explicit TS generics on the `.get<T>()` calls.
+Thin, typed-by-convention wrappers around `api.get` — the "typed service layer" pattern from Module 08, minus explicit TS generics on the calls (`id` is implicit `any`, a looseness the project accepts elsewhere too). Each returns the full Axios response object; callers read `.data` themselves.
 
 ### `src/services/user.service.ts`
 
 ```typescript
-1:
-2:  import api from "./api.service";
-3:
-4:  export const loginUser = async (user) => {
-5:      console.log(user);
-6:      return await api.post('/api/auth/login', user);
-7:  };
-8:
-9:  export const registerUser = async (user) => {
-10:     console.log(user);
-11:     return await api.post('/api/auth/register', user);
-12: };
-13:
-14: export const logoutUser = async () => {
-15:     return await api.post('/api/auth/logout');
-16: };
+export const loginUser = async (user) => await api.post('/api/auth/login', user);
+export const registerUser = async (user) => await api.post('/api/auth/register', user);
+export const logoutUser = async () => await api.post('/api/auth/logout');
 ```
 
-Three thin POST wrappers around the shared `api` instance — `loginUser`/`registerUser` forward the form payload; `logoutUser` posts with no body. `AuthProvider.tsx` calls `loginUser` directly; `Login.tsx` calls the context's `login()` rather than this service directly, keeping the token-persistence logic in one place (the provider).
+Three thin POST wrappers, same pattern as `employee.service.ts` above. `AuthProvider.tsx` calls `loginUser` directly; `Login.tsx` calls the context's `login()` rather than this service, keeping token-persistence logic in one place (the provider).
 
 ### `src/services/user.service.test.ts`
 
 ```typescript
-17: import '@testing-library/jest-dom';
-18: import api from './api.service';
-19: import { loginUser, registerUser, logoutUser } from './user.service';
-20:
-21: jest.mock('./api.service');
-22:
-23: const mockedApi = api as jest.Mocked<typeof api>;
-24:
-25: describe('user.service', () => {
-26:     beforeEach(() => {
-27:         jest.clearAllMocks();
-28:     });
-29:
-30:     test('loginUser posts credentials to /api/auth/login and returns the response', async () => {
-31:         const credentials = { email: 'trainee@example.com', password: 'secret123' };
-32:         mockedApi.post.mockResolvedValue({ data: { token: 'jwt-abc', employee: { id: 1 } } });
-33:
-34:         const result = await loginUser(credentials);
-35:
-36:         expect(mockedApi.post).toHaveBeenCalledTimes(1);
-37:         expect(mockedApi.post).toHaveBeenCalledWith('/api/auth/login', credentials);
-38:         expect(result.data.token).toBe('jwt-abc');
-39:     });
-40: // ...similar tests for failure, registerUser, logoutUser
+jest.mock('./api.service');
+const mockedApi = api as jest.Mocked<typeof api>;
+
+describe('user.service', () => {
+    beforeEach(() => { jest.clearAllMocks(); });
+
+    test('loginUser posts credentials to /api/auth/login and returns the response', async () => {
+        const credentials = { email: 'trainee@example.com', password: 'secret123' };
+        mockedApi.post.mockResolvedValue({ data: { token: 'jwt-abc', employee: { id: 1 } } });
+        const result = await loginUser(credentials);
+        expect(mockedApi.post).toHaveBeenCalledWith('/api/auth/login', credentials);
+        expect(result.data.token).toBe('jwt-abc');
+    });
+    // ...similar tests for failure, registerUser, logoutUser
 ```
 
-- **Line 21** — `jest.mock('./api.service')` auto-mocks the entire module: every exported function (here, the default-exported `api` Axios instance's methods) becomes a `jest.fn()` returning `undefined` unless configured.
-- **Line 23** — casting the mocked module `as jest.Mocked<typeof api>` gives TypeScript-aware autocomplete/type-checking on `.mockResolvedValue(...)` etc.
-- **Line 27** — `jest.clearAllMocks()` in `beforeEach` resets call history (but not implementations) between tests so assertions like `toHaveBeenCalledTimes(1)` on line 36 aren't polluted by a previous test's calls.
-- **Lines 32, 34, 36–38** — the classic mock-arrange-act-assert shape: stub what the dependency returns, call the real function under test, assert both *that* the dependency was called correctly (line 37 — proves `loginUser` forwards to the right endpoint with the right payload) and *that* the function's return value is correct (line 38 — proves it doesn't transform the response unexpectedly). This is testing the service layer in isolation from the network, exactly the "test behaviour, not implementation, but do it fast/offline" idea from Module 13.
+- **Line 21** — `jest.mock('./api.service')` auto-mocks the entire module: every exported function becomes a `jest.fn()` returning `undefined` unless configured; line 23 casts it `as jest.Mocked<typeof api>` for TypeScript-aware `.mockResolvedValue(...)` etc. `beforeEach`'s `jest.clearAllMocks()` (line 27) resets call history so assertions like `toHaveBeenCalledTimes(1)` aren't polluted by a previous test.
+- The rest is the classic mock-arrange-act-assert shape: stub what the dependency returns, call the real function under test, then assert both that the dependency was called correctly and the return value is correct — testing the service layer in isolation from the network, the "test behaviour, fast/offline" idea from Module 13.
 
 ## 2.3 Redux — `src/redux/store.ts` and `src/redux/empSlice.tsx`
 
 ### `src/redux/store.ts`
 
 ```typescript
-1:  import { configureStore } from "@reduxjs/toolkit";
-2:  import empReducer from './empSlice';
-3:
-4:  // createStore();
-5:
-6:  console.log('1. store configured');
-7:
-8:  // store = configureStore({
-9:  //     reducer : {}
-10: // });
-11:
-12: const store = configureStore({
-13:     reducer: {
-14:         emp: empReducer
-15:         // , dept: deptReducer, jobs: jobReducer etc
-16:     }
-17: });
-18:
-19: export default store;
-20:
-21: export type RootState = ReturnType<typeof store.getState>;
+const store = configureStore({
+    reducer: {
+        emp: empReducer
+        // , dept: deptReducer, jobs: jobReducer etc
+    }
+});
+
+export default store;
+export type RootState = ReturnType<typeof store.getState>;
 ```
 
-- **Lines 12–17** — `configureStore` (Redux Toolkit's modern replacement for the legacy `createStore` + manual middleware wiring) is given a `reducer` map with one key, `emp`, pointing at the employee slice's reducer. Every top-level key here becomes a branch of the global state tree (`state.emp.*`); the comment on line 15 shows the intended extension point for more slices (departments, jobs) that this project doesn't build out. Notably there is **no separate `auth` slice** — unlike the courseware's Module 11 example which puts both `employees` and `auth` reducers in the store, this project keeps auth entirely in React Context (see 2.4 below) and Redux only for employee data.
-- **Line 21** — `RootState` is inferred directly from the store's own `getState()` return type via `ReturnType<typeof ...>`, so it can never drift out of sync with the actual reducer shape — this is the type imported everywhere a `useSelector` needs to know the state shape (`state: RootState`).
-- This project does **not** define the typed `useAppDispatch`/`useAppSelector` wrapper hooks the courseware recommends (Module 11, §11.3) — components here call the raw `useDispatch`/`useSelector` from `react-redux` directly and annotate the selector's `state` parameter inline (`(state: RootState) => state.emp.empData`), which works but loses the convenience of not having to import `RootState` at every call site.
+`configureStore` is given a `reducer` map with one key, `emp` (every top-level key becomes a branch of the global state tree, `state.emp.*`; the comment shows the extension point for more slices this project doesn't build out). Notably there is **no separate `auth` slice** — unlike the courseware's Module 11 example, which puts `employees` and `auth` reducers side by side, this project keeps auth entirely in React Context (see 2.4) and Redux only for employee data. `RootState` is inferred from `store.getState()` via `ReturnType<typeof ...>`, so it can never drift out of sync with the actual reducer shape. This project does **not** define the typed `useAppDispatch`/`useAppSelector` wrapper hooks the courseware recommends (Module 11 §11.3) — components call the raw `useDispatch`/`useSelector` directly and annotate the selector's `state` parameter inline.
 
 ### `src/redux/empSlice.tsx`
 
 ```tsx
-1:  import { createSlice } from "@reduxjs/toolkit";
-2:
-3:  // slice = createSlice({name, intitalState, reducers});
-4:
-5:  console.log('empSlice');
-6:
-7:  const EmpSlice = createSlice(
-8:      {
-9:          name: 'emp',
-10:         initialState: {
-11:             empData: {
-12:                 id: '',
-13:                 firstName: '',
-14:                 lastName: '',
-15:                 email: '',
-16:                 salary: ''
-17:
-18:             },
-19:             allEmpData: []
-20:         },
-21:         reducers: {
-22:             getEmpById: (state, action) => {
-23:                 console.log(state);
-24:                 state.empData = action.payload;
-25:             },
-26:             getAllEmps: (state, action) => {
-27:                 console.log(state);
-28:                 state.allEmpData = action.payload;
-29:             }
-30:         }
-31:     }
-32: );
-33:
-34: export const { getEmpById, getAllEmps } = EmpSlice.actions;
-35:
-36: export default EmpSlice.reducer;
+const EmpSlice = createSlice({
+    name: 'emp',
+    initialState: {
+        empData: { id: '', firstName: '', lastName: '', email: '', salary: '' },
+        allEmpData: []
+    },
+    reducers: {
+        getEmpById: (state, action) => { state.empData = action.payload; },
+        getAllEmps: (state, action) => { state.allEmpData = action.payload; }
+    }
+});
+
+export const { getEmpById, getAllEmps } = EmpSlice.actions;
+export default EmpSlice.reducer;
 ```
 
-- **Lines 9–20** — `createSlice` takes a `name` (used as the prefix for auto-generated action types, e.g. `'emp/getEmpById'`), an `initialState` (a single-employee shape `empData`, plus `allEmpData: []` for the list page), and a `reducers` map.
-- **Lines 22–25, 26–29** — each reducer receives the slice's current `state` and the dispatched `action` (`{ type, payload }`), and appears to **mutate `state` directly** (`state.empData = action.payload`). As covered in Module 11, `createSlice` reducers run inside **Immer**, which intercepts these "mutations" on a draft and produces a correctly immutable new state object under the hood — this is *safe* here specifically because it's inside `createSlice`; the same pattern outside Redux Toolkit (plain `useState`) would be the "Bug 1 — state mutation" antipattern from Module 06.
-- **Line 34** — `EmpSlice.actions` is auto-generated by `createSlice`: calling `getEmpById(someEmployee)` produces the action object `{ type: 'emp/getEmpById', payload: someEmployee }` ready to `dispatch(...)`.
-- **Line 36** — the slice's `.reducer` (its combining reducer function across all the `reducers` keys) is the default export wired into `store.ts` as `emp: empReducer`.
-- No `extraReducers`/`createAsyncThunk` are used here — unlike the courseware's fuller example (Module 11, §11.4), the async API call happens in the **component** (`Employee.tsx`, `EmployeeList.tsx`) via the service layer, and only the *result* is dispatched into Redux as a plain synchronous action. This is a simpler, more manual variant of the same one-way data flow, appropriate for a small teaching app.
+`createSlice` takes a `name` (prefixes auto-generated action types, e.g. `'emp/getEmpById'`), an `initialState` (a single-employee shape `empData`, plus `allEmpData: []` for the list page), and a `reducers` map. Each reducer receives the slice's current `state` and the dispatched `action` (`{ type, payload }`), and appears to **mutate `state` directly** (`state.empData = action.payload`). As covered in Module 11, `createSlice` reducers run inside **Immer**, which intercepts these "mutations" on a draft and produces a correctly immutable new state object under the hood — this is *safe* here specifically because it's inside `createSlice`; the same pattern outside Redux Toolkit (plain `useState`) would be the "Bug 1 — state mutation" antipattern from Module 06. `EmpSlice.actions` is auto-generated: calling `getEmpById(someEmployee)` produces `{ type: 'emp/getEmpById', payload: someEmployee }` ready to `dispatch(...)`.
+
+No `extraReducers`/`createAsyncThunk` are used here — unlike the courseware's fuller example (Module 11, §11.4), the async API call happens in the **component** via the service layer, and only the *result* is dispatched into Redux as a plain synchronous action — a simpler, more manual variant of the same one-way data flow, appropriate for a small teaching app.
 
 ## 2.4 Context — Auth
 
 ### `src/context/AuthContextType.tsx`
 
 ```tsx
-1:  import { createContext } from "react";
-2:
-3:  const AuthContext = createContext<any>({
-4:      isLoggedIn: false,
-5:      employee: null,
-6:      login: (_employee: any, _token: string) => { },
-7:      logout: () => { }
-8:  });
-9:
-10: export default AuthContext;
+const AuthContext = createContext<any>({
+    isLoggedIn: false,
+    employee: null,
+    login: (_employee: any, _token: string) => { },
+    logout: () => { }
+});
+export default AuthContext;
 ```
 
-- **Line 3** — `createContext<any>(...)` creates the context object with a **default value** used only if a component reads it via `useContext` without any `<AuthContext.Provider>` above it in the tree. Typing it `<any>` (rather than a proper `AuthContextType` interface, as the courseware's Module 07/12 examples do) trades away compile-time safety on every `useContext(AuthContext)` call site — `login`, `logout`, `isLoggedIn`, `employee` are all effectively untyped wherever they're consumed (visible in `NavBar`, `Login`, `AppRoutes` below, none of which get autocomplete or type errors on context misuse). This is a deliberate simplification for the course but is exactly the kind of thing worth tightening in production code (an interface like the one shown in Module 12 — `AuthContextValue` with `user`, `isLoading`, `login`, `logout`, `isAuthenticated`, `isAdmin` — would be the fix).
-- **Lines 4–7** — the default value's shape mirrors what `AuthProvider` will actually supply, so any accidental usage outside a provider degrades gracefully (functions are no-ops, `isLoggedIn` is `false`) instead of throwing — a softer failure mode than the courseware's pattern of throwing inside a `useAuth()` wrapper hook if the context is `null`. This project has no such wrapper hook; every consumer calls `useContext(AuthContext)` directly.
+`createContext<any>(...)` creates the context object with a **default value**, used only if a component reads it via `useContext` without a `<AuthContext.Provider>` above it. Typing it `<any>` (rather than a proper `AuthContextType` interface, as Module 07/12 do) trades away compile-time safety on every `useContext(AuthContext)` call site — `login`, `logout`, `isLoggedIn`, `employee` are all effectively untyped wherever consumed (`NavBar`, `Login`, `AppRoutes`), a deliberate course simplification worth tightening in production. The default value's shape mirrors what `AuthProvider` actually supplies, so accidental usage outside a provider degrades gracefully (no-op functions, `isLoggedIn: false`) instead of throwing — a softer failure mode than the courseware's pattern of throwing inside a `useAuth()` wrapper hook if the context is `null`. This project has no such wrapper hook; every consumer calls `useContext(AuthContext)` directly.
 
 ### `src/context/AuthProvider.tsx`
 
 ```tsx
-1:  // AuthProvider.tsx
-2:  import { useState } from "react";
-3:  import AuthContext from "./AuthContextType";
-4:  import { loginUser } from "../services/user.service";
-5:
-6:  const AuthProvider = ({ children }: any) => {
-7:      const storedEmployee = localStorage.getItem('employee');
-8:      const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
-9:      const [employee, setEmployee] = useState(storedEmployee ? JSON.parse(storedEmployee) : null);
-10:
-11:     const login = async (credentials: { email: string; password: string }) => {
-12:         const response: any = await loginUser(credentials);
-13:         if (!response.data?.token) {
-14:             throw new Error('Invalid credentials');
-15:         }
-16:         localStorage.setItem('token', response.data.token);
-17:         localStorage.setItem('employee', JSON.stringify(response.data.employee));
-18:         setEmployee(response.data.employee);
-19:         setIsLoggedIn(true);
-20:         return response.data.employee;
-21:     };
-22:
-23:     const logout = () => {
-24:         localStorage.removeItem('token');
-25:         localStorage.removeItem('employee');
-26:         setEmployee(null);
-27:         setIsLoggedIn(false);
-28:     };
-29:
-30:     return (
-31:         <AuthContext.Provider value={{ isLoggedIn, employee, login, logout }}>
-32:             {children}
-33:         </AuthContext.Provider>
-34:     );
-35: };
-36:
-37: export default AuthProvider;
+const AuthProvider = ({ children }: any) => {
+    const storedEmployee = localStorage.getItem('employee');
+    const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
+    const [employee, setEmployee] = useState(storedEmployee ? JSON.parse(storedEmployee) : null);
+
+    const login = async (credentials: { email: string; password: string }) => {
+        const response: any = await loginUser(credentials);
+        if (!response.data?.token) { throw new Error('Invalid credentials'); }
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('employee', JSON.stringify(response.data.employee));
+        setEmployee(response.data.employee);
+        setIsLoggedIn(true);
+        return response.data.employee;
+    };
+
+    const logout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('employee');
+        setEmployee(null);
+        setIsLoggedIn(false);
+    };
+
+    return (
+        <AuthContext.Provider value={{ isLoggedIn, employee, login, logout }}>
+            {children}
+        </AuthContext.Provider>
+    );
+};
+export default AuthProvider;
 ```
 
-- **Line 6** — `{ children }: any` — the `children` prop (whatever JSX is nested inside `<AuthProvider>...</AuthProvider>`, here `<AppRoutes />`) is typed `any` rather than `ReactNode` (the type Module 03/07 recommends for children props); functionally identical, but again loses a layer of type safety.
-- **Line 7** — reads a possibly-`null` string synchronously from `localStorage` **during render**, before any state exists — this is the value used to *seed* `useState` on line 9, not read every render (React only calls the `useState` initializer once, on mount).
-- **Line 8** — `!!localStorage.getItem('token')` coerces "a token string exists" into a boolean; this is how the app "remembers" a logged-in session across page reloads/tab closes without re-hitting the login endpoint — a simpler version of the courseware's Module 12 pattern (which also has a commented-out call to `authService.getProfile()` to *verify* the token server-side on mount; this project trusts the stored token's mere presence, with no expiry check or server verification, and has no `isLoading` state gating renders while that check would happen).
-- **Line 9** — `JSON.parse(storedEmployee)` reconstructs the employee object from its JSON string; the ternary falls back to `null` if nothing was stored.
-- **Lines 11–21** — `login` is `async`, calling the `loginUser` service (line 12), then explicitly checking `response.data?.token` (optional chaining guards against `response.data` itself being missing) and **throwing** if it's absent (line 14) rather than silently failing — this is what lets `Login.tsx`'s `try/catch` around `await login(user)` show an error message. On success it writes both the token and the (JSON-stringified) employee object to `localStorage`, updates both pieces of React state (lines 18–19, which is what actually triggers `NavBar`/`AppRoutes`/`Login` to re-render and reflect the new logged-in status), and returns the employee object to the caller (useful if a caller wants the freshly logged-in user without waiting for a re-render, though none of the current call sites use that return value).
-- **Lines 23–28** — `logout` is fully synchronous: clears both storage keys and resets both state variables. Note this project's `logout` does **not** call `logoutUser()` (the server-side logout endpoint) — a difference from the courseware's Module 12 pattern (which fires the API call with `.catch(() => {})`, "fire and forget," before clearing local state) — here, logout is purely a client-side session clear.
-- **Lines 30–34** — the `Provider` supplies `{ isLoggedIn, employee, login, logout }` down the tree; every descendant that calls `useContext(AuthContext)` gets this exact object, and (because it's a fresh object literal every render) any component consuming the whole context value re-renders whenever `AuthProvider` re-renders — the standard Context trade-off flagged in Module 11 (§11.8: "Context rerenders whole subtree").
+- **Line 6** — `{ children }: any` is typed `any` rather than `ReactNode` (the type Module 03/07 recommends); functionally identical, but loses a layer of type safety.
+- **Lines 7–9** — `localStorage` is read synchronously during render to *seed* the two `useState` calls (React only runs the initializer once, on mount): `!!localStorage.getItem('token')` coerces "a token string exists" into `isLoggedIn`, and `JSON.parse(storedEmployee)` reconstructs the employee object — how the app "remembers" a session across reloads without re-hitting the login endpoint. This is a simpler version of the courseware's Module 12 pattern, which also verifies the token server-side via a commented-out `authService.getProfile()` call gated on `isLoading`; this project trusts the stored token's mere presence, with no expiry check or server verification.
+- **Lines 11–21** — `login` is `async`, calls the `loginUser` service, then **throws** if `response.data?.token` is absent rather than failing silently — this is what lets `Login.tsx`'s `try/catch` show an error message. On success it persists to `localStorage`, updates both pieces of React state (triggering `NavBar`/`AppRoutes`/`Login` to re-render), and returns the employee object (unused by current call sites).
+- **Lines 23–34** — `logout` is fully synchronous and does **not** call `logoutUser()` (the server-side logout endpoint) — unlike the courseware's Module 12 "fire and forget" API call before clearing local state, this is purely a client-side session clear. The `Provider` supplies `{ isLoggedIn, employee, login, logout }` down the tree as a fresh object literal every render, so any component consuming the whole context value re-renders whenever `AuthProvider` re-renders — the standard Context trade-off flagged in Module 11 §11.8.
 
 ### `src/context/AuthProvider.test.tsx`
 
 ```tsx
-1:  import { useContext } from 'react';
-2:  import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-3:  import '@testing-library/jest-dom';
-4:  import AuthContext from '../context/AuthContextType';
-5:  import AuthProvider from './AuthProvider';
-6:  import { loginUser } from '../services/user.service';
-7:
-8:  const TestConsumer = () => {
-9:      const { isLoggedIn, employee, login, logout } = useContext(AuthContext);
-10:
-11:     const handleLoginClick = async () => {
-12:         try {
-13:             await login({ email: 'trainee@example.com', password: 'secret123' });
-14:         } catch {
-15:             // swallow here -- the error itself is asserted separately below
-16:         }
-17:     };
-18:
-19:     return (
-20:         <div>
-21:             <p>isLoggedIn: {String(isLoggedIn)}</p>
-22:             <p>employee: {employee ? employee.name : 'none'}</p>
-23:             <button onClick={handleLoginClick}>trigger-login</button>
-24:             <button onClick={logout}>trigger-logout</button>
-25:         </div>
-26:     );
-27: };
-28:
-29: const renderWithProvider = () =>
-30:     render(
-31:         <AuthProvider>
-32:             <TestConsumer />
-33:         </AuthProvider>
-34:     );
-35:
-36: jest.mock('../services/user.service', () => ({
-37:     loginUser: jest.fn(),
-38: }));
-39:
-40: const mockedLoginUser = loginUser as jest.Mock;
-41:
-42: describe('AuthProvider', () => {
-43:     beforeEach(() => {
-44:         localStorage.clear();
-45:         mockedLoginUser.mockReset();
-46:     });
-47:
-48:     test('hydrates isLoggedIn/employee from localStorage on mount', () => {
-49:         localStorage.setItem('token', 'existing-jwt');
-50:         localStorage.setItem('employee', JSON.stringify({ name: 'Stored Employee' }));
-51:
-52:         renderWithProvider();
-53:
-54:         expect(screen.getByText('isLoggedIn: true')).toBeInTheDocument();
-55:         expect(screen.getByText('employee: Stored Employee')).toBeInTheDocument();
-56:     });
-57:  // ...
+const TestConsumer = () => {
+    const { isLoggedIn, employee, login, logout } = useContext(AuthContext);
+    // exposes context internals as visible text/buttons so RTL can assert on them
+    return (
+        <div>
+            <p>isLoggedIn: {String(isLoggedIn)}</p>
+            <p>employee: {employee ? employee.name : 'none'}</p>
+            <button onClick={() => login({ email: '...', password: '...' }).catch(() => {})}>trigger-login</button>
+            <button onClick={logout}>trigger-logout</button>
+        </div>
+    );
+};
+
+jest.mock('../services/user.service', () => ({ loginUser: jest.fn() }));
+const mockedLoginUser = loginUser as jest.Mock;
+
+describe('AuthProvider', () => {
+    beforeEach(() => { localStorage.clear(); mockedLoginUser.mockReset(); });
+
+    test('hydrates isLoggedIn/employee from localStorage on mount', () => {
+        localStorage.setItem('token', 'existing-jwt');
+        localStorage.setItem('employee', JSON.stringify({ name: 'Stored Employee' }));
+        render(<AuthProvider><TestConsumer /></AuthProvider>);
+        expect(screen.getByText('isLoggedIn: true')).toBeInTheDocument();
+        expect(screen.getByText('employee: Stored Employee')).toBeInTheDocument();
+    });
+    // ...
 ```
 
-- **Lines 8–27** — since `AuthProvider` has no meaningful UI of its own, the test defines a minimal `TestConsumer` component whose only job is to expose the context's internals (`isLoggedIn`, `employee`) as visible text, and wire the `login`/`logout` functions to buttons — this is the standard way to test a Context Provider's *behaviour* through RTL, since you can't directly call hooks/functions outside of a rendered component.
-- **Line 9** — destructures straight out of `useContext(AuthContext)`, proving the actual shape supplied by `AuthContext.Provider value={...}` in the real provider.
-- **Lines 36–38** — `jest.mock('../services/user.service', () => ({ loginUser: jest.fn() }))` replaces the entire module with a factory returning just a mock `loginUser` — since `AuthProvider` imports `loginUser` directly (not the whole service default-exported), only that named export needs mocking.
-- **Line 40** — casts the mocked import so TypeScript knows it has Jest mock methods (`.mockResolvedValue`, `.mockReset`, etc.).
-- **Lines 43–46** — `beforeEach` clears `localStorage` (so tests don't leak state into each other via the real browser-like storage jsdom provides) and resets the mock's call history/implementation.
-- **Lines 48–56** — this test seeds `localStorage` **before** `render()` is called, proving the provider's `useState` initializers (lines 8–9 of `AuthProvider.tsx`) correctly hydrate from storage on mount — exactly the "remember me across reload" behaviour described above.
-- Later tests (not fully reproduced here) exercise: default logged-out state with empty storage, a successful `login()` persisting token/employee and updating both storage and rendered text (using `waitFor` since `login` is async), a `login()` failure leaving state/storage untouched, that the thrown `Error('Invalid credentials')` actually propagates to the caller (captured via a second consumer component and asserted with `toBeInstanceOf(Error)`), and `logout()` clearing everything back to the logged-out state. Together they cover both branches of every conditional in `AuthProvider.tsx`.
+Since `AuthProvider` has no meaningful UI of its own, the test defines a minimal `TestConsumer` that exposes the context's internals as visible text and wires `login`/`logout` to buttons — the standard way to test a Context Provider's *behaviour* through RTL, since you can't call hooks/functions outside of a rendered component. `jest.mock('../services/user.service', () => ({ loginUser: jest.fn() }))` replaces only that named export (all `AuthProvider` needs), cast `as jest.Mock` so TypeScript knows it has Jest mock methods. `beforeEach` clears `localStorage` (jsdom's storage is real and would otherwise leak between tests) and resets the mock.
+
+The reproduced test seeds `localStorage` **before** `render()`, proving the provider's `useState` initializers correctly hydrate from storage on mount — the "remember me across reload" behaviour described above. Later tests (not reproduced) exercise: default logged-out state with empty storage, a successful `login()` persisting token/employee and updating rendered text (via `waitFor`, since `login` is async), a `login()` failure leaving state/storage untouched, the thrown `Error('Invalid credentials')` propagating to the caller, and `logout()` clearing everything back to logged-out. Together they cover both branches of every conditional in `AuthProvider.tsx`.
 
 ## 2.5 Routing — `src/routes/appRoutes.tsx`
 
@@ -673,19 +533,12 @@ Three thin POST wrappers around the shared `api` instance — `loginUser`/`regis
 26:                     path="/login"
 27:                     element={isLoggedIn ? <Navigate to="/home" replace /> : <Login />}
 28:                 />
-29:                 <Route
-30:                     path="/employees" element={isLoggedIn ? <Employee /> : <Navigate to="/login" replace />}
-31:                 />
-32:                 <Route
-33:                     path="/employees/:id" element={isLoggedIn ? <EmployeeDetails /> : <Navigate to="/login" replace />}
-34:                 />
-35:                 <Route
-36:                     path="/employeeslist" element={isLoggedIn ? <EmployeeList /> : <Navigate to="/login" replace />}
-37:                 />
-38:                 <Route
-39:                     path="/parent" element={isLoggedIn ? <Parent /> : <Navigate to="/login" replace />}
-40:                 />
-41:                 <Route path="*" element={<Page404 />} />
+29:                 <Route path="/employees" element={isLoggedIn ? <Employee /> : <Navigate to="/login" replace />} />
+30:                 {/* /employees/:id, /employeeslist, /parent repeat the identical ternary, only the element differs */}
+31:                 <Route path="/employees/:id" element={isLoggedIn ? <EmployeeDetails /> : <Navigate to="/login" replace />} />
+32:                 <Route path="/employeeslist" element={isLoggedIn ? <EmployeeList /> : <Navigate to="/login" replace />} />
+33:                 <Route path="/parent" element={isLoggedIn ? <Parent /> : <Navigate to="/login" replace />} />
+34:                 <Route path="*" element={<Page404 />} />
 42:                 <Route path="/register" element={<Register />} />
 43:             </Routes>
 44:         </BrowserRouter>
@@ -695,279 +548,165 @@ Three thin POST wrappers around the shared `api` instance — `loginUser`/`regis
 48: export default AppRoutes;
 ```
 
-- **Line 2** — routing primitives are imported from the `react-router` package directly (this project's dependency, v8.1.0), not `react-router-dom` as most of the courseware's snippets show; the API surface used here (`BrowserRouter`, `Routes`, `Route`, `Navigate`) is identical either way.
-- **Line 17** — reads `isLoggedIn` straight from context at the top of the component; because `AppRoutes` itself consumes the context, it re-renders whenever `AuthProvider`'s value changes (login/logout), which is exactly what's needed for the route guards below to react live.
-- **Line 20** — `<BrowserRouter>` is instantiated **inside `AppRoutes`**, not in `main.tsx` as Module 09's canonical example does. This means the router context is only established once `AppRoutes` itself renders — functionally equivalent here since `AppRoutes` is rendered once, high in the tree (inside `AuthProvider`), but it does mean nothing above `AppRoutes` (i.e., `AuthProvider`, `Provider`) can use router hooks like `useNavigate`.
-- **Line 21** — `<NavBar />` is rendered as a sibling of `<Routes>`, both inside `<BrowserRouter>`, so it appears on every page (it's not itself gated by a route) and can safely use `useNavigate`/`Link` since it's inside the router context.
+- **Line 2** — routing primitives are imported from the `react-router` package directly (this project's dependency, v8.1.0), not `react-router-dom` as most of the courseware's snippets show; the API surface used (`BrowserRouter`, `Routes`, `Route`, `Navigate`) is identical either way.
+- **Lines 17, 20–21** — `isLoggedIn` is read from context at the top of the component so `AppRoutes` re-renders on login/logout, driving the route guards below live. `<BrowserRouter>` is instantiated **inside `AppRoutes`**, not in `main.tsx` as Module 09's canonical example does — functionally equivalent since `AppRoutes` renders once, high in the tree, but nothing above it (`AuthProvider`, `Provider`) can use router hooks like `useNavigate`. `<NavBar />` sits as a sibling of `<Routes>` inside `<BrowserRouter>`, so it appears on every page and can safely use `useNavigate`/`Link`.
 - **Line 23** — the root path `/` immediately redirects to `/home` via `<Navigate replace />` — `replace` swaps the current history entry rather than pushing a new one, so the back button doesn't get stuck bouncing between `/` and `/home`.
-- **Lines 25–28, 29–40** — this project implements route protection with **inline ternaries per route** (`isLoggedIn ? <Page /> : <Navigate to="/login" replace />`) rather than the courseware's `<ProtectedRoute>` wrapper-component-with-`<Outlet/>` pattern (Module 09 §9.9, Module 12 §12.5). Functionally similar (unauthenticated users get redirected), but more repetitive — every protected route repeats the same ternary instead of nesting them under one guard component, and there's no "remember where I was going" `state={{ from: location }}` behaviour here, so after logging in the user always lands wherever `Login.tsx` hardcodes (`/employeeslist`), not back at the page they originally tried to reach.
-- **Line 27** — the `/login` route is the mirror image of the others: if **already** logged in, redirect *away* from the login page.
-- **Line 33** — `path="/employees/:id"` declares a URL parameter `id`, read inside `EmployeeDetails` via `useParams()`.
-- **Line 41** — the catch-all `path="*"` renders `Page404`; **critically it must be the last-matched pattern to act as a true fallback** — but note **line 42's `/register` route is declared after it**. React Router's `<Routes>` matches routes by best-match ranking, not strictly by declaration order, so `/register` still resolves correctly to `Register` rather than falling through to the wildcard — but this ordering is fragile style (the courseware explicitly notes "404 — must be last") and would be worth reordering for clarity/safety even though it happens to work.
+- **Lines 25–40** — this project implements route protection with **inline ternaries per route** (`isLoggedIn ? <Page /> : <Navigate to="/login" replace />`, and the mirror-image check on line 27 for `/login` itself: if already logged in, redirect *away*) rather than the courseware's `<ProtectedRoute>` wrapper-component-with-`<Outlet/>` pattern (Module 09 §9.9, Module 12 §12.5). Functionally similar, but more repetitive — every protected route repeats the same ternary — and there's no "remember where I was going" `state={{ from: location }}` behaviour, so after logging in the user always lands wherever `Login.tsx` hardcodes (`/employeeslist`), not back at the page they originally tried to reach. `path="/employees/:id"` (line 33) declares a URL parameter `id`, read inside `EmployeeDetails` via `useParams()`.
+- **Line 41** — the catch-all `path="*"` renders `Page404`; **critically it must be the last-matched pattern to act as a true fallback** — but note **line 42's `/register` route is declared after it**. React Router's `<Routes>` matches by best-match ranking, not strictly declaration order, so `/register` still resolves correctly — but this ordering is fragile style (the courseware explicitly notes "404 — must be last") and would be worth reordering for clarity/safety even though it happens to work.
 
 ## 2.6 Components
 
 ### `src/components/navBar.tsx`
 
 ```tsx
-1:  import { useContext } from "react";
-2:  import { Link, useNavigate } from "react-router";
-3:  import AuthContext from "../context/AuthContextType";
-4:  // import toggleTheme from "./toggleTheme";
-5:
-6:  const NavBar = () => {
-7:      const { isLoggedIn, logout } = useContext(AuthContext);
-8:      const navigate = useNavigate();
-9:
-10:     const handleLogout = () => {
-11:         logout();
-12:         navigate('/login');
-13:     };
-14:
-15:     return (
-16:         <>
-17:             <p>{isLoggedIn ? 'logged in' : 'logged out'}</p>
-18:             <nav>
-19:                 <Link to='/home'>Home</Link>
-20:                 {isLoggedIn && <Link to='/parent'>Parent</Link>}
-21:                 {isLoggedIn && <Link to='/employees'>Employees</Link>}
-22:                 {isLoggedIn && <Link to='/employeeslist'>EmployeesList</Link>}
-23:                 {!isLoggedIn && <Link to='/login'>Login</Link>}
-24:                 {!isLoggedIn && <Link to='/register'>Register</Link>}
-25:                 {isLoggedIn && <button onClick={handleLogout}>Logout</button>}
-26:                 {/* <button onClick={toggleTheme}>Color Mode</button> */}
-27:             </nav>
-28:         </>
-29:     );
-30: };
-31:
-32: export default NavBar;
+const NavBar = () => {
+    const { isLoggedIn, logout } = useContext(AuthContext);
+    const navigate = useNavigate();
+    const handleLogout = () => { logout(); navigate('/login'); };
+
+    return (
+        <nav>
+            <Link to='/home'>Home</Link>
+            {isLoggedIn && <Link to='/parent'>Parent</Link>}
+            {isLoggedIn && <Link to='/employees'>Employees</Link>}
+            {isLoggedIn && <Link to='/employeeslist'>EmployeesList</Link>}
+            {!isLoggedIn && <Link to='/login'>Login</Link>}
+            {!isLoggedIn && <Link to='/register'>Register</Link>}
+            {isLoggedIn && <button onClick={handleLogout}>Logout</button>}
+            {/* <button onClick={toggleTheme}>Color Mode</button> */}
+        </nav>
+    );
+};
+export default NavBar;
 ```
 
-- **Line 7** — pulls `isLoggedIn` and `logout` off the context; because this component doesn't call the `login` function, TypeScript (were the context properly typed) wouldn't need to know about it here — but since the context is `any`, nothing is enforced either way.
-- **Line 8** — `useNavigate()` returns the imperative navigation function; only usable because `NavBar` renders inside `<BrowserRouter>` (established in `AppRoutes`, see 2.5).
-- **Lines 10–13** — `handleLogout` first clears the auth state via the context's `logout()` (synchronous — see `AuthProvider.tsx`), then imperatively navigates to `/login`. Note this fires **after** `logout()` runs, so by the time `/login` renders, `isLoggedIn` is already `false` and `AppRoutes`' `/login` ternary correctly shows `<Login/>` rather than redirecting away.
-- **Line 17** — a simple ternary rendering a plain status string — always visible regardless of auth state, unlike the links below it.
-- **Lines 20–24** — five `&&` short-circuit expressions gating each nav link on `isLoggedIn` (or its negation) — the exact Pattern 2 from Module 04, applied five times to build a role-appropriate nav bar without ever rendering `false`/`null` visibly (since `false` renders as nothing).
-- **Line 25** — the Logout button itself is also gated on `isLoggedIn`, so it can never appear when there's nothing to log out of.
-- **Line 26** — a commented-out call to the (unused-in-production) `toggleTheme` utility described next.
+- **Lines 7–13** — pulls `isLoggedIn`/`logout` off the context (`useContext`, usable because the context is `any`, nothing enforces that `login` isn't called too); `useNavigate()` works because `NavBar` renders inside `<BrowserRouter>` (established in `AppRoutes`, see 2.5). `handleLogout` clears auth state via `logout()` first, *then* navigates to `/login` — by the time that route renders, `isLoggedIn` is already `false`, so `AppRoutes`' ternary correctly shows `<Login/>` instead of redirecting away.
+- **Lines 17–25** — five `&&` short-circuit expressions (Module 04 Pattern 2) gate each nav link on `isLoggedIn` or its negation, including the Logout button itself, so nothing appears when there's nothing to act on. Line 26 is a commented-out call to the `toggleTheme` utility described next.
 
 ### `src/components/toggleTheme.tsx`
 
 ```tsx
-1:  const toggleTheme = () => {
-2:
-3:      const html = document.documentElement;
-4:
-5:      if (html.dataset.theme === "light") {
-6:          html.dataset.theme = "dark";
-7:      } else {
-8:          html.dataset.theme = "light";
-9:      }
-10: };
-11: export default toggleTheme;
+const toggleTheme = () => {
+    const html = document.documentElement;
+    html.dataset.theme = html.dataset.theme === "light" ? "dark" : "light";
+};
+export default toggleTheme;
 ```
 
-- **Line 3** — `document.documentElement` is the `<html>` root element — this function reaches directly into the DOM, which is fine for something that isn't React-managed state (there's nothing to re-render; it's a pure side effect / imperative styling toggle, the same category of DOM-manipulation the courseware's Module 05 §5.7 dark-mode section describes: `document.documentElement.setAttribute('data-theme', theme)`).
-- **Lines 5–9** — `html.dataset.theme` reads/writes the `data-theme` HTML attribute (the `dataset` API auto-converts `data-theme` ↔ `.theme`); toggling this attribute is what a CSS rule like `[data-theme='dark'] { --color-bg: ...; }` (Module 05) would key off to swap the whole app's colour tokens with zero React re-render needed.
-- This is **not a hook** — it's a plain function, not `useToggleTheme`, so it can't hold React state itself; it's currently wired up only as a commented-out `onClick` in `NavBar` (line 26 above), meaning the feature exists in the codebase but isn't actually active in the running app.
+`document.documentElement` reaches directly into the DOM (the `<html>` root), fine here since it's a pure side effect with nothing to re-render, the same category of imperative DOM manipulation Module 05 §5.7's dark-mode section describes. `html.dataset.theme` reads/writes the `data-theme` attribute; toggling it is what a CSS rule like `[data-theme='dark'] { --color-bg: ...; }` would key off to swap the app's colour tokens with zero React re-render needed. This is **not a hook** — a plain function, not `useToggleTheme`, so it holds no React state itself; it's wired up only as a commented-out `onClick` in `NavBar` above, so the feature exists in the codebase but isn't active in the running app.
 
 ## 2.7 Pages, in Logical Flow
 
 ### `src/pages/Login.tsx`
 
 ```tsx
-1:  import { useContext, useEffect, useState } from "react";
-2:  import { useNavigate } from "react-router"; // this
-3:  import AuthContext from "../context/AuthContextType";
-4:
-5:  const Login = () => {
-6:
-7:      const { login, isLoggedIn } = useContext(AuthContext);
-8:      const [user, setUser] = useState({ email: '', password: '' });
-9:      const [message, setMessage] = useState('');
-10:     const navigate = useNavigate();
-11:
-12:     useEffect(() => {
-13:         console.log(isLoggedIn);
-14:         if (isLoggedIn) {
-15:             navigate('/employeeslist', { replace: true });
-16:         }
-17:     }, [isLoggedIn, navigate]);
-18:
-19:     const handleInput = (evt: any) => {
-20:         const { name, value } = evt.target;
-21:         setUser((prevUser) => ({
-22:             ...prevUser,
-23:             [name]: value,
-24:         }));
-25:     };
-26:
-27:     const submitInput = async (evt: any) => {
-28:         evt.preventDefault();
-29:         try {
-30:             await login(user);
-31:             setMessage('Login successful, going to Employee list...');
-32:             setMessage('');
-33:             navigate('/employeeslist');
-34:         } catch (error) {
-35:             setMessage('Invalid credentials.');
-36:             console.error(error);
-37:         } finally {
-38:             setUser({ email: '', password: '' });
-39:         }
-40:     };
-41:
-42:     return (
-43:         <>
-44:             <h1>Login Component (Controlled Form) </h1>
-45:             <p>This is login component.</p>
-46:
-47:             <form onSubmit={submitInput}>
-48:                 <input
-49:                     type="email"
-50:                     name="email"
-51:                     value={user.email}
-52:                     onChange={handleInput}
-53:                     autoFocus
-54:                     placeholder="Enter your email"
-55:                 />
-56:                 <br />
-57:                 <input
-58:                     type="password"
-59:                     name="password"
-60:                     value={user.password}
-61:                     onChange={handleInput}
-62:                     placeholder="Enter your password"
-63:                 />
-64:                 <br />
-65:                 <button type="submit">🔓Login</button>
-66:             </form>
-67:             <p>{message}</p>
-68:         </>
-69:     );
-70: };
-71:
-72: export default Login;
+const Login = () => {
+    const { login, isLoggedIn } = useContext(AuthContext);
+    const [user, setUser] = useState({ email: '', password: '' });
+    const [message, setMessage] = useState('');
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (isLoggedIn) { navigate('/employeeslist', { replace: true }); }
+    }, [isLoggedIn, navigate]);
+
+    const handleInput = (evt: any) => {
+        const { name, value } = evt.target;
+        setUser((prevUser) => ({ ...prevUser, [name]: value }));
+    };
+
+    const submitInput = async (evt: any) => {
+        evt.preventDefault();
+        try {
+            await login(user);
+            setMessage('Login successful, going to Employee list...');
+            setMessage('');
+            navigate('/employeeslist');
+        } catch (error) {
+            setMessage('Invalid credentials.');
+            console.error(error);
+        } finally {
+            setUser({ email: '', password: '' });
+        }
+    };
+
+    return (
+        <>
+            <form onSubmit={submitInput}>
+                <input type="email" name="email" value={user.email} onChange={handleInput} autoFocus placeholder="Enter your email" />
+                <input type="password" name="password" value={user.password} onChange={handleInput} placeholder="Enter your password" />
+                <button type="submit">🔓Login</button>
+            </form>
+            <p>{message}</p>
+        </>
+    );
+};
+export default Login;
 ```
 
-- **Line 7** — destructures `login` and `isLoggedIn` off context; `login` here is the async function defined in `AuthProvider`.
-- **Line 8** — a single `user` state object holds **both** form fields (`email`, `password`) rather than two separate `useState` calls — the "state with objects" pattern from Module 03 §3.4.
-- **Lines 12–17** — this `useEffect` re-runs whenever `isLoggedIn` or `navigate` changes (line 17's dependency array); on mount, and again any time `isLoggedIn` flips to `true` (e.g., because `login()` succeeded elsewhere or because a stored token hydrated it on refresh), it redirects away from the login page with `replace: true` (so `/login` doesn't linger in browser history for an already-authenticated user). Including `navigate` in the deps array is correct-but-usually-redundant — `useNavigate()`'s return value is stable across renders in React Router v6+, so this effect effectively only re-fires on `isLoggedIn` changes.
-- **Lines 19–25** — `handleInput` is a **single shared handler** for both inputs, using the DOM `name` attribute (line 20) to know which field to update, and computed-property-name spread (`[name]: value` on line 23) to update just that one key of the `user` object immutably — the standard multi-field-controlled-form pattern.
-- **Line 27** — `submitInput` is `async` because it `await`s the context's `login`.
-- **Line 28** — `evt.preventDefault()` stops the browser's native form submission (which would cause a full page reload) — mandatory on every controlled form submit handler, as the courseware repeatedly stresses.
-- **Lines 29–39** — `try/catch/finally`: on success, sets a (briefly, and then immediately overwritten — see below) success message and navigates to `/employeeslist`; on failure, sets an error message and logs the error; `finally` **always** clears the form fields back to empty, regardless of success or failure — visible in the test `'form fields are cleared after submit, whether login succeeds or fails'`.
-- **Lines 31–32** — a real logic quirk worth flagging: `setMessage('Login successful, going to Employee list...')` is immediately followed by `setMessage('')` on the very next line, in the same synchronous block — because React **batches** these two state updates (per Module 15's batching note and Module 06's related discussion), only the *last* value (`''`) is what actually ever reaches the screen; the success message is set but effectively never rendered. This is exactly the kind of subtle bug the debugging module trains you to spot by reading state-update call order carefully.
-- **Line 33** — `navigate('/employeeslist')` (no `replace` here, unlike the `useEffect`'s redirect on line 15) pushes a new history entry, so the back button *would* return to `/login` after a fresh manual login — an intentional (or at least consistent) difference from the "already logged in" auto-redirect case.
-- **Lines 48–55, 57–63** — two fully controlled inputs: `value={user.email}`/`value={user.password}` are driven by state, `onChange={handleInput}` keeps state in sync with every keystroke — the "React owns the value" model from Module 10 §10.2, contrasted directly with `Register.tsx`'s uncontrolled approach below.
-- **Line 67** — `{message}` renders the current error/status text; since `message` starts as `''` and `''` is falsy-but-renders-as-nothing in this position (an empty string produces no visible text node), no stray text shows before a submit attempt.
+A single `user` state object holds **both** form fields rather than two separate `useState` calls — the "state with objects" pattern from Module 03 §3.4. The `useEffect` redirects away from `/login` with `replace: true` (so it doesn't linger in history) whenever `isLoggedIn` becomes/is `true` — on mount or after a successful login; `navigate` in the deps array is correct-but-redundant since its identity is stable in React Router v6+. `handleInput` is a **single shared handler** for both inputs, using the DOM `name` attribute plus computed-property spread (`[name]: value`) to update just that one key of `user` immutably.
 
-There is a **known, intentionally-left-in gap** referenced in `Login.test.tsx`'s skipped test: an earlier commented-out version of this file had a `validateInput()` function whose boolean return value was computed but never actually checked before calling `login(user)` — meaning the current active code has *no* client-side pre-submit validation at all (it relies entirely on the server rejecting bad credentials). The skipped test documents this as a known pending fix.
+`submitInput` is `async`, calls `evt.preventDefault()`, then `try/catch/finally`: `finally` always clears the form fields regardless of outcome. On success it navigates to `/employeeslist` (no `replace`, unlike the effect's redirect, so back *would* return to `/login`). A real logic quirk: `setMessage('Login successful...')` is immediately overwritten by `setMessage('')` in the same synchronous block — React **batches** both updates, so only the last value ever reaches the screen and the success message never actually renders. The two inputs are fully controlled (`value`/`onChange` driven by state), the "React owns the value" model from Module 10 §10.2, contrasted with `Register.tsx`'s uncontrolled approach below.
+
+There is a **known, intentionally-left-in gap** referenced in `Login.test.tsx`'s skipped test: an earlier commented-out version of this file had a `validateInput()` function whose boolean return value was computed but never actually checked before calling `login(user)` — the current active code has *no* client-side pre-submit validation, relying entirely on the server rejecting bad credentials.
 
 ### `src/pages/Login.test.tsx`
 
 ```tsx
-1:  import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-2:  import '@testing-library/jest-dom';
-3:  import AuthContext from '../context/AuthContextType';
-4:  import Login from './Login';
-5:
-6:  const mockNavigate = jest.fn();
-7:  jest.mock('react-router', () => ({
-8:      useNavigate: () => mockNavigate,
-9:  }));
-10:
-11: const renderLogin = (contextValue: any) => {
-12:     return render(
-13:         <AuthContext.Provider value={contextValue}>
-14:             <Login />
-15:         </AuthContext.Provider>
-16:     );
-17: };
+const mockNavigate = jest.fn();
+jest.mock('react-router', () => ({ useNavigate: () => mockNavigate }));
+
+const renderLogin = (contextValue: any) =>
+    render(<AuthContext.Provider value={contextValue}><Login /></AuthContext.Provider>);
 ```
 
-- **Lines 6–9** — mocks the entire `react-router` module so `useNavigate()` inside `Login` returns a Jest spy (`mockNavigate`) instead of a real navigation function requiring an actual `<BrowserRouter>` ancestor — this decouples the test from needing a full router setup just to render one page component.
-- **Lines 11–17** — a small test helper that renders `<Login>` wrapped directly in `<AuthContext.Provider value={contextValue}>` (bypassing the real `AuthProvider` entirely) — this lets each test supply a **custom** `login`/`isLoggedIn` combination (a stubbed `login: jest.fn().mockResolvedValue(...)` or `.mockRejectedValue(...)`) to drive `Login`'s different branches without touching `localStorage` or real network calls — a clean example of testing a consumer component in isolation from its actual provider.
-- Later tests (seen in full earlier) verify: both inputs render, typing updates the controlled value via `fireEvent.change`, submit calls `login()` with the exact current field values, a successful login navigates to `/employeeslist`, a failed login shows `'Invalid credentials.'` and does **not** navigate, fields clear after submit either way, and — testing the `useEffect` redirect directly — rendering with `isLoggedIn: true` from the start immediately triggers `mockNavigate` with `('/employeeslist', { replace: true })`, proving the effect on `Login.tsx` lines 12–17 runs correctly on mount.
+Mocks the entire `react-router` module so `useNavigate()` returns a Jest spy (`mockNavigate`) instead of needing a real `<BrowserRouter>` ancestor, and `renderLogin` wraps `<Login>` directly in `<AuthContext.Provider value={contextValue}>` (bypassing the real `AuthProvider`) so each test can supply a **custom** `login`/`isLoggedIn` combination — a clean example of testing a consumer component in isolation from its actual provider. Later tests (not reproduced) verify: both inputs render, typing updates the controlled value via `fireEvent.change`, submit calls `login()` with the exact current field values, a successful login navigates to `/employeeslist`, a failed login shows `'Invalid credentials.'` and does **not** navigate, fields clear after submit either way, and rendering with `isLoggedIn: true` from the start immediately triggers `mockNavigate('/employeeslist', { replace: true })`, proving `Login.tsx`'s effect runs correctly on mount.
 
 ### `src/pages/Register.tsx`
 
 ```tsx
-1:  import { useRef } from "react";
-2:  import { registerUser } from "../services/user.service";
-3:  import { useNavigate } from "react-router"; // this
-4:
-5:  const Register = () => {
-6:
-7:      const navigate = useNavigate();
-8:
-9:      const firstNameRef = useRef<HTMLInputElement>(null);
-10:     const lastNameRef = useRef<HTMLInputElement>(null);
-11:     const emailRef = useRef<HTMLInputElement>(null);
-12:     const passwordRef = useRef<HTMLInputElement>(null);
-13:
-14:     const handleRegister = async (evt) => {
-15:         evt.preventDefault();
-16:
-17:         const employee = {
-18:             firstName: firstNameRef.current?.value,
-19:             lastName: lastNameRef.current?.value,
-20:             email: emailRef.current?.value,
-21:             password: passwordRef.current?.value
-22:         };
-23:         if (!employee.firstName || !employee.lastName ) {
-24:             console.log('All fields are required.');
-25:             return;
-26:         }
-27:
-28:         try {
-29:             const response = await registerUser(employee);
-30:             console.log(response.data);
-31:             navigate('/login');
-32:             if (firstNameRef.current) firstNameRef.current.value = "";
-33:             if (lastNameRef.current) lastNameRef.current.value = "";
-34:             if (emailRef.current) emailRef.current.value = "";
-35:             if (passwordRef.current) passwordRef.current.value = "";
-36:         } catch (error) {
-37:             console.error(error);
-38:         }
-39:     };
-40:
-41:     return (
-42:         <>
-43:             <h1>Register Component (Uncontrolled Form) </h1>
-44:             <form onSubmit={handleRegister}>
-45:                 <label htmlFor="">First Name</label>
-46:                 <input
-47:                     type="text"
-48:                     ref={firstNameRef}
-49:                     required
-50:                     minLength={4}
-51:                     maxLength={30}
-52:                     pattern="[A-Za-z ]"
-53:                     title="Only letters and spaces are allowed."
-54:                     autoFocus
-55:                 />
-56:                 <br />
-57:                 (lastName, email, password inputs follow the same ref pattern)
-58:                 <button type="submit">
-59:                     Register
-60:                 </button>
-61:             </form>
-62:         </>
-63:     );
-64: };
-65:
-66: export default Register;
+const Register = () => {
+    const navigate = useNavigate();
+    const firstNameRef = useRef<HTMLInputElement>(null);
+    const lastNameRef = useRef<HTMLInputElement>(null);
+    const emailRef = useRef<HTMLInputElement>(null);
+    const passwordRef = useRef<HTMLInputElement>(null);
+
+    const handleRegister = async (evt) => {
+        evt.preventDefault();
+        const employee = {
+            firstName: firstNameRef.current?.value, lastName: lastNameRef.current?.value,
+            email: emailRef.current?.value, password: passwordRef.current?.value
+        };
+        if (!employee.firstName || !employee.lastName) { console.log('All fields are required.'); return; }
+
+        try {
+            await registerUser(employee);
+            navigate('/login');
+            if (firstNameRef.current) firstNameRef.current.value = "";
+            // lastNameRef/emailRef/passwordRef cleared the same way
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    return (
+        <form onSubmit={handleRegister}>
+            <input type="text" ref={firstNameRef} required minLength={4} maxLength={30} pattern="[A-Za-z ]" title="Only letters and spaces are allowed." autoFocus />
+            {/* lastName, email, password inputs follow the same ref pattern */}
+            <button type="submit">Register</button>
+        </form>
+    );
+};
+export default Register;
 ```
 
-- **Line 5's title, "Uncontrolled Form"** — this page is the deliberate counterpoint to `Login.tsx`'s controlled form, matching Module 10 §10.1's comparison table exactly.
-- **Lines 9–12** — four `useRef<HTMLInputElement>(null)` calls, one per field. Unlike `useState`, assigning to `.current` (which React does automatically via the `ref` prop) does **not** trigger a re-render — the DOM itself is the single source of truth for these fields' current values, only read when actually needed (on submit).
-- **Lines 17–22** — values are read directly off `ref.current?.value` at submit time — the `?.` guards against `.current` still being `null` (which it can be, in principle, before the input mounts, though in practice `handleRegister` only runs after the form has rendered).
-- **Lines 23–26** — a minimal guard-clause validation (Module 04 Pattern 4): if `firstName`/`lastName` are falsy (`undefined` or empty string), log and `return` early, skipping the API call entirely. Note this only checks two of the four fields — `email`/`password` presence relies solely on the native HTML `required` attribute (line 49 etc.) rather than this JS check.
-- **Lines 32–35** — after a successful registration, the form is manually cleared by directly setting `.value = ""` on each ref's current DOM node — this is only possible/necessary because the inputs are uncontrolled; a controlled form would instead reset its `useState` object, as `Login.tsx` does in its `finally` block.
-- **Lines 49–54** — native HTML validation attributes (`required`, `minLength`, `maxLength`, `pattern`, `title` for the tooltip shown on pattern-mismatch) do real client-side validation work **without any React state at all** — the browser itself blocks submission (and shows its native validation UI) if these constraints aren't met, which is part of why this page can afford to skip JS-side validation for those fields.
+This page is the deliberate counterpoint to `Login.tsx`'s controlled form, matching Module 10 §10.1's comparison table exactly.
+
+- **Lines 9–12, 17–22** — four `useRef<HTMLInputElement>(null)` calls, one per field. Unlike `useState`, assigning to `.current` (which React does automatically via the `ref` prop) does **not** trigger a re-render — the DOM itself is the source of truth, only read via `ref.current?.value` at submit time (the `?.` guards against `.current` still being `null`).
+- **Lines 23–26** — a minimal guard-clause validation (Module 04 Pattern 4) checks only `firstName`/`lastName` and returns early if falsy; `email`/`password` presence relies solely on the native HTML `required` attribute rather than this JS check.
+- **Lines 32–35** — after a successful registration, the form is manually cleared by directly setting `.value = ""` on each ref's current DOM node — only possible/necessary because the inputs are uncontrolled; a controlled form would instead reset its `useState` object, as `Login.tsx` does in its `finally` block.
+- **Lines 49–54** — native HTML validation attributes (`required`, `minLength`, `maxLength`, `pattern`, `title` for the pattern-mismatch tooltip) do real client-side validation **without any React state at all** — the browser blocks submission and shows its own validation UI if unmet, which is part of why this page can skip JS-side validation for those fields.
 
 ### `src/pages/Home.tsx`
 
@@ -1001,10 +740,8 @@ There is a **known, intentionally-left-in gap** referenced in `Login.test.tsx`'s
 ```
 
 - **Line 2** — a plain (non-module) global CSS import, per Module 05 §5.2 — `Home.css`'s class names (`.panel`, `.panel.open`) apply app-wide, not scoped to this component.
-- **Line 6** — the simplest possible `useState` usage: a single boolean toggling a UI panel.
-- **Line 14** — `onClick={() => setIsOpen(!isOpen)}` — an inline arrow function needed here because an argument-free toggle *could* pass the setter directly (`onClick={() => setIsOpen(o => !o)}` would be the more robust functional-update form, avoiding any stale-closure risk from calling `!isOpen` on a value captured at render time; in a simple single-click-at-a-time UI like this it's a low-risk shortcut, but functionally it is exactly the "read `count` directly rather than via `prev =>`" pattern Module 06 flags as a latent stale-closure bug source).
-- **Line 15** — a ternary swapping button label based on `isOpen`.
-- **Line 18** — a dynamic `className`, combined via a plain ternary+template-literal-free string (Module 05 §5.4's "template literal — simple cases" approach, here without even needing interpolation since there are only two whole-string outcomes) — this is what drives the CSS transition (Module 15's "Bonus 03 — Animations": `.panel { transition: ...; }` + a `.open` modifier class = zero-JS animation, React's only job is toggling the class).
+- **Line 6, 14** — the simplest possible `useState` usage: a boolean toggled by `onClick={() => setIsOpen(!isOpen)}`, which reads `!isOpen` directly rather than via a functional update (`setIsOpen(o => !o)`) — low-risk here, but the same stale-closure shape Module 06 flags as a bug source elsewhere.
+- **Line 18** — a dynamic `className` (ternary) drives the CSS transition — Module 15's "zero-JS animation" pattern: `.panel { transition: ...; }` + a `.open` modifier class, React's only job is toggling the class.
 
 ### `src/pages/Employee.tsx`
 
@@ -1040,46 +777,33 @@ There is a **known, intentionally-left-in gap** referenced in `Login.test.tsx`'s
 29:         evt.preventDefault();
 30:         getEmployeeById(employeeId)
 31:             .then((response: any) => {
-32:                 console.log(response.data);
-33:                 setEmployee(response.data);
-34:                 dispatch(getEmpById(response.data));
-35:                 setEmployeeId('');
-36:             })
-37:             .catch(err => console.error(err));
-38:     };
-39:     return (
-40:         <>
-41:             <h1>Employee Component</h1>
-42:             <p>This is employee component.</p>
-43:             <>
-44:             <p>Sample: 6a44b9534f9ff7e746643008</p>
-45:                 <form onSubmit={getEmp}>
-46:                     <input type="text" name="firstName" value={employeeId} onChange={handleInput} autoFocus placeholder="Please enter employee id" />
-47:                     <button type="submit">Find Employee</button>
-48:                 </form>
-49:             </>
-50:             <h3>Data</h3>
-51:             <>{employee && (<>
-52:                 <p>Id: {dataFromStore.id}</p>
-53:                 <p>First Name: {dataFromStore.firstName}</p>
-54:                 <p>last Name: {dataFromStore.lastName}</p>
-55:                 <p>Email: {dataFromStore.email}</p>
-56:                 <p>Salary: {dataFromStore.salary}</p>
-57:             </>)} </>
-58:         </>
-59:     );
-60: };
-61: export default Employee;
+32:                 setEmployee(response.data);
+33:                 dispatch(getEmpById(response.data));
+34:                 setEmployeeId('');
+35:             })
+36:             .catch(err => console.error(err));
+37:     };
+38:     return (
+39:         <>
+40:             <form onSubmit={getEmp}>
+41:                 <input type="text" value={employeeId} onChange={handleInput} placeholder="Please enter employee id" />
+42:                 <button type="submit">Find Employee</button>
+43:             </form>
+44:             {employee && (<>
+45:                 <p>Id: {dataFromStore.id}</p>
+46:                 {/* First Name / Last Name / Email / Salary follow the same <p>Label: {dataFromStore.field}</p> pattern */}
+47:             </>)}
+48:         </>
+49:     );
+50: };
+51: export default Employee;
 ```
 
-- **Lines 5–7** — `react-redux`'s `useSelector`/`useDispatch` and the slice's `getEmpById` action creator plus the store's `RootState` type — this component both reads from and writes to the global Redux store, unlike `Login`/`Register`/`Home` which use only local/context state.
-- **Line 14** — `useSelector` subscribes this component to `state.emp.empData`; whenever that slice of state changes (i.e., whenever any dispatched action updates `empData`), this component re-renders automatically — this is the Redux equivalent of `useContext`, but with per-slice subscription granularity rather than "the whole context value changed."
-- **Lines 18–19** — **local** `useState` also exists here, separate from Redux: `employee` (used only as a presence flag, see line 51) and `employeeId` (the controlled text input's value).
-- **Line 21** — a `useEffect` with an empty dependency array runs its console log once on mount — present purely as a demonstration of the mount lifecycle, doing no real work.
-- **Lines 28–38** — `getEmp` is **not `async`**; instead it uses the Promise `.then()/.catch()` chain form directly (functionally equivalent to `await`/`try-catch`, just older-style syntax) to call the service, then: sets local `employee` state (line 33 — used only to gate the JSX below), **dispatches** `getEmpById(response.data)` into Redux (line 34 — this is what actually updates `dataFromStore`), and clears the input (line 35).
-- **Line 33 vs. lines 52–56 — a real latent bug worth flagging explicitly**: `setEmployee(response.data)` sets the **local** `employee` state, and the JSX at line 51 checks `{employee && (...)}` — but the actual displayed values inside that block (lines 52–56) all read from `dataFromStore` (the **Redux** state), not from local `employee`. Because `dispatch` on line 34 triggers the Redux update in the same tick, this happens to work in practice (by the time either state's update is reflected in a render, both have updated), but it's inconsistent: the *condition* gating the block and the *data* rendered inside it come from two different, redundant state sources holding the same value. A cleaner version would either drop the local `employee` state entirely (relying solely on Redux) or consistently render from `employee` throughout.
-- **Line 46** — a controlled input (`value={employeeId}`, `onChange={handleInput}`) submitting the typed ID via the form's `onSubmit={getEmp}` (with `evt.preventDefault()` on line 29, as required).
-- **Line 51** — short-circuit `&&` conditional rendering (Module 04 Pattern 2) — the detail block only renders once an employee has actually been looked up.
+- **Lines 5–7, 14** — `react-redux`'s `useSelector`/`useDispatch` and the slice's `getEmpById` action creator plus `RootState` — this component reads from and writes to the global Redux store, unlike `Login`/`Register`/`Home`. `useSelector` subscribes it to `state.emp.empData`, re-rendering whenever that slice changes — the Redux equivalent of `useContext`, but with per-slice subscription granularity.
+- **Lines 18–19, 21** — **local** `useState` also exists here, separate from Redux: `employee` (a presence flag, see line 51) and `employeeId` (the controlled input's value). The empty-deps `useEffect` (line 21) just logs once on mount to demonstrate the lifecycle.
+- **Lines 28–38** — `getEmp` is **not `async`**; it uses the Promise `.then()/.catch()` chain form (functionally equivalent to `await`/`try-catch`) to call the service, then sets local `employee` state (gating the JSX below), **dispatches** `getEmpById(response.data)` into Redux (which actually updates `dataFromStore`), and clears the input.
+- **A latent bug**: `setEmployee(response.data)` sets the **local** `employee` state, and the JSX checks `{employee && (...)}`, but the values displayed inside that block all read from `dataFromStore` (the **Redux** state), not local `employee`. Because `dispatch` updates Redux in the same tick this happens to work, but the gating condition and the rendered data come from two different, redundant state sources. A cleaner version would drop the local `employee` state entirely.
+- The form is a controlled input submitting the typed ID via `onSubmit={getEmp}`; the `&&` short-circuit (Module 04 Pattern 2) gates the detail block until an employee has actually been looked up.
 
 ### `src/pages/EmployeeList.tsx`
 
@@ -1100,61 +824,42 @@ There is a **known, intentionally-left-in gap** referenced in `Login.test.tsx`'s
 14:     console.log(empList);
 15:
 16:     const loadEmployees = async (evt) => {
-17:         console.log('loadEmployees');
-18:         evt.preventDefault();
-19:         try {
-20:             const response = await getAllEmployees();
-21:             console.log(response.data.data);
-22:             dispatch(getAllEmps(response.data.data));
+17:         evt.preventDefault();
+18:         try {
+19:             const response = await getAllEmployees();
+20:             dispatch(getAllEmps(response.data.data));
+21:         } catch (error) {
+22:             console.error(error);
 23:         }
-24:         catch (error) {
-25:             console.error(error);
-26:         }
-27:     };
-28:
-29:     return (
-30:         <>
-31:             <h1>Employee List Component</h1>
-32:             <>
-33:                 <button onClick={loadEmployees}>Load Employees List</button>
-34:             </>
-35:             <>
-36:                 <h3>List of the employees:</h3>
-37:                 {empList && empList.length > 0 ? (
-38:                     <>
-39:                         <h3>List of employees: ({empList.length})</h3>
-40:                         <>
-41:                             <div>
-42:                                 <span>#</span>
-43:                                 <span>First Name</span>
-44:                                 <span>Last Name</span>
-45:                             </div>
-46:                             {empList.map((emp: EmployeeType, index: number) => (
-47:                                 <div key={emp._id}>
-48:                                     <span>{index + 1}</span>
-49:                                     <span>{emp.firstName} {emp.lastName}</span>
-50:                                     <Link to={`/employees/${emp._id}`}>{emp.firstName} {emp.lastName}</Link>
-51:                                 </div>
-52:                             ))}
-53:                         </>
-54:                     </>
-55:                 ) : (
-56:                     <p>No employees loaded. Click the button above.</p>
-57:                 )}
-58:             </>
-59:         </>
-60:     );
-61: };
-62:
-63: export default EmployeeList;
+24:     };
+25:
+26:     return (
+27:         <>
+28:             <button onClick={loadEmployees}>Load Employees List</button>
+29:             {empList && empList.length > 0 ? (
+30:                 <>
+31:                     <h3>List of employees: ({empList.length})</h3>
+32:                     {empList.map((emp: EmployeeType, index: number) => (
+33:                         <div key={emp._id}>
+34:                             <span>{index + 1}</span>
+35:                             <Link to={`/employees/${emp._id}`}>{emp.firstName} {emp.lastName}</Link>
+36:                         </div>
+37:                     ))}
+38:                 </>
+39:             ) : (
+40:                 <p>No employees loaded. Click the button above.</p>
+41:             )}
+42:         </>
+43:     );
+44: };
+45:
+46: export default EmployeeList;
 ```
 
-- **Line 12** — `empList` is read from Redux's `allEmpData` (populated by the `getAllEmps` reducer) rather than local state — the list page has no `useState` of its own at all; Redux **is** its state.
-- **Lines 16–27** — `loadEmployees` is triggered by a button click (not automatically on mount via `useEffect` — a deliberate design here: the list only loads when the user explicitly asks for it), calls the service, and dispatches the response's `.data.data` (note the double `.data` — the Axios response wraps the server's own `{ data: [...] }` envelope) into Redux via `getAllEmps`.
-- **Line 18** — even though this handler is attached to a `<button onClick>` rather than a form's `onSubmit`, `evt.preventDefault()` is still called; harmless here (a plain button click has no default browser action to prevent), but shows the pattern applied slightly over-cautiously, likely copied from the form-submit handlers elsewhere in the file set.
-- **Line 37** — a ternary (Module 04 Pattern 1) choosing between the populated-list branch and an empty-state message, gated on `empList && empList.length > 0` (guarding against `empList` being `undefined`/`null` in addition to just empty, though given the slice's `initialState.allEmpData: []`, it should never actually be `null`/`undefined` in practice).
-- **Line 46** — `.map()` over `empList`, with **`key={emp._id}`** (line 47) — a real, stable, unique identifier (the MongoDB-style ID from the model), exactly the "use a real unique ID" best practice from Module 04 §4.2, and explicitly **not** the array `index` antipattern the same module warns against.
-- **Lines 48–50** — each row renders the index (for display numbering only, **not** used as the key), the name as plain text, and again as a `<Link>` — a bit of duplication (the name appears twice per row) that looks like leftover iteration during development, but functionally the `<Link to={...}>` on line 50 is what actually enables navigating to `/employees/:id`, wired up in `AppRoutes` to render `EmployeeDetails`.
+Follows the same Redux read/dispatch pattern as `Employee.tsx` above, but without the local-state duplication: `empList` (line 12) is read straight from `allEmpData`, so the list page has no `useState` of its own at all — Redux **is** its state. `loadEmployees` (lines 16–27) fires on a button click rather than automatically via `useEffect` (loads only when the user asks), calling the service and dispatching the response's `.data.data` (the Axios response wraps the server's own `{ data: [...] }` envelope) into Redux via `getAllEmps`.
+
+- **Line 37** — a ternary (Module 04 Pattern 1) between the populated-list branch and an empty-state message, gated on `empList && empList.length > 0`.
+- `.map()` uses **`key={emp._id}`** — a real, stable, unique identifier, the "use a real unique ID" best practice from Module 04 §4.2, explicitly not the array-`index` antipattern the same module warns against (the `index` is rendered too, but only for display numbering, never as the key). The `<Link to={`/employees/${emp._id}`}>` is what enables navigating to `EmployeeDetails`.
 
 ### `src/pages/EmployeeDetails.tsx`
 
@@ -1169,45 +874,34 @@ There is a **known, intentionally-left-in gap** referenced in `Login.test.tsx`'s
 8:  import { type RootState } from '../redux/store';
 9:
 10: const EmployeeDetails = () => {
-11:
-12:     const emp = useParams();
-13:     const dispatch = useDispatch();
-14:     const empData = useSelector((s: RootState) => s.emp.empData);
-15:
-16:     useEffect(() => {
-17:         console.log(emp.id);
-18:         getEmployeeById(emp.id)
-19:             .then((response) => {
-20:                 console.log(response.data);
-21:                 dispatch(getEmpById(response.data));
-22:             })
-23:             .catch();
-24:     }, []);
-25:
-26:     return (
-27:         <>
-28:             <h1>Employee Details</h1>
-29:             <>
-30:                 {empData && (<>
-31:                     <p>Id: {empData.id}</p>
-32:                     <p>First name: {empData.firstName}</p>
-33:                     <p>Last name: {empData.lastName}</p>
-34:                     <p>Email: {empData.email}</p>
-35:                     <p>Salary: {empData.salary}</p>
-36:                 </>)}
-37:             </>
-38:         </>
-39:     );
-40: };
-41:
-42: export default EmployeeDetails;
+11:     const emp = useParams();
+12:     const dispatch = useDispatch();
+13:     const empData = useSelector((s: RootState) => s.emp.empData);
+14:
+15:     useEffect(() => {
+16:         getEmployeeById(emp.id)
+17:             .then((response) => dispatch(getEmpById(response.data)))
+18:             .catch();
+19:     }, []);
+20:
+21:     return (
+22:         <>
+23:             {empData && (<>
+24:                 <p>Id: {empData.id}</p>
+25:                 {/* First name / Last name / Email / Salary follow the same <p>Label: {empData.field}</p> pattern */}
+26:             </>)}
+27:         </>
+28:     );
+29: };
+30:
+31: export default EmployeeDetails;
 ```
 
-- **Line 12** — `useParams()` (no generic type argument here, unlike the courseware's `useParams<{ id: string }>()` convention) reads the dynamic `:id` segment declared in `appRoutes.tsx`'s `path="/employees/:id"`; `emp.id` is used directly.
-- **Line 14** — subscribes to Redux's `empData`, same slice `Employee.tsx` writes to — meaning navigating from `EmployeeList` → clicking a `<Link>` → landing here, then this page's own fetch overwrites `empData` with the detail response, which is what actually gets rendered (this page does **not** have the local-vs-Redux double-state issue `Employee.tsx` has, since it reads exclusively from `empData`).
-- **Lines 16–24** — this is the courseware's "data fetching on mount via `useEffect`" pattern (Module 07/09): the empty dependency array (line 24) means this runs exactly once, when the component mounts — i.e., once per navigation to a given `/employees/:id` URL, which is correct since React Router **remounts** this component on navigating between two different `:id` values only if the route element itself changes identity; in practice here it does re-run per distinct `/employees/:id` visit because the whole page is freshly mounted by the router each time. **A real gap flagged by the empty deps array**: if `emp.id` (from `useParams`) were to change *without* a full remount (an edge case not really hit by this app's specific route structure), the effect would **not** re-fetch, since `emp.id`/`id` isn't listed as a dependency — the courseware's Module 09 §9.7 example explicitly lists `[id]` as the dependency for exactly this reason.
-- **Line 23** — `.catch()` with **no handler function at all** — this silently swallows any fetch error entirely; no error state, no console log, no user feedback. This is a genuine gap relative to the loading/error/success three-state pattern Module 08 §8.5 prescribes for every async operation — this page shows only a "successful data" branch and has no error or loading UI at all.
-- **Line 30** — the conditional render gate is `{empData && (...)}` — but since the slice's `initialState.empData` is an object with empty-string fields (not `null`/`undefined`), `empData` is always **truthy** even before any fetch resolves, meaning this guard doesn't actually prevent a brief render of empty-string labels before the real data arrives — a subtler version of the same "no loading state" gap.
+Reads the same Redux `empData` slice `Employee.tsx` writes to, but reads exclusively from it (no local-state duplication). `useParams()` (line 12, no generic type argument here unlike the courseware's `useParams<{ id: string }>()` convention) reads `:id` from the route; `emp.id` fetches on mount via the courseware's "data fetching via `useEffect`" pattern (Module 07/09) and dispatches the result into Redux.
+
+- **A gap**: the effect's empty deps array means it never re-fetches if `emp.id` changes without a full remount — the courseware's Module 09 §9.7 example lists `[id]` for exactly this reason.
+- `.catch()` with **no handler function at all** silently swallows any fetch error — no error state, no console log, no user feedback, a gap relative to the loading/error/success three-state pattern Module 08 §8.5 prescribes.
+- The conditional render gate is `{empData && (...)}`, but since the slice's `initialState.empData` has empty-string fields (not `null`/`undefined`), `empData` is always **truthy** even before any fetch resolves — a subtler version of the same "no loading state" gap.
 
 ### `src/pages/Parent.tsx` and `src/pages/Child.tsx` — Composition & Prop-Callback Demo
 
@@ -1262,13 +956,8 @@ There is a **known, intentionally-left-in gap** referenced in `Login.test.tsx`'s
 
 This pair is the course's minimal illustration of **props flowing down** and **callbacks flowing data back up** (Module 03 §3.1, and Q6/Q13 of the discussion Q&A: "a component cannot change its own props… it emits an event via a callback function passed as a prop, and the parent updates its own state").
 
-- **`Parent.tsx` line 8** — `dataFromChild` is state **owned by the parent**, initialized empty; this is the "single source of truth" the child's data will eventually update.
-- **Lines 10–13** — `getData` is the callback the parent hands down; when invoked (by the child), it updates the parent's own state — the parent never lets the child touch `dataFromChild` directly.
-- **Line 19** — `<Child def={getData} abc={parentData} />` passes **two** props down: `abc` (a plain string, parent → child, one-way) and `def` (a function reference — the callback channel child → parent). Prop names `abc`/`def` are intentionally generic/non-descriptive here, presumably to emphasize that *any* prop name works, not just the conventional `onXxx` naming.
-- **`Child.tsx` line 2** — `props` has no type annotation (implicit `any`), losing type safety on `props.abc`/`props.def` — a stricter version would define `interface ChildProps { abc: string; def: (data: string) => void }`.
-- **Line 5** — `dataFromParent` reads `props.abc` — proof that props are **read** but the child stores it under its own local name; the child cannot reassign `props.abc` itself (props are read-only, per Module 03 §3.1's rule 2).
-- **Lines 7–10** — `sendData` calls `props.def(childData)` — this is the entire mechanism by which data crosses back up the tree: the child never has direct access to the parent's `setDataFromChild`; it can only invoke the function reference the parent chose to expose.
-- **Line 16** — the button click triggers `sendData`, which triggers the parent's `getData`, which calls `setDataFromChild`, which re-renders `Parent` (and, since `dataFromChild` is now interpolated into `Parent`'s own JSX on line 18, the new value appears in the parent's own paragraph — demonstrating the full round trip in the UI).
+- **`Parent.tsx`** — `dataFromChild` (line 8) is state **owned by the parent**, initialized empty, the "single source of truth" the child's data eventually updates via the `getData` callback. `<Child def={getData} abc={parentData} />` (line 19) passes **two** props: `abc` (plain string, parent → child, one-way) and `def` (a function reference — the callback channel child → parent); the generic `abc`/`def` names emphasize *any* prop name works, not just conventional `onXxx` naming.
+- **`Child.tsx`** — `props` (line 2) has no type annotation (implicit `any`), losing type safety on `props.abc`/`props.def` — a stricter version would define `interface ChildProps { abc: string; def: (data: string) => void }`. `dataFromParent` reads `props.abc` under a local name; the child cannot reassign `props.abc` itself (props are read-only). The button's `sendData` calls `props.def(childData)` — the entire mechanism by which data crosses back up the tree, since the child has no direct access to the parent's `setDataFromChild`. That triggers `getData` → `setDataFromChild` → `Parent` re-renders with the new value, completing the round trip.
 
 ### `src/pages/Page404.tsx`
 
@@ -1318,15 +1007,9 @@ The simplest possible component — no props, no state, static JSX — wired int
 23: export default App;
 ```
 
-- **Lines 2–5** — imports the router-owning component, the Context provider, the configured Redux `store`, and Redux's own `<Provider>` component.
-- **Lines 10–20** — this is the **provider nesting order** the whole app's data flow depends on, from outside in: `<Provider store={store}>` (Redux) → `<AuthProvider>` (auth Context) → `<AppRoutes>` (which itself renders `<BrowserRouter>` → `<NavBar>` + `<Routes>`, per 2.5 above).
-  - **Redux `<Provider>` is outermost** — this makes the store available to `useSelector`/`useDispatch` calls anywhere below it, including inside `AuthProvider` if it ever needed Redux (it currently doesn't — auth state is Context-only, per 2.4's note).
-  - **`AuthProvider` is next** — everything below it, including all of `AppRoutes` and every page, can call `useContext(AuthContext)`.
-  - **`AppRoutes` (and its internal `BrowserRouter`) is innermost** — meaning routing context is established *last*; nothing outside `AppRoutes` (i.e., not `App` itself, not `AuthProvider`) has access to router hooks like `useNavigate`, which is fine since neither of those components needs to navigate.
-  - This ordering matters concretely: `AuthProvider`'s `login`/`logout` functions don't depend on Redux or routing, so their position relative to those providers is flexible; but `AppRoutes` **does** depend on `AuthContext` (reads `isLoggedIn` on line 17 of `appRoutes.tsx`) and pages inside it depend on both Redux (`useSelector`/`useDispatch`) and the router (`useParams`, `Link`) — so it must be nested inside **both** `Provider` and `AuthProvider`, which is exactly what lines 13–17 establish.
-- **Line 9** — a `console.log` documenting the render order (paired with similar logs numbered "1." in `store.ts`/`empSlice.tsx`, forming a breadcrumb trail through the module load and initial render sequence — a debugging technique straight out of Module 06 §6.2's "console strategies").
-- **Line 12** — wraps everything in a semantic `<main>` element — the only actual DOM structure `App` itself contributes; all real UI lives in the pages/components below.
-- This project's `App.tsx` does **not** include an `ErrorBoundary` wrapping the tree (Module 06 §6.6's recommended global catch-all) — an unhandled render error anywhere in this app would still unmount the whole tree to a blank screen.
+- **Lines 10–20** — this is the **provider nesting order** the whole app's data flow depends on, from outside in: `<Provider store={store}>` (Redux) → `<AuthProvider>` (auth Context) → `<AppRoutes>` (which itself renders `<BrowserRouter>` → `<NavBar>` + `<Routes>`, per 2.5 above). Redux `<Provider>` is outermost so `useSelector`/`useDispatch` work anywhere below it; `AuthProvider` is next so everything below can call `useContext(AuthContext)`; `AppRoutes` (and its internal `BrowserRouter`) is innermost, so nothing outside it has router hooks — fine, since neither `App` nor `AuthProvider` needs to navigate. This ordering matters concretely because `AppRoutes` reads `isLoggedIn` from context (line 17 of `appRoutes.tsx`) and its pages depend on both Redux and the router, so it must be nested inside both providers.
+- **Lines 9, 12** — line 9's `console.log` (paired with similar "1." logs in `store.ts`/`empSlice.tsx`) forms a breadcrumb trail through the module load and initial render sequence, a debugging technique from Module 06 §6.2. Line 12 wraps everything in a semantic `<main>` element — the only DOM structure `App` itself contributes.
+- This project's `App.tsx` does **not** include an `ErrorBoundary` wrapping the tree (Module 06 §6.6's recommended global catch-all) — an unhandled render error anywhere would still unmount the whole tree to a blank screen.
 
 ### `src/main.tsx`
 
@@ -1344,10 +1027,8 @@ The simplest possible component — no props, no state, static JSX — wired int
 11: )
 ```
 
-- **Line 2** — `createRoot` from `react-dom/client`, the React 18+ concurrent-rendering root API — same as the courseware's canonical `main.tsx`.
-- **Line 7** — `document.getElementById('root')!` — the non-null assertion, exactly as in Module 00's example, telling TypeScript to trust that the `#root` div (declared in `index.html`) exists.
-- **Lines 1, 8, 10** — `<StrictMode>` is imported and referenced but **entirely commented out**, meaning this project runs **without** the dev-time double-render/double-effect behaviour Module 00 §0.8 describes. Practically: `console.log`s that would appear twice under StrictMode (a common source of "is my effect actually buggy or is this just StrictMode?" confusion) appear exactly once here, and any accidental effect-cleanup bugs that StrictMode is specifically designed to surface early would **not** be caught by this project's current dev setup — a real, checkable difference from the courseware's stated default. Re-enabling it would only require uncommenting the three lines.
-- **Line 5** — imports `App` with an explicit `.tsx` extension in the import path — allowed by this project's Vite/TS configuration, though many configs omit the extension.
+- **Lines 2, 5, 7** — `createRoot` from `react-dom/client` (the React 18+ concurrent-rendering root API) and `document.getElementById('root')!`'s non-null assertion match Module 00's canonical example exactly; `App` is imported with an explicit `.tsx` extension, allowed by this project's Vite/TS configuration though many configs omit it.
+- **Lines 1, 8, 10** — `<StrictMode>` is imported and referenced but **entirely commented out**, so this project runs **without** the dev-time double-render/double-effect behaviour Module 00 §0.8 describes: `console.log`s that would appear twice under StrictMode appear once here, and effect-cleanup bugs StrictMode is designed to surface early would not be caught by this project's current dev setup. Re-enabling it only requires uncommenting the three lines.
 
 ---
 

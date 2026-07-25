@@ -1,8 +1,6 @@
 # Node.js & Express — Complete Line-by-Line Guide
 
-This guide is grounded strictly in Aakash's actual course materials: the 5-part `nodejs-courseware` series (Modules 1–18), the `Express_Reference.md` (Modules 01–06), and supplementary gotchas from `nodejs_discussion_qa.md`. It then walks through two real projects from the course code: **acme-node-demo** (raw Node.js fundamentals — no framework) and **Express** (a production-style Express + Mongoose Employee Management System with JWT auth, file upload, email, and Socket.io). Everything below reproduces the actual course text/code with line-by-line explanation — nothing is invented.
-
-Audience note: comparisons are drawn to Python web frameworks (Flask/FastAPI/Django) and Python tooling (pip, asyncio) where it shortens the explanation — generic backend concepts you already know are not over-explained.
+This guide is grounded strictly in Aakash's actual course materials: the 5-part `nodejs-courseware` series (Modules 1–18), the `Express_Reference.md` (Modules 01–06), and supplementary gotchas from `nodejs_discussion_qa.md`. It then walks through two real projects from the course code: **acme-node-demo** (raw Node.js fundamentals — no framework) and **Express** (a production-style Express + Mongoose Employee Management System with JWT auth, file upload, email, and Socket.io). Everything below reproduces the actual course text/code with line-by-line explanation — nothing is invented. Comparisons are drawn to Python web frameworks (Flask/FastAPI/Django) and tooling (pip, asyncio) where it shortens the explanation; generic backend concepts you already know are not over-explained.
 
 ---
 
@@ -288,7 +286,7 @@ userSchema.pre('save', async function(next) {
 
 **Custom validators**: `validate: { validator: fn, message: '...' }`.
 
-*(Note: the actual Employee/Department/Project Mongoose models and `db.js` connection setup used in the Express project below are covered in a separate MongoDB-focused guide — this guide references their usage in routes but does not re-explain schema definitions line by line.)*
+*(Note: the actual Employee/Department/Project Mongoose models used in the Express project below are covered in a separate MongoDB-focused guide.)*
 
 ## 13. API Authentication and Security (JWT)
 
@@ -573,285 +571,159 @@ Shown as an alternative to hand-rolled JWT middleware: `passport-local` (email+p
 Location: `Code/UI (HTML, CSS, JS, Ts, Node)/node-projects/acme-node-demo/`. This project uses **ESM syntax** (`"type": "module"` in `package.json`, `import`/`export`) rather than CommonJS — note the contrast with the Express project (Part 4), which uses CommonJS `require`/`module.exports` throughout. Both styles appear in the courseware; this project demonstrates the ESM path in practice.
 
 ```json
-// package.json
-1:  {
-2:    "name": "acme-node-demo",
-...
-13:   "type": "module",
-14:   "dependencies": {
-15:     "mongoose": "9.7.2",
-16:     "nodemailer": "9.0.1",
-17:     "socket.io": "4.8.3"
-18:   },
-19:   "devDependencies": {
-20:     "jest": "30.4.2"
-21:   }
-22: }
+{
+  "name": "acme-node-demo",
+  "type": "module",
+  "dependencies": { "mongoose": "9.7.2", "nodemailer": "9.0.1", "socket.io": "4.8.3" },
+  "devDependencies": { "jest": "30.4.2" }
+}
 ```
-- **Line 13** — `"type": "module"` switches the whole package to ESM: every `.js` file is parsed as an ES module (`import`/`export`), not CommonJS.
-- **Line 8** — the `test` script runs Jest with `--experimental-vm-modules`, because native ESM support in Jest is still experimental and needs this flag to work with `import`/`export` test files.
+`"type": "module"` switches the whole package to ESM: every `.js` file is parsed as an ES module (`import`/`export`), not CommonJS. The `test` script runs Jest with `--experimental-vm-modules`, because native ESM support in Jest is still experimental and needs this flag to work with `import`/`export` test files.
 
 ## 29. `calc.js` — Module Export Pattern Exploration (Commented Scratch File)
 
 This file is entirely commented out — it's a teaching scratchpad showing the **four ways to export from an ES module**, left in place for reference/reversion during a live lesson:
 
 ```javascript
-1:  // // calc.js
-...
-33: // // 4. one export object
-34: // export const calc = {
-35: //     addNums: (a, b) => {
-36: //         return a + b;
-37: //     },
-38: //
-39: //     subNums: (a, b) => {
-40: //         return a + b;
-41: //     }
-42: // }
+// pattern 1: single `export default` function
+// pattern 2: named consts + one `export { addNums, subNums }` statement at the end
+// pattern 3: inline `export const` on each declaration (most common modern style)
+// pattern 4: bundle everything into one exported object — export const calc = { addNums, subNums }
 ```
-- **Lines 3–8** — pattern 1: a single `export default` function.
-- **Lines 10–20** — pattern 2: named consts plus a single `export { addNums, subNums }` statement at the end.
-- **Lines 22–30** — pattern 3: inline `export const` on each declaration (the most common modern style).
-- **Lines 33–43** — pattern 4: bundle everything into one exported object (`calc.addNums(...)`) — useful when you want namespacing rather than flat named imports.
-
-This directly illustrates ESM's flexibility (`export default` vs multiple named `export`) versus CommonJS's single `module.exports` object convention taught in Module 3 of the courseware.
+Pattern 4 is useful when you want namespacing (`calc.addNums(...)`) rather than flat named imports.
 
 ## 30. `node-topics.js` — Async/Streams/EventEmitter Scratchpad
 
-Also entirely commented out — a running lesson notebook covering, in order: the classic callback pattern (`readFile` error-first callback demonstrating output ordering 1→2→3, i.e. sync code runs before the async callback fires), `Object.keys()` on an employee object, `Array.filter()` for even numbers, a deliberately buggy `getUserAge(user)` function (accessing `user.profile.age` when `profile` is `undefined` — the exact stack-trace debugging example from Module 5 of the courseware), streams (`readFileSync` vs `createReadStream`/`pipe`), and finally a full `EventEmitter`-based `OrderSystem` class identical to the courseware's Module 6 example. This file's purpose is as a live-coding companion to the Module 5/6/7 lecture content — it mirrors the courseware almost verbatim, confirming that Module 6's EventEmitter pattern was taught hands-on with this exact `OrderSystem`/`orders.on('order:placed', ...)` example.
+Also entirely commented out — a running lesson notebook covering, in order: the classic callback pattern (`readFile` error-first callback demonstrating output ordering 1→2→3, i.e. sync code runs before the async callback fires), `Object.keys()` on an employee object, `Array.filter()` for even numbers, a deliberately buggy `getUserAge(user)` function (accessing `user.profile.age` when `profile` is `undefined` — the exact stack-trace debugging example from Module 5), streams (`readFileSync` vs `createReadStream`/`pipe`), and finally a full `EventEmitter`-based `OrderSystem` class identical to the Module 6 example — a live-coding companion to the Module 5/6/7 lecture content.
 
 ## 31. `http-demo.js` — Raw HTTP Server (No Framework)
 
 ```javascript
-1:  import http from 'http';
-2:
-3:  const PORT = 3000;
-4:
-...
-9:  const server = http.createServer((request, response) => {
-10:     console.log(`${request.method} ${request.url}`);
-11:     // request.
-12:     if (request.url == '/')
-13:         response.end('Welcome');
-14:     else if (request.url == '/about')
-15:         response.end('About page');
-16:     else
-17:         response.end('404! Page not found!');
-18: });
-19:
-20: server.listen(PORT, () => {
-21:     console.log(`Server running at http://localhost:${PORT}`);
-22: });
-```
-- **Line 1** — `http` is a Node core module, imported via ESM `import` syntax (works because `"type": "module"` is set).
-- **Line 9** — `http.createServer(callback)`: the callback fires on every incoming HTTP request; it receives raw `request`/`response` objects (no Express convenience methods like `res.json()` exist here — this is the bare-metal API that Express wraps).
-- **Line 10** — logs method + URL for every request, useful debugging pattern before any routing logic runs.
-- **Lines 12–17** — manual URL-based routing via `if`/`else if`/`else` on `request.url`. Note there's no status code set on the "404" branch (line 17) — it still returns HTTP 200 with a "404!" text body, since `response.statusCode` was never explicitly set to `404`. This is a realistic gotcha: raw `http` defaults to status 200 unless you set it yourself (unlike Express's `res.status(404)` helper).
-- **Line 20** — `server.listen(PORT, callback)` binds and starts listening; the callback fires once the socket is bound.
+import http from 'http';
+const PORT = 3000;
 
-This is the direct hands-on companion to Module 7's "Bare HTTP Server (Raw Node)" example — it is essentially that exact snippet, run for real.
+const server = http.createServer((request, response) => {
+    console.log(`${request.method} ${request.url}`);
+    if (request.url == '/') response.end('Welcome');
+    else if (request.url == '/about') response.end('About page');
+    else response.end('404! Page not found!');
+});
+
+server.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+```
+`http.createServer(callback)` fires on every incoming request with raw `request`/`response` objects — no Express convenience methods like `res.json()` exist here; this is the bare-metal API Express wraps. Routing is manual `if`/`else if`/`else` on `request.url`.
+
+**Gotcha**: the "404" branch never sets a status code — it still returns HTTP 200 with a "404!" text body, since `response.statusCode` was never explicitly set. Raw `http` defaults to status 200 unless you set it yourself (unlike Express's `res.status(404)` helper). This is the direct hands-on companion to Module 7's "Bare HTTP Server (Raw Node)" example.
 
 ## 32. `server.js` — Raw HTTP Server + Static File Serving + Socket.io
 
 ```javascript
-1:  import http from 'http';
-2:  import fs from 'fs';
-3:  import path from 'path';
-4:  import { Server } from 'socket.io';
-5:
-6:  const PORT = 3000;
-7:
-8:  const server = http.createServer((req, res) => {
-9:      console.log('createServer started.');
-10:     if (req.url === '/') {
-11:         console.log('/ requested.');
-12:         const filePath = path.join(
-13:             process.cwd(),
-14:             'src',
-15:             'public',
-16:             'index.html'
-17:         );
-18:
-19:         fs.readFile(filePath, 'utf8', (err, data) => {
-20:             console.log('html accessed.');
-21:             if (err) {
-22:                 res.writeHead(500, {
-23:                     'Content-Type': 'text/plain'
-24:                 });
-25:                 res.end('Error loading page');
-26:                 console.log('html not found.');
-27:                 return;
-28:             }
-29:
-30:             res.writeHead(200, {
-31:                 'Content-Type': 'text/html'
-32:             });
-33:             console.log('html started.');
-34:
-35:             res.end(data);
-36:         });
-37:
-38:         return;
-39:     }
-40:
-41:     res.writeHead(404, {
-42:         'Content-Type': 'text/plain'
-43:     });
-44:
-45:     res.end('Page Not Found');
-46: });
-47:
-48: const io = new Server(server);
-49:
-50: io.on('connection', (socket) => {
-51:     console.log(`Client connected: ${socket.id}`);
-52:
-53:     socket.on('chat-message', (msg) => {
-54:         console.log(`Received: ${msg}`);
-55:         io.emit('chat-message', msg);
-56:     });
-57:
-58:     socket.on('disconnect', () => {
-59:         console.log(`Client disconnected: ${socket.id}`);
-60:     });
-61: });
-62:
-63: server.listen(PORT, () => {
-64:     console.log(`Server running at http://localhost:${PORT}`);
-65: });
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import { Server } from 'socket.io';
+
+const PORT = 3000;
+
+const server = http.createServer((req, res) => {
+    if (req.url === '/') {
+        const filePath = path.join(process.cwd(), 'src', 'public', 'index.html');
+        fs.readFile(filePath, 'utf8', (err, data) => {
+            if (err) { res.writeHead(500, { 'Content-Type': 'text/plain' }); res.end('Error loading page'); return; }
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(data);
+        });
+        return;
+    }
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Page Not Found');
+});
+
+const io = new Server(server);
+io.on('connection', (socket) => {
+    socket.on('chat-message', (msg) => io.emit('chat-message', msg));
+    socket.on('disconnect', () => console.log(`Client disconnected: ${socket.id}`));
+});
+
+server.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
 ```
-- **Line 12–17** — `path.join(process.cwd(), 'src', 'public', 'index.html')` builds an absolute, cross-platform path to a static HTML file. Note it uses `process.cwd()` (the directory Node was *launched from*) rather than `__dirname`/`import.meta.url` — this makes the path resolution dependent on where `node src/server.js` is *run from*, not where the file itself lives. This is a subtle but real distinction the courseware flags: `process.cwd()` vs `__dirname` are not interchangeable.
-- **Line 19** — `fs.readFile` (async, non-blocking) reads the HTML file; the callback is error-first, exactly the pattern from Module 5/7 ("always check `err` first").
-- **Lines 21–28** — on file-read failure, manually writes a 500 status with `res.writeHead(500, {...})` then `res.end(...)`; note the explicit `return` on line 27 to avoid falling through to line 30's success path.
-- **Line 30–35** — on success, `res.writeHead(200, { 'Content-Type': 'text/html' })` then `res.end(data)` streams the HTML back. This is the manual, verbose equivalent of Express's `res.sendFile()`.
-- **Line 38** — `return` after handling `/` prevents execution from continuing to the catch-all 404 block below (lines 41–45) — this is the raw-`http` equivalent of Express's implicit "first matching route wins, then stop."
-- **Lines 48–61** — this is exactly Module 17's Socket.io setup: `new Server(server)` attaches Socket.io to the *same* HTTP server instance (not `app.listen()` directly — confirming the "must use `http.createServer`, not Express's shortcut" rule from the courseware). `io.on('connection', ...)` fires per client; `socket.on('chat-message', msg => io.emit('chat-message', msg))` implements the simplest possible broadcast chat — every message from any client is re-emitted to **all** connected clients (`io.emit`, not `socket.broadcast.emit`, so the sender also receives their own message echoed back).
-- **Line 58–60** — `disconnect` handler logs cleanup; note there's no room/user-tracking here (unlike the fuller courseware chat example in Module 17) — this is a minimal single-room broadcast demo.
+On file-read failure this manually writes a 500 with `res.writeHead`/`res.end`; on success it streams the file back the same way — the manual, verbose equivalent of Express's `res.sendFile()`.
+
+**Gotcha**: `path.join(process.cwd(), ...)` uses `process.cwd()` (the directory Node was *launched from*), not `__dirname`/`import.meta.url` — path resolution depends on where `node src/server.js` is *run from*, not where the file itself lives.
+
+Module 17's Socket.io setup: `new Server(server)` attaches Socket.io to the *same* HTTP server instance, not `app.listen()` directly. `socket.on('chat-message', msg => io.emit('chat-message', msg))` implements the simplest possible broadcast chat — **note it's `io.emit`, not `socket.broadcast.emit`**, so the sender also receives their own message echoed back. No room/user-tracking here — a minimal single-room broadcast demo.
 
 ## 33. `emp-stuff.js` — Module-with-Tests Pair (Fundamentals)
 
 ```javascript
-1:  // emp-stuff.js 
-2:
-3:  const employees = [
-4:      { id: 1, name: 'Sonu', salary: 50000 },
-5:      { id: 2, name: 'Monu', salary: 60000 },
-6:      { id: 3, name: 'Tonu', salary: 70000 }
-7:  ];
-8:
-9:  export const calculateBonus = salary => salary * 0.10;
-10:
-11: export const getEmployees = () => employees.map(emp => emp.name);
-12:
-13: export const findEmployee = id => employees.find(emp => emp.id === id);
-14:
-15: export const addNums = (a, b) => a + b;
+const employees = [
+    { id: 1, name: 'Sonu', salary: 50000 },
+    { id: 2, name: 'Monu', salary: 60000 },
+    { id: 3, name: 'Tonu', salary: 70000 }
+];
+
+export const calculateBonus = salary => salary * 0.10;
+export const getEmployees = () => employees.map(emp => emp.name);
+export const findEmployee = id => employees.find(emp => emp.id === id);
+export const addNums = (a, b) => a + b;
 ```
-- **Lines 3–7** — `employees` is a module-scoped constant array — module caching (Section 3) means every `import` of this module shares the exact same array instance (a de facto singleton in-memory "database," same idea as the in-memory array pattern from Module 7/9 of the courseware).
-- **Line 9** — `calculateBonus`: single-expression arrow function, no explicit `return` needed (implicit return of `salary * 0.10`).
-- **Line 11** — `getEmployees` uses `Array.prototype.map` to project just the `name` field out of each employee object — a pure function with no side effects, ideal for unit testing.
-- **Line 13** — `findEmployee` uses `Array.prototype.find`, which returns the **first** matching element or `undefined` if none match — this `undefined` return-on-miss is directly exercised in the test file below.
-- **Line 15** — `addNums`, a trivial two-arg adder — used purely as the simplest possible unit-test subject.
-- **Lines 18–40 (commented)** — a duplicate, more verbose version of the same four functions using block-bodied arrow functions (`(salary) => { return salary * 0.10; }`) kept as a comparison/rollback reference — showing the same logic in both single-expression and block-bodied arrow function styles.
+`employees` is a module-scoped constant array — module caching (Section 3) means every `import` of this module shares the exact same array instance (a de facto singleton in-memory "database"). `findEmployee` uses `Array.prototype.find`, which returns the **first** matching element or `undefined` if none match — this `undefined` return-on-miss is directly exercised in the test file below. (A commented-out duplicate using block-bodied arrow functions is kept as a comparison/rollback reference.)
 
 ## 34. `emp-stuff.test.js` — Jest Unit Tests
 
 ```javascript
-1:  // emp-tests.js
-2:  // documentation of matchers - 
-3:  // https://jestjs.io/docs/using-matchers
-4:
-5:  import { calculateBonus, getEmployees, findEmployee, addNums } from './emp-stuff.js';
-6:
-7:  beforeAll(() => {
-8:      console.log('Setup - runs once before all tests');
-9:  });
-10:
-11: afterAll(() => {
-12:     console.log('Teardown - runs once after all tests');
-13: });
-14:
-15: beforeEach(() => {
-16:     console.log('Setup - runs before each test');
-17: });
-18:
-19: afterEach(() => {
-20:     console.log('Teardown - runs after each test');
-21: });
-22:
-23: describe('ems tests suite', () => {
-24:
-25:     describe('find employee by id tests', () => {
-26:
-27:         it('given id 1, name shoule be Sonu', () => {
-28:             expect(findEmployee(1).name).toBe('Sonu');
-29:         });
-30:
-31:         it('given id 1, name shoule NOT be Monu', () => {
-32:             expect(findEmployee(1).name).not.toBe('Monu');
-33:         });
-34:         it('given id 100, should return undefined', () => {
-35:             expect(findEmployee(100)).toBeUndefined();
-36:         });
-37:
-38:     });
-39:
-40:
-41:
-42:     describe('demo tests', () => {
-43:
-44:         it('test addNums', () => {
-45:             const sum = addNums(10, 20);
-46:             expect(sum).toBe(30);
-47:         });
-48:
-49:         it('test addNums negative', () => {
-50:             const sum = addNums(10, 20);
-51:             expect(sum).not.toBe(35);
-52:         });
-53:     });
-54:
-55: });
+import { calculateBonus, getEmployees, findEmployee, addNums } from './emp-stuff.js';
+
+beforeAll(() => console.log('Setup - runs once before all tests'));
+afterAll(() => console.log('Teardown - runs once after all tests'));
+beforeEach(() => console.log('Setup - runs before each test'));
+afterEach(() => console.log('Teardown - runs after each test'));
+
+describe('ems tests suite', () => {
+    describe('find employee by id tests', () => {
+        it('given id 1, name shoule be Sonu', () => {
+            expect(findEmployee(1).name).toBe('Sonu');
+        });
+        it('given id 100, should return undefined', () => {
+            expect(findEmployee(100)).toBeUndefined();
+        });
+    });
+
+    describe('demo tests', () => {
+        it('test addNums', () => {
+            expect(addNums(10, 20)).toBe(30);
+        });
+        it('test addNums negative', () => {
+            expect(addNums(10, 20)).not.toBe(35);
+        });
+    });
+});
 ```
-- **Line 5** — imports the module under test using ESM `import` syntax with an explicit `.js` extension — required in Node ESM (unlike CommonJS `require`, ESM does not auto-resolve extensions).
-- **Lines 7–21** — the four Jest lifecycle hooks, all present in one file purely as a teaching demonstration of execution order: `beforeAll`/`afterAll` run once total (bracketing the whole file), `beforeEach`/`afterEach` run around **every** individual `it`/`test`. None of them do real setup here (just `console.log`) — this file exists to let students *watch* the hook execution order in test output, not to demonstrate real fixture management.
-- **Line 23** — outer `describe('ems tests suite', ...)` — purely organizational grouping, does not affect execution, just test-report nesting.
-- **Lines 25–38** — nested `describe('find employee by id tests', ...)` — demonstrates `describe` blocks can nest arbitrarily.
-- **Line 28** — `expect(findEmployee(1).name).toBe('Sonu')` — `.toBe()` is strict equality (`===`); safe here since `.name` is a primitive string.
-- **Line 32** — `.not.toBe('Monu')` — demonstrates matcher negation via `.not`.
-- **Line 35** — `expect(findEmployee(100)).toBeUndefined()` — directly exercises the "not found" branch of `Array.prototype.find` (Section 33, line 13) — confirms the function returns `undefined` rather than throwing or returning `null`.
-- **Lines 44–47, 49–52** — trivial arithmetic assertions on `addNums`, including one **poorly named** test (`'test addNums negative'` at line 49) that doesn't actually test negative numbers — it just re-asserts `10+20 ≠ 35` with `.not.toBe()`. Worth flagging as an example of a misleading test name versus what it actually verifies — a good assessment gotcha to be aware of (test names should describe the *behavior under test*, not just be a variant label).
-- **Lines 59–71 (commented)** — a progressive scratchpad showing how `describe`/`it`/`test` calls are typically built up incrementally during a live lesson (empty calls → single test → full body), left in as a teaching artifact.
+Imports use ESM syntax with an explicit `.js` extension — required in Node ESM (unlike CommonJS `require`, ESM does not auto-resolve extensions). All four Jest lifecycle hooks appear in one file purely to demonstrate execution order: `beforeAll`/`afterAll` run once total (bracketing the whole file), `beforeEach`/`afterEach` run around **every** individual `it`/`test` — none do real setup here, just `console.log`, so students can *watch* the hook order in test output.
+
+`expect(findEmployee(100)).toBeUndefined()` directly exercises the "not found" branch of `Array.prototype.find` — confirms the function returns `undefined` rather than throwing or returning `null`.
+
+**Gotcha**: `'test addNums negative'` is a **poorly named** test — it doesn't actually test negative numbers, it just re-asserts `10+20 ≠ 35` with `.not.toBe()`. A useful example of a misleading test name: names should describe the *behavior under test*, not just be a variant label.
 
 ## 35. `send-email.js` — Nodemailer with Gmail SMTP
 
 ```javascript
-1:  import nodemailer from 'nodemailer';
-2:  import fs from 'fs';
-3:  const passwordFile = 'D:/Projects/delete/shridhar-gmail-app-password.txt';
-4:  const senderEmail = 'shridhar.javafsd@gmail.com';
-5:  const receiverEmail = 'dyesmuk@gmail.com';
-6:  const mailSubject = 'Sample Mail';
-7:  const mailBody = 'This is sample mail.';
-8:  const password = fs.readFileSync(passwordFile, 'utf8').trim();
-9:  const transporter = nodemailer.createTransport({
-10:     service: 'gmail', auth: { user: senderEmail, pass: password } });
-11: const sendDemoMail = async () => {
-12:     try {
-13:         const info = await transporter.sendMail({
-14:             from: senderEmail, to: receiverEmail, subject: mailSubject, text: mailBody
-15:         });
-16:         console.log('Email sent successfully');
-17:         console.log('Message ID:', info.messageId);
-18:     } catch (err) { console.error('Failed to send email:', err.message); }
-19: }
-20: sendDemoMail();
+import nodemailer from 'nodemailer';
+import fs from 'fs';
+const passwordFile = 'D:/Projects/delete/shridhar-gmail-app-password.txt';
+const password = fs.readFileSync(passwordFile, 'utf8').trim();
+const transporter = nodemailer.createTransport({
+    service: 'gmail', auth: { user: senderEmail, pass: password } });
+
+const sendDemoMail = async () => {
+    try {
+        const info = await transporter.sendMail({ from: senderEmail, to: receiverEmail, subject: mailSubject, text: mailBody });
+        console.log('Message ID:', info.messageId);
+    } catch (err) { console.error('Failed to send email:', err.message); }
+}
+sendDemoMail();
 ```
-- **Line 3** — the Gmail **app password** (not the real account password — Gmail requires a separate 16-char app password for SMTP when 2FA is on) is stored in a plain local text file **outside the repo**, at an absolute Windows path. This is the exact "read credentials from a local file instead of `.env`" pattern also seen in the Express project's `utils/email.js` (Section 39) — a deliberate alternative to environment variables for local dev convenience, though clearly not portable across machines.
-- **Line 8** — `fs.readFileSync(passwordFile, 'utf8').trim()` — synchronous read (acceptable here since this is a one-shot script, not a server handling concurrent requests — Module 4's sync-vs-async guidance: sync is fine for CLI/one-off scripts).
-- **Line 9–10** — `nodemailer.createTransport({ service: 'gmail', auth: {...} })` — using the `service: 'gmail'` shorthand (Nodemailer knows Gmail's SMTP host/port internally) rather than manually specifying `host`/`port` as the courseware's more generic SMTP example does.
-- **Line 11** — `sendDemoMail` is an `async` named function (not actually immediately-invoked in the strict sense, but called once at the bottom on line 20) — wraps the `await transporter.sendMail(...)` call in `try/catch`, following the error-handling convention taught in Module 15/16.
-- **Line 20** — the script calls itself at the top level — this is a standalone script meant to be run directly (`node src/send-email.js`), not a reusable module (contrast with the Express project's `utils/email.js`, which exports a function for other files to call — Section 39).
+The Gmail **app password** (not the real account password — Gmail requires a separate 16-char app password for SMTP when 2FA is on) is stored in a plain local text file **outside the repo**, at an absolute Windows path — the exact "read credentials from a local file instead of `.env`" pattern also seen in the Express project's `utils/email.js` (Section 39): a deliberate alternative to environment variables for local dev convenience, though clearly not portable across machines. `fs.readFileSync` here is fine since this is a one-shot script, not a server handling concurrent requests. `service: 'gmail'` lets Nodemailer resolve Gmail's SMTP host/port internally. The script calls itself at the top level — a standalone script meant to be run directly (`node src/send-email.js`), not a reusable module (contrast with `utils/email.js`, which exports a function for other files to call — Section 39).
 
 ---
 
@@ -860,509 +732,300 @@ This is the direct hands-on companion to Module 7's "Bare HTTP Server (Raw Node)
 Location: `Code/Express/`. This is a full production-style Employee Management System REST API — Express + Mongoose + MongoDB, JWT auth, role-based authorization, Multer file uploads, Nodemailer email, Socket.io real-time notifications, and a Jest + Supertest test suite. It uses **CommonJS** (`require`/`module.exports`) throughout, unlike Project A's ESM style. The `db.js` connection setup and the `Employee`/`Department`/`Project` Mongoose models are covered in a separate MongoDB-focused guide — referenced here by name only, not re-explained schema-field-by-field.
 
 ```json
-// package.json
-1:  {
-2:    "name": "acme-ems-api",
-...
-5:    "main": "src/app.js",
-6:    "scripts": {
-7:      "start": "node src/app.js",
-8:      "dev": "nodemon src/app.js",
-9:      "test": "jest --runInBand"
-10:   },
-11:   "dependencies": {
-12:     "bcryptjs": "^2.4.3",
-13:     "dotenv": "^16.3.1",
-14:     "express": "^4.18.2",
-15:     "jsonwebtoken": "^9.0.2",
-16:     "mongoose": "^8.0.3",
-17:     "multer": "^1.4.5-lts.1",
-18:     "nodemailer": "^6.9.8",
-19:     "socket.io": "^4.6.2",
-20:     "validator": "^13.11.0",
-21:     "cors": "2.8.6"
-22:   },
-23:   "devDependencies": {
-24:     "jest": "^29.7.0",
-25:     "nodemon": "^3.0.2",
-26:     "supertest": "^6.3.4"
-27:   },
-28:   "jest": {
-29:     "testEnvironment": "node"
-30:   }
-31: }
+{
+  "name": "acme-ems-api",
+  "main": "src/app.js",
+  "scripts": { "start": "node src/app.js", "dev": "nodemon src/app.js", "test": "jest --runInBand" },
+  "dependencies": {
+    "bcryptjs": "^2.4.3", "dotenv": "^16.3.1", "express": "^4.18.2", "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.3", "multer": "^1.4.5-lts.1", "nodemailer": "^6.9.8", "socket.io": "^4.6.2",
+    "validator": "^13.11.0", "cors": "2.8.6"
+  },
+  "devDependencies": { "jest": "^29.7.0", "nodemon": "^3.0.2", "supertest": "^6.3.4" },
+  "jest": { "testEnvironment": "node" }
+}
 ```
-- **Line 9** — `jest --runInBand` forces tests to run **serially** in a single process rather than parallel workers — necessary here because all tests share one MongoDB connection and one Express `app` instance; parallel workers would race on shared DB state (e.g., two test files both trying to register the same admin email).
-- **Lines 28–30** — Jest config embedded directly in `package.json` (alternative to a separate `jest.config.js`); `testEnvironment: 'node'` (as opposed to `'jsdom'`) is correct for a backend-only project with no DOM to simulate.
+`jest --runInBand` forces tests to run **serially** in a single process rather than parallel workers — necessary here because all tests share one MongoDB connection and one Express `app` instance; parallel workers would race on shared DB state (e.g., two test files both trying to register the same admin email). Jest config is embedded directly in `package.json` (alternative to a separate `jest.config.js`); `testEnvironment: 'node'` (as opposed to `'jsdom'`) is correct for a backend-only project with no DOM to simulate.
 
 ## 36. `src/app.js` — Full Middleware Stack and Registration Order
 
 ```javascript
-1:  // src/app.js
-2:  // Demonstrates: Express setup, middleware chain, routing, Web Servers topic,
-3:  //               environment config, Node.js module system
-4:
-5:  require('dotenv').config();
-6:  const cors = require('cors');
-7:
-8:  const express = require('express');
-9:  const http = require('http');
-10: const { Server } = require('socket.io');
-11: const path = require('path');
-12:
-13: const connectDB = require('./config/db');
-14: const errorHandler = require('./middleware/errorHandler');
-15: const setupSocketIO = require('./sockets/notifications');
-16:
-17: // ── Route modules ─────────────────────────────────────────────
-18: const authRoutes = require('./routes/authRoutes');
-19: const employeeRoutes = require('./routes/employeeRoutes');
-20: const departmentRoutes = require('./routes/departmentRoutes');
-21: const projectRoutes = require('./routes/projectRoutes');
-22:
-23: // ── App & HTTP server ─────────────────────────────────────────
-24: const app = express();
-25: const server = http.createServer(app);
-26:
-27: // ── Socket.io ─────────────────────────────────────────────────
-28: const io = new Server(server, {
-29:   cors: { origin: '*' },
-30: });
-31: setupSocketIO(io);
-32:
-33: // ── Connect to MongoDB ────────────────────────────────────────
-34: connectDB();
-35:
-36: // ── Global Middleware ─────────────────────────────────────────
-37: app.use(cors({ origin: '*' }));
-38: app.use(express.json());                        // parse JSON bodies
-39: app.use(express.urlencoded({ extended: true })); // parse form data
-40:
-41: // Serve uploaded files statically (File Uploads demo)
-42: app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
-43:
-44: // ── Routes ────────────────────────────────────────────────────
-45: app.use('/api/auth', authRoutes);
-46: app.use('/api/employees', employeeRoutes);
-47: app.use('/api/departments', departmentRoutes);
-48: app.use('/api/projects', projectRoutes);
-49:
-50: // ── Health check (Accessing API from Browser topic) ───────────
-51: app.get('/health', (req, res) => {
-52:   res.json({
-53:     status: 'OK',
-54:     timestamp: new Date().toISOString(),
-55:     uptime: process.uptime(),
-56:     env: process.env.NODE_ENV,
-57:   });
-58: });
-59:
-60: // ── 404 handler ───────────────────────────────────────────────
-61: app.use((req, res) => {
-62:   res.status(404).json({ error: `Route not found: ${req.method} ${req.path}` });
-63: });
-64:
-65: // ── Global error handler (must be last) ──────────────────────
-66: app.use(errorHandler);
-67:
-68: // ── Start server ──────────────────────────────────────────────
-69: const PORT = process.env.PORT || 3000;
-70:
-71: // Export app for testing (Testing Node.js topic)
-72: if (process.env.NODE_ENV !== 'test') {
-73:   server.listen(PORT, () => {
-74:     console.log(`
-75: 🚀 EMS API running at http://localhost:${PORT}
-76: 📋 Health check: http://localhost:${PORT}/health
-77: 🌍 Environment: ${process.env.NODE_ENV || 'development'}
-78:     `);
-79:   });
-80: }
-81:
-82: module.exports = { app, server };
+require('dotenv').config();               // must be first — later requires read process.env at load time
+const cors = require('cors');
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+
+const connectDB = require('./config/db');
+const errorHandler = require('./middleware/errorHandler');
+const setupSocketIO = require('./sockets/notifications');
+const authRoutes = require('./routes/authRoutes');
+const employeeRoutes = require('./routes/employeeRoutes');
+const departmentRoutes = require('./routes/departmentRoutes');
+const projectRoutes = require('./routes/projectRoutes');
+
+const app = express();
+const server = http.createServer(app);         // raw server, not app.listen() — Socket.io needs it directly
+
+const io = new Server(server, { cors: { origin: '*' } });
+setupSocketIO(io);
+
+connectDB();                                    // not awaited — Mongoose queues ops until ready
+
+app.use(cors({ origin: '*' }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));  // serves Multer's output (Section 38)
+
+app.use('/api/auth', authRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/departments', departmentRoutes);
+app.use('/api/projects', projectRoutes);
+
+app.get('/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString(), uptime: process.uptime(), env: process.env.NODE_ENV }));
+
+app.use((req, res) => res.status(404).json({ error: `Route not found: ${req.method} ${req.path}` }));
+app.use(errorHandler);   // must be last
+
+const PORT = process.env.PORT || 3000;
+if (process.env.NODE_ENV !== 'test') {
+  server.listen(PORT, () => console.log(`EMS API running at http://localhost:${PORT}`));
+}
+module.exports = { app, server };
 ```
-- **Line 5** — `require('dotenv').config()` is the **very first** line executed (after the comment header) — this is deliberate: every subsequent `require` (route files, `config/db`, middleware) may read `process.env.*` at module-load time, so `.env` must be loaded before anything else imports.
-- **Lines 8–15** — all dependency imports use CommonJS `require` (contrast with Project A's ESM `import`) — this project targets Node's default module system with no `"type": "module"` flag.
-- **Line 24–25** — `const app = express(); const server = http.createServer(app);` — this is precisely the pattern flagged in the courseware Q&A (#69): `app.listen()` is shorthand for `http.createServer(app).listen()`, but here the raw server instance is created explicitly **because** Socket.io needs direct access to it (line 28's `new Server(server, ...)`) — you cannot attach Socket.io to whatever internal server `app.listen()` would have created implicitly.
-- **Lines 28–31** — Socket.io is instantiated with its own permissive CORS config (`origin: '*'`) — note this is a **separate** CORS configuration from the Express-level `cors()` middleware on line 37; Socket.io's WebSocket handshake is not covered by Express HTTP middleware, so it needs its own CORS setting. `setupSocketIO(io)` delegates all the room/event logic to `sockets/notifications.js` (mentioned in the README topic map — not required reading for this guide, but worth knowing it exists for socket event wiring).
-- **Line 34** — `connectDB()` is called but **not awaited** at the top level — this means the server *starts listening* (line 73) without guaranteeing the DB connection has completed first. In production this is usually acceptable because Mongoose queues operations until the connection is ready, but it's a notable ordering choice worth understanding versus `await connectDB()` before `listen()`.
-- **Lines 37–39** — the **middleware order** here matters and directly mirrors Section 26's Express reference pattern: CORS first (so preflight OPTIONS requests are handled before anything else), then `express.json()` (populates `req.body` for JSON payloads), then `express.urlencoded({ extended: true })` (populates `req.body` for form-encoded payloads). Any route registered *before* these two body-parsing lines would see `req.body` as `undefined` — this is the exact gotcha called out in the Q&A supplement (#63).
-- **Line 42** — `app.use('/uploads', express.static(...))` mounts a static file server scoped to the `/uploads` URL prefix, serving whatever Multer (Section 38) writes into the `uploads/` directory — so an avatar saved as `uploads/employee_123_1700000000000.png` becomes reachable at `GET /uploads/employee_123_1700000000000.png`.
-- **Lines 45–48** — each resource gets its own Router mounted under a versioned-by-resource prefix (`/api/auth`, `/api/employees`, etc.) — this is the Section 23 Router pattern applied at scale. Note that **no auth middleware is applied globally here** — each individual router decides internally which routes need `authenticate`/`authorize` (see Sections 40–42 — and notably, most routes in this codebase have that check **commented out**, a real gap worth flagging below).
-- **Lines 61–63** — the catch-all 404 handler is registered **after** all real routes but **before** the error handler — any request that doesn't match a mounted route or the `/health` endpoint falls through to here.
-- **Line 66** — `app.use(errorHandler)` — registered dead last, so it only catches errors explicitly passed via `next(err)` from any route/middleware upstream (see Section 37 for what `errorHandler` does with them).
-- **Lines 71–80** — the **testability pattern from Section 17 (Module 16)** applied directly: `server.listen()` only runs when `NODE_ENV !== 'test'`. When Jest sets `NODE_ENV=test` (implicitly, or via test config), the app module loads fully (routes mounted, middleware wired) but never binds a port — so `tests/employee.test.js` (Section 41) can `require('../src/app')` and pass the `app` object straight into `supertest(app)` without a real network listener.
-- **Line 82** — exports **both** `app` and `server` (not just `app`) — `server` is exported too because Socket.io is attached to it; tests or other consumers that need the raw HTTP server (e.g. to close it cleanly) have access to it.
+`const app = express(); const server = http.createServer(app);` — `app.listen()` is shorthand for `http.createServer(app).listen()`, but the raw server is created explicitly here **because** Socket.io needs direct access to it; you cannot attach Socket.io to whatever internal server `app.listen()` would have created implicitly. Socket.io gets its own permissive CORS config (`origin: '*'`), separate from the Express-level `cors()` middleware — its WebSocket handshake isn't covered by Express HTTP middleware.
+
+The **middleware order** mirrors Section 26's pattern: CORS first, then `express.json()`, then `express.urlencoded({ extended: true })` — any route registered before these two would see `req.body` as `undefined`.
+
+**No auth middleware is applied globally** — each router decides internally which routes need `authenticate`/`authorize`, and most routes in this codebase have that check **commented out** (see Sections 40–42).
+
+**Testability pattern from Section 17**: `server.listen()` only runs when `NODE_ENV !== 'test'`, so `tests/employee.test.js` (Section 41) can `require('../src/app')` and pass `app` straight into `supertest(app)` without a real network listener. Both `app` and `server` are exported — `server` too, since Socket.io is attached to it.
 
 ## 37. `src/middleware/errorHandler.js` — Express 4-Argument Error Middleware
 
 ```javascript
-1:  // src/middleware/errorHandler.js
-2:  // Demonstrates: Express error-handling middleware (4-argument signature),
-3:  //               centralised error responses
-4:
-5:  const errorHandler = (err, req, res, next) => {
-6:    console.error('💥 Error:', err.message);
-7:
-8:    // Mongoose validation error
-9:    if (err.name === 'ValidationError') {
-10:     const messages = Object.values(err.errors).map((e) => e.message);
-11:     return res.status(400).json({ error: 'Validation failed', details: messages });
-12:   }
-13:
-14:   // Mongoose duplicate key
-15:   if (err.code === 11000) {
-16:     const field = Object.keys(err.keyValue)[0];
-17:     return res.status(409).json({ error: `Duplicate value for field: ${field}` });
-18:   }
-19:
-20:   // JWT errors
-21:   if (err.name === 'JsonWebTokenError') {
-22:     return res.status(401).json({ error: 'Invalid token' });
-23:   }
-24:   if (err.name === 'TokenExpiredError') {
-25:     return res.status(401).json({ error: 'Token expired' });
-26:   }
-27:
-28:   // Cast error (invalid ObjectId)
-29:   if (err.name === 'CastError') {
-30:     return res.status(400).json({ error: `Invalid ${err.path}: ${err.value}` });
-31:   }
-32:
-33:   // Generic fallback
-34:   res.status(err.statusCode || 500).json({
-35:     error: err.message || 'Internal Server Error',
-36:   });
-37: };
-38:
-39: module.exports = errorHandler;
+const errorHandler = (err, req, res, next) => {
+  console.error('Error:', err.message);
+
+  if (err.name === 'ValidationError') {                          // Mongoose validation error
+    const messages = Object.values(err.errors).map((e) => e.message);
+    return res.status(400).json({ error: 'Validation failed', details: messages });
+  }
+  if (err.code === 11000) {                                       // Mongoose duplicate key
+    const field = Object.keys(err.keyValue)[0];
+    return res.status(409).json({ error: `Duplicate value for field: ${field}` });
+  }
+  if (err.name === 'JsonWebTokenError') return res.status(401).json({ error: 'Invalid token' });
+  if (err.name === 'TokenExpiredError') return res.status(401).json({ error: 'Token expired' });
+  if (err.name === 'CastError') return res.status(400).json({ error: `Invalid ${err.path}: ${err.value}` });  // bad ObjectId
+
+  res.status(err.statusCode || 500).json({ error: err.message || 'Internal Server Error' });
+};
+module.exports = errorHandler;
 ```
-- **Line 5** — the function signature `(err, req, res, next)` has **exactly four parameters**. Express distinguishes error-handling middleware from regular middleware purely by **counting the declared parameters** (function arity) — a regular middleware's 3-param `(req, res, next)` is never invoked with an error, and this 4-param function is only invoked when something upstream calls `next(err)` (never on the normal request flow). The `next` parameter here is never actually called (there's no case that falls through) — but it must remain in the signature or Express would misidentify this as ordinary middleware.
-- **Lines 9–12** — `ValidationError` is Mongoose's error name when a document fails schema validation (`required`, `min`, `enum`, etc. — Section 12/Module 11). `err.errors` is an object keyed by field name; `Object.values(...).map(e => e.message)` flattens it into a plain array of human-readable messages, returned as `400 Bad Request`.
-- **Lines 15–18** — `err.code === 11000` is MongoDB's raw duplicate-key error code (fired when a `unique: true` index is violated, e.g. registering with an email that already exists). `err.keyValue` is an object like `{ email: 'x@y.com' }`; `Object.keys(...)[0]` extracts just the field name for the message. Returned as `409 Conflict` — the correct HTTP status for "this resource state already exists," distinct from `400` (which the ValidationError branch uses for malformed input).
-- **Lines 21–26** — two separate JWT error types from the `jsonwebtoken` library: `JsonWebTokenError` (malformed/tampered token, wrong secret) and `TokenExpiredError` (valid signature but `exp` claim has passed) — both correctly mapped to `401 Unauthorized`, distinguished in the message for debuggability even though the HTTP status is the same for both.
-- **Lines 29–31** — `CastError` is Mongoose's error when a query tries to cast a malformed value into a schema type — most commonly, passing a non-ObjectId string as an `:id` route param (e.g. `GET /api/employees/not-a-real-id`). `err.path` is the field name being cast, `err.value` is the offending input — both surfaced directly in the response.
-- **Lines 34–36** — the fallback branch: if none of the named error types matched, respond with `err.statusCode` if the thrower set one (a hand-rolled "operational error" convention), else default to `500`. This exact five-branch classification (`ValidationError` → `duplicate key 11000` → `JsonWebTokenError`/`TokenExpiredError` → `CastError` → generic) is a direct, near-verbatim implementation of the Express reference's `errorHandler` in Section 27 — the project simply adds the `CastError` branch on top of what the reference showed.
+The signature `(err, req, res, next)` has **exactly four parameters**. Express distinguishes error-handling middleware from regular middleware purely by **counting the declared parameters** (function arity) — invoked only when something upstream calls `next(err)`. The unused `next` parameter must remain in the signature or Express would misidentify this as ordinary middleware.
+
+Five error branches classify the failure: `ValidationError` (Mongoose schema validation → 400 with flattened messages), `err.code === 11000` (MongoDB's raw duplicate-key code, `err.keyValue` gives the offending field → 409), `JsonWebTokenError`/`TokenExpiredError` (malformed/tampered token vs. expired `exp` claim, both 401 but distinguished in the message), `CastError` (Mongoose failing to cast a malformed value into a schema type — most commonly a non-ObjectId string as an `:id` param). The fallback responds with `err.statusCode` if the thrower set one (a hand-rolled "operational error" convention), else defaults to 500. This is a near-verbatim implementation of the Express reference's `errorHandler` in Section 27, with a `CastError` branch added on top.
 
 ## 38. `src/middleware/upload.js` — Multer Disk Storage Configuration
 
 ```javascript
-1:  // src/middleware/upload.js
-2:  // Demonstrates: File Uploads (Task App topic), Multer, Node.js fs module
-3:
-4:  const multer = require('multer');
-5:  const path = require('path');
-6:  const fs = require('fs');
-7:
-8:  // Ensure upload directory exists (Node.js fs module demo)
-9:  const uploadDir = process.env.UPLOAD_DIR || 'uploads';
-10: if (!fs.existsSync(uploadDir)) {
-11:   fs.mkdirSync(uploadDir, { recursive: true });
-12: }
-13:
-14: // Storage configuration
-15: const storage = multer.diskStorage({
-16:   destination: (req, file, cb) => {
-17:     cb(null, uploadDir);
-18:   },
-19:   filename: (req, file, cb) => {
-20:     // employee_<id>_<timestamp>.ext  — unique, no collision
-21:     const ext = path.extname(file.originalname);
-22:     const name = `employee_${req.employee._id}_${Date.now()}${ext}`;
-23:     cb(null, name);
-24:   },
-25: });
-26:
-27: // File type filter
-28: const fileFilter = (req, file, cb) => {
-29:   const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-30:   if (allowed.includes(file.mimetype)) {
-31:     cb(null, true);
-32:   } else {
-33:     cb(new Error('Only JPEG, PNG, and WebP images are allowed'), false);
-34:   }
-35: };
-36:
-37: const upload = multer({
-38:   storage,
-39:   fileFilter,
-40:   limits: {
-41:     fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024, // 5 MB
-42:   },
-43: });
-44:
-45: module.exports = upload;
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const uploadDir = process.env.UPLOAD_DIR || 'uploads';
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `employee_${req.employee._id}_${Date.now()}${ext}`);   // unique, no collision
+  },
+});
+
+const fileFilter = (req, file, cb) => {
+  const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+  if (allowed.includes(file.mimetype)) cb(null, true);
+  else cb(new Error('Only JPEG, PNG, and WebP images are allowed'), false);
+};
+
+const upload = multer({
+  storage, fileFilter,
+  limits: { fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024 },
+});
+module.exports = upload;
 ```
-- **Lines 9–12** — `fs.existsSync`/`fs.mkdirSync({ recursive: true })` run once **at module-load time** (not inside a request handler) — this guarantees the upload directory exists before any request tries to write to it, and `recursive: true` means it won't throw if the directory (or any parent) already exists. This is the exact `fs` idiom from Module 4 of the courseware.
-- **Lines 15–25** — `multer.diskStorage` takes two callback-style configuration functions, both following Node's `(err, result)` callback convention via the `cb` parameter (`cb(null, value)` on success, `cb(error)` on failure) — this is the same error-first callback pattern taught in Module 5/6, just applied to configuration callbacks rather than I/O callbacks.
-- **Line 16–18** — `destination` always returns the same `uploadDir` — no per-request branching, so all uploads land in one flat directory.
-- **Line 22** — the generated filename is `employee_<req.employee._id>_<Date.now()><ext>` — critically, this reads `req.employee._id`, meaning **this middleware assumes `req.employee` has already been set by an earlier auth middleware** in the chain. If `upload.single(...)` were used on a route without `authenticate` running first, this line would throw (`Cannot read properties of undefined`). This is a real coupling to check when reading `employeeRoutes.js` (Section 40) — the avatar upload route does *not* actually run `authenticate` before `upload.single('avatar')`, which is a genuine risk/gotcha worth flagging (see Section 40 analysis).
-- **Lines 28–35** — `fileFilter` allow-lists exactly three MIME types (JPEG/PNG/WebP); rejecting via `cb(new Error(...), false)` — Multer will surface this as an error to the route's `(err, req, res, next)` handling if wired, or as an unhandled error otherwise (note: this project has no dedicated Multer-error-catching middleware like the courseware's Module 14 example — Multer errors propagate to the generic error handler instead, which doesn't have a specific `MulterError`/`LIMIT_FILE_SIZE` branch — another realistic gap versus the courseware's more complete example).
-- **Lines 37–43** — the final `upload` object is configured with `storage`, `fileFilter`, and a `limits.fileSize` cap read from `process.env.MAX_FILE_SIZE` (falling back to 5MB) — exported directly as Express middleware, consumed via `.single('avatar')` in the route file.
+`fs.existsSync`/`fs.mkdirSync({ recursive: true })` run once **at module-load time**, guaranteeing the upload directory exists before any request tries to write to it.
+
+**Gotcha**: the generated filename reads `req.employee._id`, meaning **this middleware assumes `req.employee` has already been set by an earlier auth middleware**. If `upload.single(...)` were used on a route without `authenticate` running first, this line would throw — and `employeeRoutes.js` (Section 40) does exactly that: the avatar upload route does *not* run `authenticate` before `upload.single('avatar')`.
+
+`fileFilter` allow-lists exactly three MIME types, rejecting via `cb(new Error(...), false)`. This project has no dedicated Multer-error-catching middleware, so Multer errors (e.g. `LIMIT_FILE_SIZE`) propagate to the generic error handler, which has no `MulterError` branch.
 
 ## 39. `src/utils/email.js` — Nodemailer with File-Based Credential Fallback
 
 ```javascript
-1:  // src/utils/email.js
-2:  // Demonstrates: Sending Emails (Task App topic), Nodemailer, async/await,
-3:  //               Node.js File System (fs.readFileSync)
-4:
-5:  const nodemailer = require('nodemailer');
-6:  const fs = require('fs');
-7:
-8:  // ── Read EMAIL_PASS from a local file ─────────────────────────
-9:  // Useful in dev when you don't want to put credentials in .env
-10: // The file should contain just the app-password text, nothing else.
-11: const passwordFile = 'D:/Projects/delete/shridhar-gmail-app-password.txt';
-12:
-13: let EMAIL_PASS = process.env.EMAIL_PASS; // fallback to .env
-14:
-15: try {
-16:   EMAIL_PASS = fs.readFileSync(passwordFile, 'utf-8').trim();
-17:   console.log('🔑 EMAIL_PASS loaded from file');
-18: } catch (err) {
-19:   // File not found or unreadable — fall back to .env value
-20:   console.warn(`⚠️  Could not read password file (${err.code}). Falling back to EMAIL_PASS from .env`);
-21: }
-22:
-23: // ── Create transporter (reused across calls) ──────────────────
-24: const transporter = nodemailer.createTransport({
-25:   host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-26:   port: parseInt(process.env.EMAIL_PORT) || 587,
-27:   secure: false, // TLS (STARTTLS on port 587)
-28:   auth: {
-29:     user: process.env.EMAIL_USER,
-30:     pass: EMAIL_PASS,           // ← from file (or .env fallback)
-31:   },
-32: });
-33:
-34: /**
-35:  * Send a welcome email to a newly created employee.
-36:  * Skipped automatically in test/dev when EMAIL_USER is not set.
-37:  */
-38: const sendWelcomeEmail = async ({ to, firstName }) => {
-39:   const mailOptions = {
-40:     from: `"EMS System" <${process.env.EMAIL_USER}>`,
-41:     to,
-42:     subject: 'Welcome to the Team! 🎉',
-43:     html: `
-44:       <h2>Hello, ${firstName}!</h2>
-45:       <p>Your EMS account has been created successfully.</p>
-46:       <p>Log in at <a href="http://localhost:${process.env.PORT || 3000}">EMS Portal</a>.</p>
-47:       <p>— HR Team</p>
-48:     `,
-49:   };
-50:
-51:   if (process.env.NODE_ENV === 'test' || !process.env.EMAIL_USER) {
-52:     console.log(`📧 [EMAIL SKIPPED] Would send welcome mail to ${to}`);
-53:     return;
-54:   }
-55:
-56:   await transporter.sendMail(mailOptions);
-57:   console.log(`📧 Welcome email sent to ${to}`);
-58: };
-59:
-60: module.exports = { sendWelcomeEmail };
+const nodemailer = require('nodemailer');
+const fs = require('fs');
+
+const passwordFile = 'D:/Projects/delete/shridhar-gmail-app-password.txt';
+let EMAIL_PASS = process.env.EMAIL_PASS;   // fallback to .env
+try {
+  EMAIL_PASS = fs.readFileSync(passwordFile, 'utf-8').trim();
+} catch (err) {
+  console.warn(`Could not read password file (${err.code}). Falling back to EMAIL_PASS from .env`);
+}
+
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.EMAIL_PORT) || 587,
+  secure: false,
+  auth: { user: process.env.EMAIL_USER, pass: EMAIL_PASS },
+});
+
+const sendWelcomeEmail = async ({ to, firstName }) => {
+  const mailOptions = {
+    from: `"EMS System" <${process.env.EMAIL_USER}>`, to,
+    subject: 'Welcome to the Team!',
+    html: `<h2>Hello, ${firstName}!</h2><p>Your EMS account has been created successfully.</p>`,
+  };
+  if (process.env.NODE_ENV === 'test' || !process.env.EMAIL_USER) {
+    console.log(`[EMAIL SKIPPED] Would send welcome mail to ${to}`);
+    return;
+  }
+  await transporter.sendMail(mailOptions);
+};
+module.exports = { sendWelcomeEmail };
 ```
-- **Line 13, 15–21** — `EMAIL_PASS` is initialized from `process.env.EMAIL_PASS` **first**, then a `try/catch` around a **synchronous** `fs.readFileSync` attempts to overwrite it by reading from an absolute local file path (same technique as Project A's `send-email.js`, Section 35). If the file doesn't exist on the current machine, the `catch` block quietly falls back to the already-set `.env` value rather than crashing — this graceful-degradation pattern (env var as the portable default, local file as a dev-machine-specific override) is worth understanding: it means this code runs fine on a teammate's machine or in CI (no such file → falls back to `.env`), but on the original author's machine it silently prefers the file. `err.code` (e.g. `'ENOENT'`) is included in the warning log for debuggability.
-- **Line 16** — this is a **synchronous, blocking** file read executed at **module load time** (outside any function) — meaning it runs once when `require('./utils/email')` first executes, blocking the event loop briefly during server startup only (acceptable per Module 4's sync-is-fine-for-startup guidance, since it's not inside a per-request handler).
-- **Lines 24–32** — the transporter is built **once at module scope** and reused across every `sendWelcomeEmail` call — this matches the courseware's explicit guidance ("create transporter once, reuse across calls") and avoids the overhead of establishing a new SMTP connection per email.
-- **Line 38** — `sendWelcomeEmail` takes a single destructured object parameter `{ to, firstName }` rather than positional args — a common Node convention for functions with multiple string parameters, avoiding call-site ambiguity (`sendWelcomeEmail('x@y.com', 'Raj')` is less self-documenting than `sendWelcomeEmail({ to: 'x@y.com', firstName: 'Raj' })`).
-- **Lines 51–54** — a **test/dev safety guard**: if running under Jest (`NODE_ENV === 'test'`) or if `EMAIL_USER` was never configured, the function logs and returns early **without** calling `transporter.sendMail`. This is exactly why the test suite (Section 41) can register employees repeatedly without ever hitting a real SMTP server or requiring live credentials in CI.
-- **Line 60** — exports a single named function `{ sendWelcomeEmail }`, consumed in `authRoutes.js` (Section 40).
-- **Lines 62–106** — a fully commented-out earlier version of the same file (reading `EMAIL_PASS` purely from `.env`, no file-fallback) — left in as a rollback/comparison reference, exactly like the pattern seen in Project A's `emp-stuff.js` (Section 33).
+`EMAIL_PASS` is initialized from `process.env.EMAIL_PASS` **first**, then a `try/catch` around a **synchronous** `fs.readFileSync` (module-load time) attempts to overwrite it from an absolute local file path (same technique as Project A's `send-email.js`, Section 35). If the file doesn't exist, `catch` quietly falls back to the `.env` value — a graceful-degradation pattern that runs fine on a teammate's machine or in CI, but on the original author's machine silently prefers the file. The transporter is built **once at module scope** and reused across every `sendWelcomeEmail` call.
+
+**Test/dev safety guard**: if running under Jest (`NODE_ENV === 'test'`) or `EMAIL_USER` was never configured, the function logs and returns early **without** calling `transporter.sendMail` — this is why the test suite (Section 41) can register employees repeatedly without hitting a real SMTP server or needing live credentials in CI.
+
+(A fully commented-out earlier version of the file, reading `EMAIL_PASS` purely from `.env` with no file-fallback, is kept as a rollback/comparison reference — same pattern as Project A's `emp-stuff.js`, Section 33.)
 
 ## 40. Route Files — `authRoutes.js`, `employeeRoutes.js`, `departmentRoutes.js`, `projectRoutes.js`
 
 ### `src/routes/authRoutes.js`
 
 ```javascript
-1:  // src/routes/authRoutes.js
-2:  // Demonstrates: Express Router, REST API design, JWT auth flow
-3:
-4:  const express = require('express');
-5:  const router = express.Router();
-6:
-7:  const Employee = require('../models/Employee');
-8:  const { authenticate } = require('../middleware/auth');
-9:  const { sendWelcomeEmail } = require('../utils/email');
-10:
-11: // ── POST /api/auth/register ───────────────────────────────────
-12: // Public: create first account (or admin creates employees)
-13: router.post('/register', async (req, res, next) => {
-14:   try {
-15:     // Destructure only what we need (JS Objects demo)
-16:     const { firstName, lastName, email, password, role } = req.body;
-17:
-18:     const employee = new Employee({ firstName, lastName, email, password, role });
-19:     await employee.save();
-20:
-21:     const token = await employee.generateAuthToken();
-22:
-23:     // Fire-and-forget email (Promises demo)
-24:     sendWelcomeEmail({ to: email, firstName }).catch(console.error);
-25:
-26:     res.status(201).json({ employee, token });
-27:   } catch (err) {
-28:     next(err);
-29:   }
-30: });
-31:
-32: // ── POST /api/auth/login ──────────────────────────────────────
-33: router.post('/login', async (req, res, next) => {
-34:   try {
-35:     const { email, password } = req.body;
-36:
-37:     if (!email || !password) {
-38:       return res.status(400).json({ error: 'Email and password are required' });
-39:     }
-40:
-41:     const employee = await Employee.findByCredentials(email, password);
-42:     const token = await employee.generateAuthToken();
-43:
-44:     res.json({ employee, token });
-45:   } catch (err) {
-46:     res.status(401).json({ error: err.message });
-47:   }
-48: });
-49:
-50: // ── POST /api/auth/logout ─────────────────────────────────────
-51: // Invalidate current token (remove from tokens array)
-52: router.post('/logout', authenticate, async (req, res, next) => {
-53:   try {
-54:     req.employee.tokens = req.employee.tokens.filter(
-55:       (t) => t.token !== req.token
-56:     );
-57:     await req.employee.save();
-58:     res.json({ message: 'Logged out successfully' });
-59:   } catch (err) {
-60:     next(err);
-61:   }
-62: });
-63:
-64: // ── POST /api/auth/logout-all ─────────────────────────────────
-65: // Invalidate ALL tokens (useful when password compromised)
-66: router.post('/logout-all', authenticate, async (req, res, next) => {
-67:   try {
-68:     req.employee.tokens = [];
-69:     await req.employee.save();
-70:     res.json({ message: 'Logged out from all devices' });
-71:   } catch (err) {
-72:     next(err);
-73:   }
-74: });
-75:
-76: // ── GET /api/auth/me ──────────────────────────────────────────
-77: router.get('/me', authenticate, (req, res) => {
-78:   res.json(req.employee);
-79: });
-80:
-81: module.exports = router;
+const express = require('express');
+const router = express.Router();
+const Employee = require('../models/Employee');
+const { authenticate } = require('../middleware/auth');
+const { sendWelcomeEmail } = require('../utils/email');
+
+// Public: create first account (or admin creates employees)
+router.post('/register', async (req, res, next) => {
+  try {
+    const { firstName, lastName, email, password, role } = req.body;
+    const employee = new Employee({ firstName, lastName, email, password, role });
+    await employee.save();
+    const token = await employee.generateAuthToken();
+    sendWelcomeEmail({ to: email, firstName }).catch(console.error);   // fire-and-forget
+    res.status(201).json({ employee, token });
+  } catch (err) { next(err); }
+});
+
+router.post('/login', async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
+    const employee = await Employee.findByCredentials(email, password);
+    const token = await employee.generateAuthToken();
+    res.json({ employee, token });
+  } catch (err) { res.status(401).json({ error: err.message }); }
+});
+
+router.post('/logout', authenticate, async (req, res, next) => {
+  try {
+    req.employee.tokens = req.employee.tokens.filter((t) => t.token !== req.token);
+    await req.employee.save();
+    res.json({ message: 'Logged out successfully' });
+  } catch (err) { next(err); }
+});
+
+// Invalidate ALL tokens (useful when password compromised)
+router.post('/logout-all', authenticate, async (req, res, next) => {
+  try {
+    req.employee.tokens = [];
+    await req.employee.save();
+    res.json({ message: 'Logged out from all devices' });
+  } catch (err) { next(err); }
+});
+
+router.get('/me', authenticate, (req, res) => res.json(req.employee));
+module.exports = router;
 ```
-- **Line 5** — `express.Router()` instantiates a mini-app scoped to this file; mounted at `/api/auth` in `app.js` (Section 36, line 45).
-- **Line 13** — `router.post('/register', async (req, res, next) => {...})` — registers a handler for `POST /api/auth/register`. It is deliberately **not** protected by `authenticate` — registration must be public (you can't require a token to get your first token).
-- **Line 16** — destructures exactly the fields needed from `req.body`; notably `role` is accepted directly from client input here with **no server-side default or restriction** — meaning a malicious client could self-register as `role: 'admin'` unless the `Employee` schema restricts this via an enum default or the field is stripped elsewhere. This is a genuine security consideration worth flagging in an assessment context (contrast with `employeeRoutes.js`'s POST handler, which explicitly whitelists allowed fields — Section 40 below).
-- **Lines 18–19** — `new Employee({...})` then `.save()` — this two-step form (rather than `Employee.create()`) is used because Mongoose's `pre('save')` hook (password hashing, defined on the model, referenced but not re-explained here per the MongoDB-guide note) needs to fire, and both `.save()` and `.create()` trigger it equally — the choice here is stylistic, matching the courseware's coverage of both forms in Module 11.
-- **Line 21** — `employee.generateAuthToken()` is a Mongoose instance method (defined on the `Employee` model) that signs a JWT and appends it to the employee's `tokens[]` array — same pattern as the courseware's Module 12 `generateAuthToken` method (Section 13).
-- **Line 24** — `sendWelcomeEmail({...}).catch(console.error)` — the email Promise is **not** `await`ed; a bare `.catch()` swallows any rejection into a console log rather than propagating it. This is precisely the "don't block the response on email sending" pattern the courseware calls out explicitly in Module 15 — if this line instead read `await sendWelcomeEmail(...)`, a slow or failing SMTP server would delay or break the registration response entirely.
-- **Line 26** — responds `201 Created` with both the (Mongoose-`toJSON`-sanitized, per the model's presumed `toJSON` override — see the MongoDB guide) employee document and the freshly minted token — the standard "register returns a usable session immediately" pattern, avoiding a separate login round-trip.
-- **Line 27–29** — the `catch` block calls `next(err)`, routing any thrown error (e.g. a Mongoose `ValidationError` from a missing required field, or an `11000` duplicate email) into the centralized `errorHandler` (Section 37), which already has dedicated branches for exactly those two cases.
-- **Lines 33–48 (`/login`)** — note this handler's `catch` block (line 46) responds directly with `res.status(401).json(...)` rather than calling `next(err)` — a deliberate choice to always surface login failures as `401 Unauthorized` regardless of the underlying error, rather than letting the generic error handler potentially return a `500` for what should always look like "bad credentials" to the client (also avoids leaking whether the failure was "email not found" vs "wrong password" — both paths in `findByCredentials` throw the same generic message, per the courseware's login pattern in Module 12).
-- **Line 41** — `Employee.findByCredentials(email, password)` — a Mongoose **static** method (defined on the model, not an instance) that looks up by email then `bcrypt.compare`s the password — same pattern as Section 13's `userSchema.statics.findByCredentials`.
-- **Lines 52–62 (`/logout`)** — protected by the `authenticate` middleware (line 52, third argument to `router.post`) — Express allows an arbitrary number of middleware functions before the final handler in a route registration; `authenticate` runs first, and only calls `next()` (implicitly, inside its own body) to reach this handler if the token is valid. Line 54–56 filters the current token **out** of `req.employee.tokens` — this is what makes logout actually invalidate that specific token server-side (a stateless-JWT system with no server tracking couldn't do this — the DB-backed `tokens[]` array is what enables it, at the cost of a DB lookup on every authenticated request).
-- **Lines 66–74 (`/logout-all`)** — same idea but clears the **entire** `tokens` array — invalidates every session across every device, the standard "I think my password was compromised" flow.
-- **Line 77** — `GET /me` simply returns `req.employee`, which was already attached by the `authenticate` middleware (Section 42) — no additional DB query needed since `authenticate` already fetched the full employee document to verify the token.
+`/register` is deliberately **not** protected by `authenticate` — registration must be public — and destructures `role` directly from `req.body` with **no server-side default or restriction**: a malicious client could self-register as `role: 'admin'` unless the `Employee` schema restricts it. Contrast with `employeeRoutes.js`'s POST handler, which explicitly whitelists allowed fields (below). `new Employee({...}).save()` (rather than `Employee.create()`) is used so Mongoose's `pre('save')` hook (password hashing) fires — both forms trigger it equally, so the choice is stylistic. `sendWelcomeEmail({...}).catch(console.error)` is **not** `await`ed — the "don't block the response on email sending" pattern from Module 15.
+
+`/login`'s `catch` block responds directly with `res.status(401).json(...)` rather than calling `next(err)` — always surfaces login failures as `401` regardless of the underlying error, and avoids leaking whether the failure was "email not found" vs "wrong password" (both paths in `findByCredentials` throw the same generic message).
+
+`/logout` and `/logout-all` are both protected by `authenticate`. `/logout` filters the current token **out** of `req.employee.tokens`, which is what makes logout actually invalidate that specific token server-side (a stateless-JWT system with no server tracking couldn't do this — the DB-backed `tokens[]` array enables it, at the cost of a DB lookup per authenticated request). `/logout-all` clears the **entire** array — the "I think my password was compromised" flow. `GET /me` simply returns `req.employee`, already attached by the `authenticate` middleware (Section 42) — no additional DB query needed.
 
 ### `src/routes/departmentRoutes.js` — CRUD + Nested Resource + Business-Rule Delete Guard
 
-Key structural patterns (full code reproduced in the read above; here explaining the distinctive lines):
-- **Line 12** — `// router.use(authenticate);` is **commented out**. Per the README, all endpoints except `/health` are supposed to require a Bearer token — but in this file (and identically in `employeeRoutes.js` line 16 and `projectRoutes.js` line 11), the router-wide `authenticate` gate is disabled. Individual write routes still call `authorize('admin')` (e.g. line 67's `router.post('/', authorize('admin'), ...)`), but **`authorize` reads `req.employee.role`**, and `req.employee` is only ever set by `authenticate` (Section 42) — so with `authenticate` commented out, `authorize('admin')` would actually **throw** (`Cannot read properties of undefined (reading 'role')`) on any unauthenticated request, rather than cleanly rejecting with 401/403. This is a real, checkable bug/gap in the codebase worth understanding for assessment purposes: the GET routes (lines 15, 31, 47) are effectively **fully public** with no auth applied at all, while POST/PATCH/DELETE routes are broken in a way that crashes instead of denying.
-- **Lines 17–24** — `parseQuery(req.query, [])` (from `utils/queryHelper.js`, the reusable filter/sort/paginate helper matching the courseware's Module 13 `buildQuery` pattern — Section 14) builds `{ filter, sort, skip, limit, page }` from query string params; `Promise.all([Department.find(...), Department.countDocuments(...)])` runs the page query and the total count concurrently — the exact "run both in parallel" idiom from Module 13.
+- **Line 12** — `// router.use(authenticate);` is **commented out**. Per the README, all endpoints except `/health` are supposed to require a Bearer token — but in this file (and identically in `employeeRoutes.js` line 16 and `projectRoutes.js` line 11), the router-wide `authenticate` gate is disabled. Individual write routes still call `authorize('admin')` (e.g. line 67), but **`authorize` reads `req.employee.role`**, and `req.employee` is only ever set by `authenticate` (Section 42) — so with it commented out, `authorize('admin')` actually **throws** (`Cannot read properties of undefined (reading 'role')`) rather than cleanly rejecting with 401/403. GET routes (lines 15, 31, 47) are effectively **fully public**, while POST/PATCH/DELETE routes crash instead of denying.
+- **Lines 17–24** — `parseQuery(req.query, [])` (from `utils/queryHelper.js`, the reusable filter/sort/paginate helper matching Module 13's `buildQuery` pattern — Section 14) builds `{ filter, sort, skip, limit, page }` from query string params; `Promise.all([Department.find(...), Department.countDocuments(...)])` runs the page query and total count concurrently.
 - **Lines 36–37** — `Employee.countDocuments({ department: dept._id })` is a cross-model count used to enrich the single-department response with a computed `employeeCount` field not stored on the Department document itself.
-- **Lines 99–105 (delete guard)** — `Employee.exists({ department: req.params.id })` checks for any employee still assigned to this department **before** allowing deletion; if any exist, responds `409 Conflict` instead of deleting — a referential-integrity business rule enforced at the application layer (MongoDB itself has no foreign-key constraints, so this check is Mongoose/Express's responsibility, unlike a SQL DB with `ON DELETE RESTRICT`).
+- **Lines 99–105 (delete guard)** — `Employee.exists({ department: req.params.id })` checks for any employee still assigned to this department **before** allowing deletion; if any exist, responds `409 Conflict` instead of deleting — a referential-integrity rule enforced at the application layer, since MongoDB itself has no foreign-key constraints like SQL's `ON DELETE RESTRICT`.
 
 ### `src/routes/employeeRoutes.js` — Sorting/Pagination/Filtering + Field Whitelisting + Role-Conditional Updates + Avatar Upload
 
-- **Lines 22–25** — `parseQuery(req.query, ['isActive', 'department', 'role', 'designation'])` — the second argument is an **explicit allow-list of filterable fields**, preventing a client from injecting an arbitrary Mongo filter via unexpected query keys — this is the practical, production-grade version of the courseware's Module 13 `allowedFilters` parameter.
-- **Line 30** — `.populate('department', 'name code')` — joins in just the `name` and `code` fields of the referenced Department document (Section 12's projection-on-populate pattern), avoiding pulling the entire department document into every employee list response.
-- **Lines 62–72 (POST, field whitelisting via `reduce`)** —
-  ```
-  const allowed = ['firstName', 'lastName', 'email', 'password', 'phone', 'designation', 'salary', 'department', 'joinDate', 'role'];
-  const body = allowed.reduce((acc, key) => { if (req.body[key] !== undefined) acc[key] = req.body[key]; return acc; }, {});
-  ```
-  This builds a new object containing **only** the whitelisted keys present in `req.body`, using `Array.prototype.reduce` as an object-builder — a direct security best practice (comment on line 61 explicitly says so) preventing mass-assignment of unexpected fields (e.g. a client couldn't sneak in `isAdmin: true` or `tokens: [...]` this way, since those keys aren't in `allowed`). Contrast this with `authRoutes.js`'s `/register` handler (Section 40 above), which destructures `role` directly from `req.body` with no such whitelist — an inconsistency between the two files worth noting.
-- **Lines 85–118 (PATCH — role-conditional field permissions)** —
-  ```
-  const allowedForAll = ['firstName', 'lastName', 'phone', 'designation'];
-  const allowedForAdmin = [...allowedForAll, 'salary', 'role', 'department', 'isActive'];
-  const allowed = req.employee.role === 'admin' ? allowedForAdmin : allowedForAll;
-  ```
-  This is a fine-grained authorization pattern beyond simple route-level `authorize()`: **which fields** a request may update depends on the caller's role, computed inline rather than via a separate middleware. Non-admins are restricted to cosmetic self-profile fields; only admins can touch `salary`, `role`, `department`, `isActive`. Line 91 (`req.employee.role === 'admin'`) again depends on `req.employee` being set — meaning this route, too, silently assumes `authenticate` ran, even though (per the note above) it's commented out at the router level.
-- **Lines 99–103 (ownership check)** — `if (req.employee.role !== 'admin' && req.employee._id.toString() !== targetId) return res.status(403)...` — non-admins may only edit **their own** record; `.toString()` is required because `req.employee._id` is a Mongoose `ObjectId` object, not a string, and must be explicitly stringified before comparing to `req.params.id` (a raw string from the URL) — a very common Mongoose gotcha (`ObjectId !== string` even for the "same" id).
-- **Lines 133–153 (`POST /:id/avatar`)** — this route uses `upload.single('avatar')` (Section 38) as route-level middleware **without** `authenticate` preceding it (line 133: `router.post('/:id/avatar', upload.single('avatar'), async (req, res, next) => {...})`) — directly confirming the coupling flagged in Section 38: Multer's `filename` callback reads `req.employee._id`, but on this route `req.employee` is never set (no `authenticate` in the chain), so **this upload route would throw at the Multer filename-generation step for every request** — a genuine bug traceable end-to-end from `upload.js` through this route registration. Lines 141–144 additionally delete the employee's previous avatar file (`fs.unlinkSync`) before saving the new filename — cleanup pattern preventing orphaned files accumulating in `uploads/`.
+- `parseQuery(req.query, ['isActive', 'department', 'role', 'designation'])` — the second argument is an **explicit allow-list of filterable fields**, preventing a client from injecting an arbitrary Mongo filter via unexpected query keys. `.populate('department', 'name code')` joins in just those fields of the referenced Department (Section 12's projection-on-populate pattern).
+- **POST — field whitelisting via `reduce`**: `allowed.reduce((acc, key) => { if (req.body[key] !== undefined) acc[key] = req.body[key]; return acc; }, {})` builds a new object containing **only** whitelisted keys present in `req.body` — a direct security best practice preventing mass-assignment of unexpected fields (e.g. `isAdmin: true`). Contrast with `authRoutes.js`'s `/register` handler, which destructures `role` directly with no such whitelist.
+- **PATCH — role-conditional field permissions**: `allowedForAdmin = [...allowedForAll, 'salary', 'role', 'department', 'isActive']`, then `allowed = req.employee.role === 'admin' ? allowedForAdmin : allowedForAll`. A fine-grained authorization pattern beyond simple route-level `authorize()`: **which fields** a request may update depends on the caller's role. Non-admins are restricted to cosmetic self-profile fields. This again depends on `req.employee` being set — silently assumes `authenticate` ran, even though it's commented out at the router level.
+- **Ownership check**: non-admins may only edit **their own** record; `.toString()` is required because `req.employee._id` is a Mongoose `ObjectId` object, not a string, and must be stringified before comparing to `req.params.id` — a very common Mongoose gotcha (`ObjectId !== string` even for the "same" id).
+- **`POST /:id/avatar`** — uses `upload.single('avatar')` (Section 38) as route-level middleware **without** `authenticate` preceding it, directly confirming the coupling flagged in Section 38: Multer's `filename` callback reads `req.employee._id`, but on this route `req.employee` is never set, so **this upload route would throw at the Multer filename-generation step for every request**. It also deletes the employee's previous avatar file (`fs.unlinkSync`) before saving the new one — cleanup preventing orphaned files in `uploads/`.
 
 ### `src/routes/projectRoutes.js` — Multi-Ref Populate + Array Manipulation
 
-- **Lines 22–24** — chains **two** `.populate()` calls on the same query (`department` and `assignedEmployees`), each projecting different fields — Mongoose supports populating multiple ref paths independently on one query.
-- **Lines 92–114 (`POST /:id/assign`)** — assigns an array of employee IDs to a project while avoiding duplicates:
-  ```
-  const existing = project.assignedEmployees.map((id) => id.toString());
-  const toAdd = employeeIds.filter((id) => !existing.includes(id));
-  project.assignedEmployees.push(...toAdd);
-  ```
-  This manually implements set-like uniqueness using `Array.prototype.filter` + `.includes()` (an O(n·m) approach, acceptable for typically small arrays) rather than a `Set`, and again requires `.toString()` on the existing ObjectId array before comparing against the incoming plain-string `employeeIds` — same ObjectId-vs-string gotcha as Section 40's employee update route.
-- **Lines 118–132 (`DELETE /:id/assign/:employeeId`)** — removes a single employee from the array via `.filter(empId => empId.toString() !== req.params.employeeId)` — the standard "remove by id" idiom for Mongoose subdocument/ref arrays (no native `.remove()` on plain arrays of ObjectIds, so `filter`-and-reassign is required).
+Chains **two** `.populate()` calls on the same query (`department` and `assignedEmployees`), each projecting different fields. `POST /:id/assign` avoids duplicates: `existing = project.assignedEmployees.map(id => id.toString()); toAdd = employeeIds.filter(id => !existing.includes(id))` — manually implements set-like uniqueness using `filter`+`.includes()` rather than a `Set`, again requiring `.toString()` on the existing ObjectId array before comparing against the incoming plain-string `employeeIds` — same ObjectId-vs-string gotcha as the employee update route above. `DELETE /:id/assign/:employeeId` removes a single employee via `.filter(empId => empId.toString() !== req.params.employeeId)` — the standard "remove by id" idiom for Mongoose ref arrays (no native `.remove()` on plain ObjectId arrays).
 
 ## 41. `tests/employee.test.js` — Jest + Supertest Integration Suite
 
 ```javascript
-1:  // tests/employee.test.js
-2:  // Demonstrates: Testing Node.js (Task App topic), Jest, Supertest
-3:
-4:  const request = require('supertest');
-5:  const mongoose = require('mongoose');
-6:  const { app } = require('../src/app');
-7:  const Employee = require('../src/models/Employee');
-8:  const Department = require('../src/models/Department');
-...
-30: beforeAll(async () => {
-31:   const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/ems_test';
-32:   await mongoose.connect(mongoUri);
-33: });
-34:
-35: afterAll(async () => {
-36:   await Employee.deleteMany({ email: /@ems-test\.com$/ });
-37:   await Department.deleteMany({ code: 'TST' });
-38:   await mongoose.connection.close();
-39: });
-...
-43: describe('Auth Routes', () => {
-44:   test('POST /api/auth/register – should create admin', async () => {
-45:     const res = await request(app)
-46:       .post('/api/auth/register')
-47:       .send(adminData)
-48:       .expect(201);
-49:
-50:     expect(res.body).toHaveProperty('token');
-51:     expect(res.body.employee.email).toBe(adminData.email);
-52:     expect(res.body.employee).not.toHaveProperty('password');
-53:
-54:     adminToken = res.body.token;
-55:   });
-...
-85:   test('GET /api/auth/me – no token returns 401', async () => {
-86:     await request(app).get('/api/auth/me').expect(401);
-87:   });
-88: });
+const request = require('supertest');
+const mongoose = require('mongoose');
+const { app } = require('../src/app');
+const Employee = require('../src/models/Employee');
+const Department = require('../src/models/Department');
+
+beforeAll(async () => {
+  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/ems_test';
+  await mongoose.connect(mongoUri);
+});
+
+afterAll(async () => {
+  await Employee.deleteMany({ email: /@ems-test\.com$/ });
+  await Department.deleteMany({ code: 'TST' });
+  await mongoose.connection.close();
+});
+
+describe('Auth Routes', () => {
+  test('POST /api/auth/register – should create admin', async () => {
+    const res = await request(app).post('/api/auth/register').send(adminData).expect(201);
+    expect(res.body).toHaveProperty('token');
+    expect(res.body.employee.email).toBe(adminData.email);
+    expect(res.body.employee).not.toHaveProperty('password');
+    adminToken = res.body.token;
+  });
+
+  test('GET /api/auth/me – no token returns 401', async () => {
+    await request(app).get('/api/auth/me').expect(401);
+  });
+});
 ```
-- **Line 6** — `const { app } = require('../src/app')` — destructures **only** `app` out of the `{ app, server }` export (Section 36, line 82); the test suite never needs `server` since Supertest doesn't require an actual bound port — it drives the Express app's request pipeline directly in-process.
-- **Lines 30–33** — `beforeAll` connects Mongoose **once** for the whole file (not per test) — hitting `MONGODB_URI` from the environment, or falling back to a local `ems_test` database — following the courseware's explicit guidance (Section 17/Module 16) to use a **separate test database**, never the production/dev one.
-- **Lines 35–38 (`afterAll` cleanup)** — rather than dropping the whole test database, this cleans up **surgically**: deletes only employees whose email matches `/@ems-test\.com$/` and departments with `code: 'TST'` — a regex-scoped teardown that lets the test DB be shared/reused across runs without needing a full wipe, and avoids accidentally deleting unrelated seed data if the test DB is shared with manual dev testing.
-- **Line 44–55** — the very first test **registers a real admin account** and captures the returned `token` into the outer-scope `adminToken` variable (declared at line 27, `let adminToken`) — every subsequent test in the file **depends on this one running first and succeeding**, since Jest (without explicit isolation) runs tests within a `describe` block in file order by default. This is a deliberate integration-testing tradeoff: tests are **not independent** (unlike the pure-unit tests in Project A's `emp-stuff.test.js`), they form a **sequential story** (register → login → CRUD → cleanup) mirroring how a real client session would actually use the API.
-- **Line 50–52** — three assertions on the register response: `toHaveProperty('token')` (session issued), `.email` equality (correct data echoed back), and critically `.not.toHaveProperty('password')` — this last assertion is what actually **verifies** that the Employee model's `toJSON` override (referenced conceptually in Section 40, defined in the model file which is out of scope here per the MongoDB-guide note) is correctly stripping the password hash before serialization — a security-relevant test, not just a data-shape test.
-- **Lines 85–87 (unauthenticated 401 test)** — worth cross-referencing against Section 40's finding that `employeeRoutes.js`/`departmentRoutes.js`/`projectRoutes.js` have `authenticate` commented out at the router level: this specific 401 test only passes because `authRoutes.js`'s `/me` route (Section 40, line 77) **does** explicitly pass `authenticate` as route-level middleware (`router.get('/me', authenticate, ...)`), independent of any router-wide `.use()`. The test suite (Section 41's Department/Employee tests) never actually exercises "call employee/department endpoints with no token and expect 401" — which is consistent with those routes genuinely not enforcing auth in this codebase, a gap the test suite doesn't happen to catch.
-- **Lines 94–103, 119–174** — the Department and Employee CRUD test blocks follow the identical Supertest chain shape throughout: `request(app).<method>(<path>).set('Authorization', ...).send(<body>).expect(<status>)`, then assert on `res.body`. Notably **every** write request in these blocks **does** set the `Authorization` header with `adminToken` even though (per the router-level finding above) most of these routes don't actually require it — meaning the test suite is testing the "happy path with a valid token" but not exercising the actual authorization gap.
-- **Lines 176–182 (Health Check)** — a simple smoke test on `GET /health` (Section 36, lines 51–58) confirming `res.body.status === 'OK'` — the simplest possible test in the file, included as the baseline "is the app even wired up" sanity check.
+Destructures **only** `app` out of the `{ app, server }` export (Section 36); Supertest drives the Express app's request pipeline directly in-process, no bound port needed.
+
+`beforeAll` connects Mongoose **once** for the whole file, hitting `MONGODB_URI` from the environment or falling back to a local `ems_test` database — a **separate test database**, never the production/dev one. `afterAll` cleans up **surgically** rather than dropping the whole DB: deletes only employees matching `/@ems-test\.com$/` and departments with `code: 'TST'`, a regex-scoped teardown that lets the test DB be shared/reused across runs without a full wipe.
+
+The very first test **registers a real admin account** and captures the returned `token` into the outer-scope `adminToken` variable — every subsequent test **depends on this one running first and succeeding**, since Jest runs tests within a `describe` block in file order by default. Tests here are **not independent** (unlike the pure-unit tests in Project A's `emp-stuff.test.js`) — they form a **sequential story** (register → login → CRUD → cleanup). Three assertions matter on the register response: `toHaveProperty('token')`, `.email` equality, and critically `.not.toHaveProperty('password')` — verifying the Employee model's `toJSON` override strips the password hash before serialization, a security-relevant test, not just a data-shape one.
+
+**Gotcha**: the unauthenticated 401 test only passes because `authRoutes.js`'s `/me` route **does** explicitly pass `authenticate` as route-level middleware, independent of any router-wide `.use()`. The suite never exercises "call employee/department endpoints with no token and expect 401" — consistent with those routes genuinely not enforcing auth in this codebase.
+
+The Department and Employee CRUD blocks (not shown) follow an identical Supertest chain: `request(app).<method>(<path>).set('Authorization', ...).send(<body>).expect(<status>)`. Notably **every** write request sets `Authorization` with `adminToken` even though most routes don't actually require it — testing the "happy path with a valid token" but not the authorization gap. A simple smoke test on `GET /health` confirms `res.body.status === 'OK'`.
 
 ---
 
