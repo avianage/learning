@@ -5,10 +5,10 @@
         http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
 
     <!-- bean definitions here -->
-    <bean id="specification" class="com.learning.autowire.type.Specification">
+    <bean id="specification" class="com.learning.autowire.constructor.Specification">
         <property name="make" value="Toyota"/>
         <property name="model" value="Corolla"/>
     </bean>
 
-    <bean id="myCar" class="com.learning.autowire.type.Car" autowire="byType"/>
+    <bean id="myCar" class="com.learning.autowire.constructor.Car" autowire="constructor"/>
 </beans>

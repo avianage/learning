@@ -5,17 +5,17 @@
         http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
 
     <!-- bean definitions here -->
-    <bean id="userDataProvider" class="com.ioc.coupling.UserDatabaseProvider"/>
-    <bean id="newDataProvider" class="com.ioc.coupling.NewDataProvider"/>
-    <bean id="webServiceDataProvider" class="com.ioc.coupling.WebServiceDataProvider"/>
+    <bean id="userDataProvider" class="com.learning.ioc.coupling.UserDatabaseProvider"/>
+    <bean id="newDataProvider" class="com.learning.ioc.coupling.NewDataProvider"/>
+    <bean id="webServiceDataProvider" class="com.learning.ioc.coupling.WebServiceDataProvider"/>
 
-    <bean id="userManagerWithUserDataProvider" class="com.ioc.coupling.UserManager">
+    <bean id="userManagerWithUserDataProvider" class="com.learning.ioc.coupling.UserManager">
         <constructor-arg ref="userDataProvider"/>
     </bean>
-    <bean id="userManagerWithNewDataProvider" class="com.ioc.coupling.UserManager">
+    <bean id="userManagerWithNewDataProvider" class="com.learning.ioc.coupling.UserManager">
         <constructor-arg ref="newDataProvider"/>
     </bean>
-    <bean id="userManagerWithWebServiceDataProvider" class="com.ioc.coupling.UserManager">
+    <bean id="userManagerWithWebServiceDataProvider" class="com.learning.ioc.coupling.UserManager">
         <constructor-arg ref="webServiceDataProvider"/>
     </bean>
 </beans>
