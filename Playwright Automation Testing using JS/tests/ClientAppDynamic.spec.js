@@ -61,6 +61,10 @@ test('Client App Login', async ({ page }) => {
         }
     }
 
+    // Alternative
+    await page.getByRole("button", {name: "India"}).nth(1).click();
+
+
     await expect(page.locator(".user__name [type='text']").first()).toHaveText(email);
 
     await page.locator(".action__submit").click();

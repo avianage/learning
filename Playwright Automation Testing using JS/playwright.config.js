@@ -14,16 +14,28 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
 	testDir: './tests',
+
 	// Default timeout is 30 seconds
 	timeout: 40 * 1000,
 	// For assertion validations
 	expect: {
 		timeout: 5 * 1000
 	},
+
 	reporter: 'html',
 	use: {
 		browserName: 'chromium',
-		headless: false
+		headless: false,
+
+		// Setting action timeout globally
+		actionTimeout: 10*1000,
+
+		// For goto stmts
+		navigationTimeout: 30*1000,
+
+		// For Checking things out
+		screenshot: 'on',
+		trace: 'retain-on-failure'
 	}
 });
 
