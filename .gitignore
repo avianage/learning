@@ -49,3 +49,6 @@ build/
 ### Cloud Full Stack Development Training ###
 Cloud Full Stack Development Training/Revision/Code/
 Cloud Full Stack Development Training/Revision/Courseware/
+
+# Environment Variables
+*.env
