@@ -1,0 +1,14 @@
+[
+  {
+    "task": "Write a regular expression that matches a valid Amazon S3 bucket name, which must be between 3 and 63 characters long, start and end with a lowercase letter or number, and contain only lowercase letters, numbers, and hyphens.",
+    "format": "regex"
+  },
+  {
+    "task": "Write a Python function that takes a list of AWS EC2 instance dictionaries and returns only the instances that are in the 'running' state, extracting just their InstanceId and PublicIpAddress fields.",
+    "format": "python"
+  },
+  {
+    "task": "Write an IAM policy JSON document that allows a user to only list and get objects from a specific S3 bucket named 'my-app-assets', but explicitly denies the ability to delete any objects.",
+    "format": "json"
+  }
+]
