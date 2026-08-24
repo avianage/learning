@@ -1,14 +1,17 @@
 [
   {
-    "task": "Write a regular expression that matches a valid Amazon S3 bucket name, which must be between 3 and 63 characters long, start and end with a lowercase letter or number, and contain only lowercase letters, numbers, and hyphens.",
-    "format": "regex"
+    "task": "Write a Python function that takes an S3 bucket name and a prefix string as arguments and returns a list of all object keys in that bucket matching the prefix, handling pagination automatically using boto3.",
+    "format": "python",
+    "solution_criteria": "Uses boto3 S3 client or resource, handles pagination via paginator or NextContinuationToken, filters by prefix, returns a flat list of object key strings, includes basic error handling"
   },
   {
-    "task": "Write a Python function that takes a list of AWS EC2 instance dictionaries and returns only the instances that are in the 'running' state, extracting just their InstanceId and PublicIpAddress fields.",
-    "format": "python"
+    "task": "Write an IAM policy JSON document that allows a user to list all S3 buckets in the account and read (get/download) objects only from a bucket named 'my-readonly-bucket', but explicitly denies the ability to delete any S3 objects across all buckets.",
+    "format": "json",
+    "solution_criteria": "Valid IAM policy JSON with Version and Statement fields, includes separate statements for ListAllMyBuckets, GetObject scoped to the specific bucket ARN, and an explicit Deny for s3:DeleteObject on all resources using Effect Allow/Deny correctly"
   },
   {
-    "task": "Write an IAM policy JSON document that allows a user to only list and get objects from a specific S3 bucket named 'my-app-assets', but explicitly denies the ability to delete any objects.",
-    "format": "json"
+    "task": "Write a regular expression that validates an Amazon Resource Name (ARN) and captures its components (partition, service, region, account-id, and resource) as named capture groups. A valid ARN follows the format: arn:partition:service:region:account-id:resource.",
+    "format": "regex",
+    "solution_criteria": "Matches the arn: prefix, uses named capture groups for all five components, correctly handles ARNs where region or account-id may be empty (e.g. IAM ARNs), does not produce false positives on clearly invalid strings"
   }
 ]
