@@ -1,0 +1,394 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Prompt Evaluation Report</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                margin: 0;
+                padding: 20px;
+                color: #333;
+            }
+            .header {
+                background-color: #f0f0f0;
+                padding: 20px;
+                border-radius: 5px;
+                margin-bottom: 20px;
+            }
+            .summary-stats {
+                display: flex;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .stat-box {
+                background-color: #fff;
+                border-radius: 5px;
+                padding: 15px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                flex-basis: 30%;
+                min-width: 200px;
+            }
+            .stat-value {
+                font-size: 24px;
+                font-weight: bold;
+                margin-top: 5px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }
+            th {
+                background-color: #4a4a4a;
+                color: white;
+                text-align: left;
+                padding: 12px;
+            }
+            td {
+                padding: 10px;
+                border-bottom: 1px solid #ddd;
+                vertical-align: top;
+            }
+            tr:nth-child(even) {
+                background-color: #f9f9f9;
+            }
+            .output-cell {
+                white-space: pre-wrap;
+            }
+            .score {
+                font-weight: bold;
+                padding: 5px 10px;
+                border-radius: 3px;
+                display: inline-block;
+            }
+            .score-high {
+                background-color: #c8e6c9;
+                color: #2e7d32;
+            }
+            .score-medium {
+                background-color: #fff9c4;
+                color: #f57f17;
+            }
+            .score-low {
+                background-color: #ffcdd2;
+                color: #c62828;
+            }
+            .output {
+                overflow: auto;
+                white-space: pre-wrap;
+            }
+
+            .output pre {
+                background-color: #f5f5f5;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 0;
+                font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                font-size: 14px;
+                line-height: 1.4;
+                color: #333;
+                box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+                overflow-x: auto;
+                white-space: pre-wrap; 
+                word-wrap: break-word; 
+            }
+
+            td {
+                width: 20%;
+            }
+            .score-col {
+                width: 80px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Prompt Evaluation Report</h1>
+            <div class="summary-stats">
+                <div class="stat-box">
+                    <div>Total Test Cases</div>
+                    <div class="stat-value">3</div>
+                </div>
+                <div class="stat-box">
+                    <div>Average Score</div>
+                    <div class="stat-value">2.3 / 10</div>
+                </div>
+                <div class="stat-box">
+                    <div>Pass Rate (≥7)</div>
+                    <div class="stat-value">0.0%</div>
+                </div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Scenario</th>
+                    <th>Prompt Inputs</th>
+                    <th>Solution Criteria</th>
+                    <th>Output</th>
+                    <th>Score</th>
+                    <th>Reasoning</th>
+                </tr>
+            </thead>
+            <tbody>
+    
+            <tr>
+                <td>A marathon runner who needs high-carb, endurance-focused nutrition with specific pre-race and recovery meals</td>
+                <td class="prompt-inputs"><strong>height:</strong> 175<br><strong>weight:</strong> 68<br><strong>goal:</strong> Complete a marathon with optimal endurance performance, focusing on high-carb fueling before the race and effective muscle recovery after<br><strong>restrictions:</strong> Lactose intolerant</td>
+                <td class="criteria">• Meal plan covers a full single day with breakfast, lunch, dinner, and snacks<br>• Meals are high-carbohydrate and endurance-focused, appropriate for a marathon runner<br>• Plan respects the lactose intolerance restriction (no dairy milk, cheese, or cream)</td>
+                <td class="output"><pre># 🏃 Marathon Athlete Meal Plan
+
+---
+
+## Step 1: Daily Calorie Calculation
+
+| Factor | Detail |
+|--------|--------|
+| Height | 175 cm |
+| Weight | 68 kg |
+| BMR (Mifflin-St Jeor) | ~1,695 kcal |
+| Activity Multiplier | 1.7 (very active, marathon training) |
+| **Total Daily Calories** | **~2,880 kcal** |
+
+> 🧮 **Formula used:** BMR = 10(68) + 6.25(175) - 5(25) + 5 ≈ 1,695 × 1.7 = **2,881 kcal**
+
+---
+
+## Step 2: Macronutrient Breakdown
+
+> Marathon training demands **high carbohydrate availability** to maximize glycogen stores and delay fatigue during long-distance efforts
+
+| Macro | % of Calories | Grams/Day | Rationale |
+|-------|--------------|-----------|-----------|
+| 🍞 Carbohydrates | 60% | **432g** | Primary endurance fuel; glycogen loading before race |
+| 🥩 Protein | 20% | **144g** | Muscle repair, recovery, and injury prevention |
+| 🥑 Fat | 20% | **64g** | Sustained energy for long slow efforts, joint health |
+
+---
+
+## Step 3: Meal Timing Strategy
+
+```
+6:00 AM  ── Pre-Workout Snack        (fast carbs, light — easy to digest)
+7:00 AM  ── TRAINING RUN             (long endurance session)
+9:00 AM  ── Post-Workout Breakfast   (glycogen replenishment window)
+12:30 PM ── Lunch                    (complex carbs + lean protein)
+3:30 PM  ── Afternoon Snack          (carb top-up + sustained energy)
+7:00 PM  ── Dinner                   (full recovery meal)
+9:00 PM  ── Evening Snack            (optional — slow carbs + protein)
+```
+
+> ⚡ **Key principle:** Front-load carbs around training. Prioritize protein distribution across all meals for optimal muscle protein synthesis.
+
+---
+
+## Step 4–6: Full Meal Plan with Portions
+
+> ✅ All meals are **100% lactose-free** — dairy alternatives used throughout
+
+---
+
+### 🌅 Pre-Workout Snack | 6:00 AM
+**Goal: Fast-digesting carbs for immediate fuel — keep it light to avoid GI issues**
+
+| Food | Portion | Calories | Carbs | Protein | Fat |
+|------|---------|----------|-------|---------|-----|
+| Banana | 150g (1 large) | 135 | 34g | 1.5g | 0.5g |
+| Medjool dates | 30g (2 dates) | 83 | 22g | 0.5g | 0g |
+| Water | 500ml | 0 | — | — | — |
+| **Subtotal** | | **218 kcal** | **56g** | **2g** | **0.5g** |
+
+> ⚠️ Keep this snack small and simple — high fiber or fat at this stage can cause cramping mid-run
+
+---
+
+### 🍳 Post-Workout Breakfast | 9:00 AM
+**Goal: Rapidly replenish glycogen stores and activate muscle recovery**
+
+| Food | Portion | Calories | Carbs | Protein | Fat |
+|------|---------|----------|-------|---------|-----|
+| Rolled oats (dry) | 100g | 370 | 62g | 13g | 7g |
+| Oat milk (unsweetened) | 250ml | 110 | 16g | 3g | 3.5g |
+| Banana (sliced on top) | 100g | 89 | 23g | 1g | 0.3g |
+| Almond butter |</pre></td>
+                <td class="score-col"><span class="score score-low">2</span></td>
+                <td class="reasoning">This solution violates a mandatory requirement: it must include 'Meals with exact foods, portions and timing' for a full day. The output is cut off mid-table during the Post-Workout Breakfast entry, leaving lunch, afternoon snack, dinner, and evening snack completely absent. While the caloric total and macronutrient breakdown are present and well-structured, and the lactose-free approach is correctly applied, the incomplete meal coverage is a critical failure. The plan does not cover a full single day as required by both the mandatory criteria and the secondary criteria. This warrants a score of 3 or lower.</td>
+            </tr>
+        
+            <tr>
+                <td>A competitive swimmer with early morning practice who needs pre-dawn snacks, quick post-workout recovery foods, and evening meal planning</td>
+                <td class="prompt-inputs"><strong>height:</strong> 178<br><strong>weight:</strong> 74<br><strong>goal:</strong> Improve endurance and maintain lean muscle mass for competitive swimming<br><strong>restrictions:</strong> Lactose intolerant</td>
+                <td class="criteria">• Includes a pre-dawn snack before early morning practice, a post-workout recovery meal, and an evening meal<br>• Meal plan is compact and fits within a single day format<br>• Avoids lactose-containing ingredients</td>
+                <td class="output"><pre># 🏊 Competitive Swimmer Meal Plan
+
+---
+
+## Step 1: Daily Calorie Calculation
+
+| Factor | Detail |
+|--------|--------|
+| Height | 178 cm |
+| Weight | 74 kg |
+| BMR (Mifflin-St Jeor) | ~1,803 kcal |
+| Activity Multiplier | 1.75 (very active, competitive swim training) |
+| **Total Daily Calories** | **~3,155 kcal** |
+
+> 🧮 **BMR Formula (Male assumed):** 10 × 74 + 6.25 × 178 − 5 × 25 + 5 ≈ 1,803 kcal
+> *(Age estimated at 25 — adjust multiplier if needed)*
+
+---
+
+## Step 2: Macronutrient Breakdown
+
+> Competitive swimming demands **high carbohydrate availability** for pool sessions while **elevated protein** preserves lean muscle mass
+
+| Macro | % of Calories | Grams/Day | Rationale |
+|-------|--------------|-----------|-----------|
+| 🍞 Carbohydrates | 55% | **434g** | Primary fuel for high-intensity swim intervals |
+| 🥩 Protein | 25% | **197g** | Lean muscle preservation & repair |
+| 🥑 Fat | 20% | **70g** | Hormonal health, sustained aerobic energy |
+
+---
+
+## Step 3: Meal Timing Strategy
+
+```
+6:30 AM  ── Pre-Workout Snack (quick carbs, light)
+7:00 AM  ── MORNING SWIM SESSION
+9:00 AM  ── Post-Workout Breakfast (recovery priority)
+12:30 PM ── Lunch (complex carbs + protein)
+3:30 PM  ── Afternoon Snack (carb top-up before evening session)
+5:00 PM  ── EVENING SWIM SESSION (optional second session)
+6:30 PM  ── Dinner (full recovery meal)
+9:00 PM  ── Evening Snack (slow-digesting protein + carbs)
+```
+
+---
+
+## Step 4–6: Full Meal Plan with Portions
+
+> ✅ All meals are **lactose-free** — dairy swapped for plant-based and whole-food alternatives
+
+---
+
+### 🌅 Pre-Workout Snack | 6:30 AM
+**Goal: Fast-digesting carbs, minimal fat/fiber to avoid GI distress in the water**
+
+| Food | Portion | Calories | Carbs | Protein | Fat |
+|------|---------|----------|-------|---------|-----|
+| White rice cake | 30g (2 cakes) | 115 | 24g | 2g | 1g |
+| Honey | 15g (1 tbsp) | 46 | 12g | 0g | 0g |
+| Banana | 120g (1 medium) | 107 | 27g | 1.3g | 0.4g |
+| Water | 500ml | 0 | — | — | — |
+| **Subtotal** | | **268 kcal** | **63g** | **3.3g** | **1.4g** |
+
+> ⚠️ Keep fat and fiber minimal here — swimmers are prone to GI discomfort when turning and flipping in the water
+
+---
+
+### 🍳 Post-Workout Breakfast | 9:00 AM
+**Goal: Replenish muscle glycogen, deliver fast protein for muscle repair**
+
+| Food | Portion | Calories | Carbs | Protein | Fat |
+|------|---------|----------|-------|---------|-----|
+| Rolled oats (dry) | 100g | 370 | 62g | 13g | 7g |
+| Oat milk (unsweetened) | 300ml | 132 | 20g | 3.6g | 4.2g |
+| Whole eggs (scrambled) | 150g (3 eggs) | 215 | </pre></td>
+                <td class="score-col"><span class="score score-low">3</span></td>
+                <td class="reasoning">The solution violates a mandatory requirement: meals with exact foods, portions, and timing must be included for the full day. The output is cut off partway through the Post-Workout Breakfast, leaving lunch, afternoon snack, dinner, and evening snack entirely absent. This means the mandatory requirement of 'Meals with exact foods, portions and timing' is not fully met. Despite strong starts on caloric totals, macronutrient breakdown, and lactose avoidance, the incomplete nature of the meal plan is a clear mandatory violation, requiring a score of 3 or lower.</td>
+            </tr>
+        
+            <tr>
+                <td>A vegetarian weightlifter requiring high-protein plant-based meals to support muscle building and strength training</td>
+                <td class="prompt-inputs"><strong>height:</strong> 182<br><strong>weight:</strong> 90<br><strong>goal:</strong> Build muscle mass and increase strength through weightlifting<br><strong>restrictions:</strong> Vegetarian (no meat or fish, but eggs and dairy are allowed)</td>
+                <td class="criteria">• Meal plan covers breakfast, lunch, dinner, and at least one snack within a single day<br>• Meals are vegetarian and emphasize high-protein plant-based sources (e.g., legumes, tofu, tempeh, eggs, dairy, quinoa)<br>• Plan is compact and concise, avoiding unnecessary verbosity</td>
+                <td class="output"><pre># 💪 Muscle-Building Vegetarian Athlete Meal Plan
+
+---
+
+## Step 1: Daily Calorie Calculation
+
+| Factor | Detail |
+|--------|--------|
+| Height | 182 cm |
+| Weight | 90 kg |
+| BMR (Mifflin-St Jeor) | ~1,973 kcal |
+| Activity Multiplier | 1.725 (very active, heavy weightlifting) |
+| Muscle Building Surplus | +300–400 kcal |
+| **Total Daily Calories** | **~3,800 kcal** |
+
+> 🧮 **BMR Formula (Male):** 10 × 90 + 6.25 × 182 − 5 × 25 + 5 = ~1,973 kcal
+> Adjust age as needed — 25 used as estimate
+
+---
+
+## Step 2: Macronutrient Breakdown
+
+> Muscle hypertrophy requires **high protein intake** and sufficient carbohydrates to fuel intense lifting sessions and support recovery
+
+| Macro | % of Calories | Grams/Day | Rationale |
+|-------|--------------|-----------|-----------|
+| 🍞 Carbohydrates | 45% | **428g** | Fuel for heavy lifts, glycogen replenishment |
+| 🥩 Protein | 30% | **285g** | Muscle protein synthesis (~3.1g/kg bodyweight) |
+| 🥑 Fat | 25% | **106g** | Hormone production (testosterone), joint health |
+
+> 💡 **Vegetarian protein note:** Combine complementary plant proteins (rice + legumes) throughout the day to ensure all essential amino acids are covered. Eggs and dairy provide complete protein sources.
+
+---
+
+## Step 3: Meal Timing Strategy
+
+```
+7:00 AM  ── Breakfast (anabolic morning meal)
+10:00 AM ── Pre-Workout Snack (fast carbs + light protein)
+11:00 AM ── WEIGHT TRAINING SESSION (60–90 min)
+12:30 PM ── Post-Workout Lunch (critical recovery window)
+3:30 PM  ── Afternoon Snack (protein + slow carbs)
+7:00 PM  ── Dinner (large recovery meal)
+9:30 PM  ── Evening Snack (slow-digesting protein)
+```
+
+---
+
+## Step 4–6: Full Meal Plan with Portions
+
+---
+
+### 🌅 Breakfast | 7:00 AM
+**Goal: Break overnight fast, spike muscle protein synthesis early**
+
+| Food | Portion | Calories | Carbs | Protein | Fat |
+|------|---------|----------|-------|---------|-----|
+| Whole eggs | 3 large (150g) | 215 | 1g | 19g | 15g |
+| Egg whites | 150g (5 whites) | 78 | 1g | 16g | 0.5g |
+| Whole grain toast | 100g (2 thick slices) | 247 | 45g | 9g | 3g |
+| Avocado | 80g (½ medium) | 128 | 7g | 1.5g | 12g |
+| Greek yogurt (full fat) | 200g | 190 | 8g | 20g | 9g |
+| Mixed berries | 100g | 57 | 13g | 1g | 0.5g |
+| Honey | 10g | 30 | 8g | 0g | 0g |
+| **Subtotal** | | **945 kcal** | **83g** | **66.5g** | **40g** |
+
+> 🍳 Scramble or poach eggs — avoid excess butter to keep fat controlled. The egg whites boost protein without extra fat.
+
+---
+
+### ⚡ Pre-Workout Snack | 10:00 AM
+**Goal: Top up glycogen stores, prime muscles for heavy lifting**
+
+| Food | Portion | Calories | Carbs | Protein</pre></td>
+                <td class="score-col"><span class="score score-low">2</span></td>
+                <td class="reasoning">This solution fails a mandatory requirement: it does not include meals with exact foods, portions, and timing for the full day. The output is truncated mid-way through the pre-workout snack, leaving lunch, dinner, and most snacks completely absent. While the caloric total and macronutrient breakdown are present and well-detailed, the incomplete meal plan means the solution cannot be considered functional or complete. Additionally, the solution is far from 'compact and concise' - it uses extensive tables, step-by-step frameworks, and lengthy rationale sections that add unnecessary verbosity. The mandatory requirement for complete meals with exact foods, portions, and timing is violated due to the truncation.</td>
+            </tr>
+        
+            </tbody>
+        </table>
+    </body>
+    </html>
+    

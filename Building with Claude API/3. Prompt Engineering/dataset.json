@@ -1,0 +1,47 @@
+[
+  {
+    "prompt_inputs": {
+      "height": "178",
+      "weight": "74",
+      "goal": "Improve endurance and maintain lean muscle mass for competitive swimming",
+      "restrictions": "Lactose intolerant"
+    },
+    "solution_criteria": [
+      "Includes a pre-dawn snack before early morning practice, a post-workout recovery meal, and an evening meal",
+      "Meal plan is compact and fits within a single day format",
+      "Avoids lactose-containing ingredients"
+    ],
+    "task_description": "Write a compact, concise 1 day meal plan for a single athlete",
+    "scenario": "A competitive swimmer with early morning practice who needs pre-dawn snacks, quick post-workout recovery foods, and evening meal planning"
+  },
+  {
+    "prompt_inputs": {
+      "height": "175",
+      "weight": "68",
+      "goal": "Complete a marathon with optimal endurance performance, focusing on high-carb fueling before the race and effective muscle recovery after",
+      "restrictions": "Lactose intolerant"
+    },
+    "solution_criteria": [
+      "Meal plan covers a full single day with breakfast, lunch, dinner, and snacks",
+      "Meals are high-carbohydrate and endurance-focused, appropriate for a marathon runner",
+      "Plan respects the lactose intolerance restriction (no dairy milk, cheese, or cream)"
+    ],
+    "task_description": "Write a compact, concise 1 day meal plan for a single athlete",
+    "scenario": "A marathon runner who needs high-carb, endurance-focused nutrition with specific pre-race and recovery meals"
+  },
+  {
+    "prompt_inputs": {
+      "height": "182",
+      "weight": "90",
+      "goal": "Build muscle mass and increase strength through weightlifting",
+      "restrictions": "Vegetarian (no meat or fish, but eggs and dairy are allowed)"
+    },
+    "solution_criteria": [
+      "Meal plan covers breakfast, lunch, dinner, and at least one snack within a single day",
+      "Meals are vegetarian and emphasize high-protein plant-based sources (e.g., legumes, tofu, tempeh, eggs, dairy, quinoa)",
+      "Plan is compact and concise, avoiding unnecessary verbosity"
+    ],
+    "task_description": "Write a compact, concise 1 day meal plan for a single athlete",
+    "scenario": "A vegetarian weightlifter requiring high-protein plant-based meals to support muscle building and strength training"
+  }
+]
